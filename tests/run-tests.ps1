@@ -24,14 +24,7 @@ function Add-Result {
     $results.Add([pscustomobject]@{ Name = $Name; Status = $Status; Detail = $Detail })
 }
 
-function Get-DevPython {
-    foreach ($c in @('D:\Python313\python.exe',
-                     (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python311\python.exe'),
-                     (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'))) {
-        if (Test-Path $c) { return $c }
-    }
-    return $null
-}
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'tools\env.ps1')
 
 # ---------------- 1. PowerShell 语法 ----------------
 $psFiles = @(Get-ChildItem $Root -Recurse -Filter *.ps1 -File |
@@ -182,6 +175,29 @@ if (Test-Path (Join-Path $Root '.git')) {
     }
 } else {
     Add-Result '仓库卫生' 'SKIP' '当前目录不是 git 仓库'
+}
+
+# ---------------- 6. 工具对齐（系统新版压过盒子自带旧版） ----------------
+$pyPin = Get-DevPython
+$nodePin = Get-DevNode
+$reaPin = Get-DevRea
+$cmdPy = (Get-Command python -ErrorAction SilentlyContinue).Source
+$cmdNode = (Get-Command node -ErrorAction SilentlyContinue).Source
+$cmdRea = (Get-Command rea -ErrorAction SilentlyContinue).Source
+$bad = [System.Collections.Generic.List[string]]::new()
+if (-not $pyPin -or $cmdPy -ne $pyPin) { $bad.Add("python 实际命中 $cmdPy，期望 $pyPin") }
+if (-not $nodePin -or $cmdNode -ne $nodePin) { $bad.Add("node 实际命中 $cmdNode，期望 $nodePin") }
+if (-not $reaPin) {
+    $bad.Add('找不到全局逆向引擎')
+} elseif ($cmdRea) {
+    $reaDir = Split-Path -Parent $cmdRea
+    if ($reaDir -ne (Split-Path -Parent $reaPin)) { $bad.Add("rea 实际命中 $cmdRea，期望 $reaPin 同目录") }
+    if ($cmdRea -match 'sandbox_runtime') { $bad.Add("rea 命中盒子自带版本：$cmdRea") }
+}
+if ($bad.Count -gt 0) {
+    Add-Result '工具对齐' 'FAIL' ($bad -join ' ;; ')
+} else {
+    Add-Result '工具对齐' 'PASS' "python=$pyPin；node=$nodePin；rea=$reaPin"
 }
 
 # ---------------- 汇总 ----------------

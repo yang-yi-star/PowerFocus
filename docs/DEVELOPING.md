@@ -21,7 +21,7 @@ PowerFocus 是**通用算力调度加速器**：给任意本地模型榨干整�
 | `v2\` | v2 真身 + 独立 `logs`/`commands`/`rules_state` | 源码入库，运行时状态忽略 |
 | `v3\` | v3 引擎（未上线）；`lib\` 注册表与回滚模块 | 源码入库，`commands\`/`.v3.lock`/`rollback\*.json` 忽略 |
 | `lib\` | 根级共享模块（app-purger / clean-recyclebin / geek-bridge） | 是 |
-| `tools\` | 开发者工具：`dev-check.ps1` 环境自检 | 是 |
+| `tools\` | 开发者工具：`env.ps1` 统一工具定位、`dev-check.ps1` 环境自检 | 是 |
 | `tests\` | 测试入口：`run-tests.ps1` | 是 |
 | `docs\` | 规范与设计文档（本文件所在） | 是 |
 | `logs\` | 运行日志 | 否 |
@@ -45,22 +45,33 @@ PowerFocus 是**通用算力调度加速器**：给任意本地模型榨干整�
 | llama.cpp | `E:\Program Files\llama.cpp\bin\llama-server.exe`（b12032） | 推理引擎 |
 | CUDA / CMake / Ninja / aria2 / ffmpeg | 已在 PATH | 见索引 |
 
-**沙箱 PATH 污染（实测发现）**：在豆包/WorkBuddy 的 agent 沙箱里执行命令时，PATH 上的 `python` / `node` / `rea` 会被替换为沙箱自带版本（3.13.16 / 22.23.2 / rea 6.7.0），与系统真实版本不同。表现为「工具版本忽高忽低」「REA 工具数从 229 掉到 207」。因此：
+**沙箱 PATH 污染（实测发现）**：在豆包/WorkBuddy 的 agent 沙箱里执行命令时，PATH 上的 `python` / `node` / `rea` 会被替换为沙箱自带版本（3.13.16 / 22.23.2 / rea 6.7.0），与系统真实版本不同。表现为「工具版本忽高忽低」「REA 工具数从 229 掉到 207」。
 
-- 脚本内一律写**绝对路径**，不依赖 PATH 上的 `python` / `node`。
-- `dev-check.ps1` 会把这种差异报成 `WARN node 别名` / `WARN rea 别名`，看到 WARN 不是环境坏了，是执行器在沙箱里。
-- `mcp-server.py` 的 `_find_rea()` 现在按 `POWERFOCUS_REA` → `%APPDATA%\npm` → PATH 的顺序定位，优先命中全局 6.8.0（229 工具）；只在全局安装缺失时才回退到 PATH（可能命中沙箱版）。
+**统一入口 `tools\env.ps1`（解法）**。任何脚本或命令行先 dot-source 它：
+
+```powershell
+. E:\PowerFocus\tools\env.ps1
+```
+
+它做三件事：把系统新版工具目录（Python / Node / 全局 npm）摘出来插到 PATH 队首，所以**裸敲 `python`、`node`、`rea` 也命中新版**；设置 `POWERFOCUS_REA` 指向全局安装；补上 `JAVA_HOME` / `GHIDRA_INSTALL_DIR` 供逆向引擎使用。
+
+- `dev-check.ps1` 与 `run-tests.ps1` 已在开头 dot-source，无需额外操作。
+- `mcp-server.py` 的 `_find_rea()` 按 `POWERFOCUS_REA` → `%APPDATA%\npm` → PATH 定位，优先命中全局 6.8.0（229 工具）。
+- `run-tests.ps1` 第 6 项「工具对齐」会实测三个裸命令是否真的命中系统新版，被盒子接管就报 FAIL。
 
 **编码**：源文件统一 UTF-8（`.editorconfig` 锁定），中文文件显式 `-Encoding utf8` 读写。`.ps1` 用 CRLF，`.py`/`.json`/`.md` 用 LF（`.gitattributes` 锁定）。
 
 ## 4. 运行与调试入口
 
 ```powershell
+# 任何临时命令前先对齐工具（否则裸命令会命中盒子自带的旧版）
+. E:\PowerFocus\tools\env.ps1
+
 # 环境自检（工具链/关键文件/端口/显存/git）
 pwsh -File E:\PowerFocus\tools\dev-check.ps1
 pwsh -File E:\PowerFocus\tools\dev-check.ps1 -Json      # 机器可读
 
-# 测试（语法/JSON/Python/MCP 冒烟/仓库卫生）
+# 测试（语法/配置/编译/MCP 冒烟/仓库卫生/工具对齐）
 pwsh -File E:\PowerFocus\tests\run-tests.ps1
 pwsh -File E:\PowerFocus\tests\run-tests.ps1 -SkipMcp   # 不想拉起 MCP 时
 

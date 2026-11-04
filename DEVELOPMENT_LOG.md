@@ -630,3 +630,38 @@
 
 ### 五、提交
 - `fix: _find_rea 优先全局 npm 安装，避免沙箱版 REA 静默缩水`
+
+---
+
+## 2026-11-04 14:10 · 工具全面对齐（系统新版压过盒子自带旧版）
+
+### 一、目标
+把执行时用到的旧版工具全部换成系统里的真实新版，且不依赖调用方（人和 AI）记得写绝对路径。
+
+### 二、新增 `tools\env.ps1`（统一工具定位）
+- 解析顺序：Python `D:\Python313` → 3.12 → 3.11 → 3.10；Node `C:\Program Files\nodejs`；逆向引擎 `%APPDATA%\npm\rea.cmd`。
+- `Add-PathFront`：**先摘掉旧位置，再插到 PATH 队首**。裸敲 `python` / `node` / `rea` 便命中新版，无需改调用习惯。
+- 顺带设置 `POWERFOCUS_REA`、`JAVA_HOME`（`E:\Java\jdk-25`）、`GHIDRA_INSTALL_DIR`（`D:\ghidra_12.1.4_PUBLIC`），逆向引擎开箱可用。
+- dot-source 即生效：`. E:\PowerFocus\tools\env.ps1`。
+
+### 三、接线
+- `tools\dev-check.ps1`、`tests\run-tests.ps1` 开头 dot-source `env.ps1`，删掉各自重复的查找函数（原来两处副本，现统一一处）。
+- `tests\run-tests.ps1` 新增第 6 项「工具对齐」：实测裸命令 `python` / `node` / `rea` 是否真的命中系统新版，命中盒子自带版本直接 FAIL。
+
+### 四、踩到的坑（第一版判断写错，当场修）
+- 初版用 `if (PATH 中不含该目录) 才前插`。实测 FAIL：这些目录本来就散落在 PATH 里（只是排在盒子条目之后），`-notcontains` 判定为「已存在」→ 不前移 → 裸命令仍命中沙箱版。
+- 改为「先移除同名目录，再插队首」后一次通过。教训：**顺序问题不能只判断存在性**。
+
+### 五、验收（实跑）
+- `run-tests.ps1`：**6/6 PASS，1.2s**。
+  - 工具对齐：`python=D:\Python313\python.exe`；`node=C:\Program Files\nodejs\node.exe`；`rea=%APPDATA%\npm\rea.cmd`。
+  - MCP 冒烟：240 个工具（11 原生 + 229 逆向），协议回显正确。
+- `dev-check.ps1`：**PASS 24 / WARN 2 / FAIL 0**。原先三条沙箱别名 WARN 全部消失，只剩「8686 未监听」「工作区有未提交改动」两条正常提示。
+
+### 六、能力边界（诚实说明）
+- 能改：本进程与子进程的 PATH 顺序、脚本里用哪个解释器、调度中心拉起哪份逆向引擎。
+- 不能改：执行器（豆包/WorkBuddy 盒子）启动时注入的初始 PATH。因此裸命令只在 dot-source 之后才对齐；未加载 `env.ps1` 的会话仍会看到旧版。
+
+### 七、遗留
+- `model-profiles.json` 仍由并行会话改动（4 个 `identity_only` 档案），本提交未包含。
+- `rea_status` 在 `tools/list` 之前调用会报「工具数 0」（缓存未填充），功能无碍，是否实时拉取待定。

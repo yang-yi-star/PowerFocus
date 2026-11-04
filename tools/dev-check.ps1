@@ -19,14 +19,7 @@ function Add-Item {
     $items.Add([pscustomobject]@{ Group = $Group; Name = $Name; Status = $Status; Detail = $Detail })
 }
 
-function Get-DevPython {
-    foreach ($c in @('D:\Python313\python.exe',
-                     (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python311\python.exe'),
-                     (Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'))) {
-        if (Test-Path $c) { return $c }
-    }
-    return $null
-}
+. (Join-Path $PSScriptRoot 'env.ps1')
 
 # ---------------- 一、工具链 ----------------
 $psv = $PSVersionTable.PSVersion

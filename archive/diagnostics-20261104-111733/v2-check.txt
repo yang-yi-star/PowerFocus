@@ -1,0 +1,97 @@
+﻿=== commands 目录结构 ===
+
+FullName                                         KB
+--------                                         --
+E:\PowerFocus\commands\done                        
+E:\PowerFocus\commands\in                          
+E:\PowerFocus\commands\out                         
+E:\PowerFocus\commands\README.md                 2 
+E:\PowerFocus\commands\示例命令_focus.json           0 
+E:\PowerFocus\commands\done\_rt1.json            0 
+E:\PowerFocus\commands\done\_rt1.json.result.txt 0 
+E:\PowerFocus\commands\out\status.json           1 
+
+
+
+
+=== authorized_apps.json ===
+{
+  "_说明": "授权清单：列入此清单的进程才允许被聚焦/GodMode。level 可为 high 或 realtime。",
+  "apps": [
+    {
+      "name": "llama-server",
+      "level": "high",
+      "added": "2026-11-03 05:00:00"
+    }
+  ]
+}
+
+
+=== scenes.json ===
+{
+  "_说明": "场景模式预设：apply_scene 动作按 steps 顺序执行。禁止在 steps 中使用 authorize/revoke。",
+  "scenes": {
+    "inference": {
+      "desc": "本地推理模式：llama-server GodMode + I/O High + 内存修剪 + 高性能电源",
+      "steps": [
+        {
+          "action": "focus",
+          "mode": "godmode",
+          "process_name": "llama-server"
+        },
+        {
+          "priority": "High",
+          "action": "set_io_priority",
+          "process_name": "llama-server"
+        },
+        {
+          "action": "trim_memory",
+          "exclude_target": true
+        },
+        {
+          "action": "set_power_plan",
+          "plan": "high"
+        }
+      ]
+    },
+    "gaming": {
+      "desc": "游戏模式：高性能电源 + 后台内存修剪（游戏进程自行选择后 focus）",
+      "steps": [
+        {
+          "action": "set_power_plan",
+          "plan": "high"
+        },
+        {
+          "action": "trim_memory"
+        }
+      ]
+    },
+    "relax": {
+      "desc": "还原模式：解除全部聚焦 + 平衡电源",
+      "steps": [
+        {
+          "action": "unfocus"
+        },
+        {
+          "action": "set_power_plan",
+          "plan": "balanced"
+        }
+      ]
+    }
+  }
+}
+
+
+=== 运行中的调度中心脚本进程（v1 vs v2）===
+
+
+ProcessId : 38436
+cmd       : "C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe" -NoProfile -ExecutionPolicy Bypass
+             -File E:\PowerFocus\电脑算力调度中心.ps1 
+
+
+
+
+
+=== 台账 index.md 确认 ===
+存在 E:\AI 调度中心\index.md

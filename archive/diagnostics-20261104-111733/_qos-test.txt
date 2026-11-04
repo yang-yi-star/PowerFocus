@@ -1,0 +1,7 @@
+=== net-qos 测试 ===
+--- list ---
+--- json ---
+--- throttle（按应用限速 cmd 5Mbps）---
+--- 再查 ---
+--- remove ---
+--- 最终 list ---

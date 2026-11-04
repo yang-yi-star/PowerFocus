@@ -1,0 +1,34 @@
+
+
+<think>
+The user wants me to translate a technical English text about NVIDIA CUDA unified memory into Chinese. Let me analyze the key technical terms:
+
+1. CUDA unified memory - CUDA 统一内存
+2. GPU and CPU - GPU 和 CPU
+3. single address space - 单一地址空间
+4. automatically migrating pages - 自动迁移页面
+5. device memory - 设备内存
+6. host memory - 主机内存
+7. VRAM - 显存 (Video RAM)
+8. allocations spill to system RAM - 内存分配溢出到系统内存
+9. bandwidth-bound performance - 带宽受限的性能
+10. Sysmem Fallback policy - Sysmem Fallback 策略 (this is a specific NVIDIA Control Panel setting name, I should keep the English name or translate it appropriately)
+11. NVIDIA Control Panel - NVIDIA 控制面板
+12. Local LLM users - 本地大语言模型用户
+13. VRAM approaches capacity - 显存接近容量上限
+
+Let me think about the best translation:
+
+- "Sysmem Fallback policy" - In NVIDIA's Chinese documentation, this is typically referred to as "系统内存回退策略" or kept as "Sysmem Fallback 策略". Since it's a specific UI label in the NVIDIA Control Panel, I should probably keep the English term or provide a clear translation. Let me use "系统内存回退（Sysmem Fallback）策略" to be both accurate and clear.
+
+- "bandwidth-bound performance" - 带宽受限的性能表现
+
+- "allocations spill to system RAM" - 内存分配溢出至系统内存
+
+Let me draft the full translation:
+
+"NVIDIA 的 CUDA 统一内存技术允许 GPU 和 CPU 共享单一地址空间，并在设备内存与主机内存之间自动迁移页面。当显存不足时，内存分配会溢出至系统内存而不会导致崩溃，但代价是性能将受限于带宽。在 Windows 系统上，此行为由 NVIDIA 控制面板中的"系统内存回退（Sysmem Fallback）"策略控制。本地大语言模型用户通常会禁用该策略，以避免在显存接近容量上限时出现突然的性能下降。"
+
+Let me refine:
+- "NVIDIA's CUDA unified memory" → "NVIDIA 的 CUDA 统一内存"
+- "lets GPU and CPU share a single address space" → "使 GPU 和 CPU 能够共享单一地址空间"

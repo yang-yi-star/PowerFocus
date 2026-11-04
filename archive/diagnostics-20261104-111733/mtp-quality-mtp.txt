@@ -1,0 +1,30 @@
+
+
+<think>
+The user wants me to translate a technical English text about NVIDIA CUDA unified memory into Chinese. Let me analyze the key technical terms:
+
+1. CUDA unified memory - CUDA 统一内存
+2. GPU and CPU - GPU 和 CPU
+3. single address space - 单一地址空间
+4. automatically migrating pages - 自动迁移页面
+5. device memory - 设备内存
+6. host memory - 主机内存
+7. VRAM - 显存 (Video RAM)
+8. allocations spill to system RAM - 内存分配溢出到系统内存
+9. bandwidth-bound performance - 带宽受限的性能
+10. Sysmem Fallback policy - 系统内存回退策略 (this is the actual name in NVIDIA Control Panel, I should check if there's a standard Chinese translation)
+11. NVIDIA Control Panel - NVIDIA 控制面板
+12. Local LLM users - 本地大语言模型用户
+13. VRAM approaches capacity - 显存接近容量上限
+
+Let me think about the Sysmem Fallback policy. In the NVIDIA Control Panel, this is called "Sysmem Fallback Policy" or "System Memory Fallback Policy." In Chinese NVIDIA documentation, this might be translated as "系统内存回退策略" or "Sysmem 回退策略." Since the user wants technical terms accurate, I should keep "Sysmem Fallback" somewhat recognizable. Let me use "系统内存回退策略（Sysmem Fallback）" to be clear.
+
+Let me draft:
+
+"NVIDIA 的 CUDA 统一内存技术使 GPU 和 CPU 能够共享单一地址空间，并自动在设备内存与主机内存之间迁移页面。当显存不足时，内存分配会溢出到系统内存中，而不会导致程序崩溃，但代价是性能将受到带宽瓶颈的限制。在 Windows 系统上，该行为由 NVIDIA 控制面板中的"系统内存回退策略（Sysmem Fallback Policy）"进行控制。本地大语言模型用户通常会禁用此策略，以避免显存接近容量上限时出现突然的性能下降。"
+
+Let me refine:
+- "bandwidth-bound performance" → "带宽受限的性能" or "性能受带宽瓶颈限制" - I think "性能将受限于带宽瓶颈" sounds more natural
+- "at the cost of" → "代价是"
+- "without crashing" → "而不会导致崩溃"
+- "approaches capacity" → "接近

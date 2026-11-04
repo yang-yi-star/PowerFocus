@@ -1,0 +1,11 @@
+v2 Parser 错误数: 0
+新 v2: PID 40160
+申请结果: 2026-11-03 11:08:10
+OK: 算力已补给 cmd (PID 49688) level=gentle，持续 30 秒，已压低 3 个其他应用（DeepSeek/系统关键/授权/前台/豆包/调度中心未动）
+
+status.power_request: {"name":"cmd","pid":49688,"level":"gentle","reason":"killed_count复测","remaining_sec":25,"demoted_count":3,"killed_count":0}
+释放: 2026-11-03 11:08:21
+OK: 算力已释放，还原 3 个进程（cmd 已回 Normal）
+
+已清理: s5j-list.json.result.txt, s5j2-list.json.result.txt, s5k-rel.json.result.txt, s5k-req.json.result.txt, s5k-status.json.result.txt, s5k2-rel.json.result.txt, s5k2-req.json.result.txt, s5k2-status.json.result.txt
+in 剩余: 0 个

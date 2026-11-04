@@ -1,0 +1,9 @@
+﻿===== 1. 截断非必要进程 =====
+按名截断: 25 个 -> XboxPcAppFT:17172, EdgeGameAssist:39248, WidgetBoard:15672, WidgetService:16396, WebExperienceHostApp:43884, WebExperienceHostApp:2376, WebExperienceHostApp:5088, PhoneExperienceHost:21876, MicrosoftStartFeedProvider:17388, SenaryAudioApp:51676, SenaryAudioApp.Svc:5892, douyin_guard:30248, FileCoAuth:15900, FileCoAuth:1200, CrossDeviceService:13536, CrossDeviceResume:13260, MSPCManager:22020, MSPCManagerCore:1384, MSPCManagerService:9292, GCUService:12760, GCUBridge:5884, OSDTpDetect:39124, CPUMetricsServer:7480, media_container:42296, media_container:48376
+夸克压单: 杀 16 个 (52280,52136,40996,29420,42700,45068,38148,51924,45324,45936,1416,36492,40384,38408,50820,13172)，保留主进程 21864
+
+===== 2. 压低保留应用算力（Idle） =====
+压至 Idle 成功: 55 | 失败: 0
+
+===== 3. 豆包/输入法/webview 降压（BelowNormal，保交互） =====
+压至 BelowNormal 成功: 52 | 失败: 0

@@ -1,0 +1,1 @@
+﻿size=8711 meta=finished tokens_chars=6479 wall_s=1843.7 err=none llama_cpu_s=179185

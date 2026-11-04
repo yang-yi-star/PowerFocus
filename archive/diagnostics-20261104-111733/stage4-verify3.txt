@@ -1,0 +1,19 @@
+﻿引擎 Parser: OK
+旧 v2 已停: 49744
+新 v2: PID 13396
+--- start_rules 结果 ---
+2026-11-03 09:54:22
+OK: 规则引擎已启动（rules.json 条件自动化 + 心跳上报）
+
+--- rules_state.json ---
+不存在
+v2 自身优先级（selftest 触发应为 Idle）: BelowNormal
+--- 日志（触发证据）---
+2026-11-03 09:53:39 [INFO] 命令总线收到 action=start_rules
+2026-11-03 09:53:39 [ERROR] 命令文件 t2-start.json 执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”
+2026-11-03 09:53:39 [INFO] 命令 t2-start.json 完成: ERROR: 命令解析/执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”
+2026-11-03 09:54:14 [INFO] 电脑算力调度中心 v2 已启动（命令总线: True）
+2026-11-03 09:54:14 [INFO] 命令总线已启动: 每 2 秒轮询 E:\PowerFocus\commands\in
+2026-11-03 09:54:22 [INFO] 命令总线收到 action=start_rules
+2026-11-03 09:54:22 [INFO] 规则引擎已启动（2s 评估）: E:\PowerFocus\rules.json
+2026-11-03 09:54:22 [INFO] 命令 t3-start.json 完成: OK: 规则引擎已启动（rules.json 条件自动化 + 心跳上报）

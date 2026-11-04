@@ -1,0 +1,2 @@
+phase=baseline_sample tps=1.2 tokens=169 wall_ms=141390 llama_cpu_avg_pct=N/A
+phase=baseline_sample tps=1.16 tokens=185 wall_ms=159554 llama_cores=11 llama_cpu_pct=34.4

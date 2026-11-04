@@ -1,0 +1,10 @@
+pwsh: 7.6.9
+新 PID: 49012
+health 就绪: True (等待 13 秒)
+命令行: "E:\Program Files\llama.cpp\bin\llama-server.exe" --model E:\Model_Zone\Qwen3.8-27B-UD-Q4_K_M\Qwen3.8-27B-UD-Q4_K_M.gguf --n-gpu-layers 18 --ctx-size 65536 --batch-size 512 --ubatch-size 128 --threads 32 --threads-batch 8 --cache-type-k q8_0 --cache-type-v q8_0 --host 127.0.0.1 --port 8080 --verbose
+进程内存 RSS: 16.87 GB
+系统可用内存: 1.05 GB / 总 31.22 GB
+GPU 显存 used/free(MB): 7517, 383
+验证生成: 90 秒 / 256 token = 2.85 t/s
+响应文本长度: 1060
+生成后系统可用内存: 0.99 GB

@@ -1,0 +1,36 @@
+﻿--- result ---
+===== 阶段 A：基线（无投机解码） =====
+基线实例 PID: 29508
+--- 速度 5 轮 ---
+轮1 : 0 t/s (predicted=0, wall=49.2s)
+轮2 : 0 t/s (predicted=0, wall=75.7s)
+轮3 : 0 t/s (predicted=0, wall=74.8s)
+轮4 : 0 t/s (predicted=0, wall=74.6s)
+轮5 : 0 t/s (predicted=0, wall=48.8s)
+基线平均: 0 t/s
+--- 质量 1 轮（翻译） ---
+基线翻译完成: predicted=0, wall=150.6s
+
+===== 阶段 B：MTP 投机解码（--spec-type draft-mtp --spec-draft-n-max 8） =====
+MTP 实例: PID=40424, health=False
+MTP 版启动失败，读取日志尾部：
+0.00.002.427 I srv  llama_server: initializing ...
+0.00.100.431 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.100.443 I srv  server_run_r: starting server in router mode. models will be automatically loaded on-demand
+0.24.057.015 I srv    operator(): Available models (0):
+0.24.057.021 I srv    operator():   no models found on the system (visit https://llama.app/models for suggestions)
+0.24.059.640 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.24.059.647 W srv  server_setup: security: router mode enabled - do not expose to untrusted environments
+0.24.072.636 I srv  server_on_li: listening on http://127.0.0.1:9931
+
+--- MTP err tail ---
+0.00.002.427 I srv  llama_server: initializing ...
+0.00.100.431 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.100.443 I srv  server_run_r: starting server in router mode. models will be automatically loaded on-demand
+0.24.057.015 I srv    operator(): Available models (0):
+0.24.057.021 I srv    operator():   no models found on the system (visit https://llama.app/models for suggestions)
+0.24.059.640 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.24.059.647 W srv  server_setup: security: router mode enabled - do not expose to untrusted environments
+0.24.072.636 I srv  server_on_li: listening on http://127.0.0.1:9931
+
+--- MTP out tail ---

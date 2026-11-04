@@ -1,0 +1,3 @@
+﻿py默认解释器: C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311\python.exe
+3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]
+

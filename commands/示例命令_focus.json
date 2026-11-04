@@ -1,0 +1,5 @@
+{
+  "action": "focus",
+  "process_name": "llama-server",
+  "mode": "godmode"
+}

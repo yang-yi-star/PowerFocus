@@ -1,0 +1,162 @@
+===== 1 命令行工具检查 =====
+[有] python :: Python 3.13.16
+[有] py :: Unable to create process using 'G:\Python313\python.exe --version': ???????????
+[有] pip :: pip 24.0 from C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311\Lib\site-packages\pip (python 3.11)
+[有] git :: git version 2.54.0.windows.1
+[有] git-lfs :: git-lfs/3.7.1 (GitHub; windows amd64; go 1.25.1; git b84b3384)
+[有] node :: v22.23.2
+[有] npm :: 10.9.8
+[有] ffmpeg :: ffmpeg version 9.0.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers
+[有] ffprobe :: ffprobe version 9.0.2-full_build-www.gyan.dev Copyright (c) 2007-2026 the FFmpeg developers
+[有] nvcc :: nvcc: NVIDIA (R) Cuda compiler driver
+[有] nvidia-smi :: NVIDIA-SMI version  : 617.42
+[无] cmake
+[无] ninja
+[无] cl
+[有] curl :: curl 8.21.0 (Windows) libcurl/8.21.0 Schannel zlib/1.3.2 WinIDN WinLDAP
+[有] jq :: jq-1.8.2
+[无] conda
+[有] winget :: v1.29.380
+[无] docker
+[有] ollama :: ollama version is 0.35.1
+[无] aria2c
+
+===== 2 NVIDIA 驱动与 CUDA =====
+nvidia-smi: NVIDIA GeForce RTX 5060 Laptop GPU, 617.42, 8151 MiB
+nvcc: Build cuda_12.8.r12.8/compiler.35583870_0
+
+===== 3 已安装软件（AI 相关关键词过滤）=====
+Blender ::  :: C:\Program Files (x86)\Steam\steamapps\common\Blender
+Bongo Cat ::  :: F:\SteamLibrary\steamapps\common\BongoCat
+ClickOnce Bootstrapper Package for Microsoft .NET Framework 4.8 on Visual Studio 2017 :: 4.8.03928 :: 
+CMake :: 4.3.2 :: C:\Program Files\CMake\
+CUDA CCCL :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+CUDA Documentation :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+CUDA Profiler API :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+CUDA Profiler Tools :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+CUDART Runtime :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+FFmpeg :: 9.0.2 :: C:\Users\Administrator.医院\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe
+Git :: 2.54.0 :: C:\Program\
+Microsoft Visual Studio Code (User) :: 1.140.0 :: C:\Users\Administrator.医院\AppData\Local\Programs\Microsoft VS Code\
+Microsoft Visual Studio Installer :: 4.6.58.48107 :: "C:\Program Files (x86)\Microsoft Visual Studio\Installer"
+Microsoft Visual Studio Setup Configuration :: 3.12.2140.44225 :: 
+Microsoft Visual Studio Setup WMI Provider :: 3.12.2140.44225 :: 
+Node.js :: 24.19.0 :: 
+NVIDIA 图形驱动程序 617.42 :: 617.42 :: C:\Program Files\NVIDIA Corporation\Installer2\Display.Driver.{09F46CCD-219B-4000-A89B-2085DFB16C33}
+NVIDIA AIUser Container :: 1.51 :: C:\Program Files\NVIDIA Corporation\Installer2\NvContainer.AIUser.{F2CFB8B0-1003-4EBA-B6CE-C98047F9AC55}
+NVIDIA App 11.0.9.251 :: 11.0.9.251 :: C:\Program Files\NVIDIA Corporation\Installer2\Display.NvApp.{C4105468-618E-4238-8A01-EFECF3955C51}
+NVIDIA App driver settings :: 1.0 :: C:\Program Files\NVIDIA Corporation\Installer2\Display.NvApp.NvCPL.{AF03236E-1595-442B-9AC2-A837DE779398}
+NVIDIA Backend :: 11.0.9.565 :: C:\Program Files\NVIDIA Corporation\Installer2\Display.NvApp.NvBackend.{3DEC8A90-ED85-486F-9459-EF2E5C70780D}
+NVIDIA Container :: 1.51 :: C:\Program Files\NVIDIA Corporation\NvContainer
+NVIDIA CUDA Development 12.8 :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+NVIDIA CUDA Documentation 12.8 :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+NVIDIA CUDA Runtime 12.8 :: 12.8 :: C:\Program Files\NVIDIA Corporation\Installer2\CUDARuntimes_12.8.{38BA403B-7021-4D18-B475-593D80ADD8FF}
+NVIDIA CUDA Toolkit 12.8 :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+NVIDIA CUDA Visual Studio Integration 12.8 :: 12.8 :: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8
+NVIDIA FrameView SDK 1.9.12728.38614306 :: 1.9.12728.38614306 :: C:\Program Files\NVIDIA Corporation\FrameViewSDK
+NVIDIA HD 音频驱动程序 1.4.6.3 :: 1.4.6.3 :: C:\Program Files\NVIDIA Corporation\Installer2\HDAudio.Driver.{D64A91AB-B966-4455-8A3B-80D10C0733E4}
+NVIDIA Install Application :: 2.1002.463.0 :: C:\Program Files\NVIDIA Corporation\Installer2\InstallerCore
+NVIDIA LocalSystem Container :: 1.51 :: C:\Program Files\NVIDIA Corporation\Installer2\NvContainer.LocalSystem.{3E895AA5-49EA-4DC5-AD87-6349C996AA30}
+NVIDIA MessageBus 3 for NvApp :: 3.21 :: C:\Program Files\NVIDIA Corporation\Installer2\Display.NvApp.MessageBus.{3ADED096-CD01-421E-B65C-C8EA141156C2}
+NVIDIA Nsight Compute 2025.1.1 :: 25.1.1.0 :: 
+NVIDIA Nsight Systems 2024.6.2 :: 24.6.2.225 :: 
+NVIDIA Nsight Visual Studio Edition 2025.1.0.25055 :: 25.1.0.25055 :: 
+NVIDIA NvDLISR :: 1.0 :: C:\Program Files\NVIDIA Corporation\Installer2\NvDLISR.{B36ADC7F-66E6-47C7-85B7-87067E9A470C}
+NVIDIA PhysX 系统软件 9.26.0703 :: 9.26.0703 :: C:\Program Files (x86)\NVIDIA Corporation\PhysX
+NVIDIA Platform Controllers and Framework :: 615.34 :: C:\Program Files\NVIDIA Corporation\Installer2\NVPCF.{DF234146-B470-480D-9731-910D60A57340}
+NVIDIA Session Container :: 1.51 :: C:\Program Files\NVIDIA Corporation\Installer2\NvContainer.Session.{1B368246-4E8C-49DA-8BD3-11DEBA8FCBFD}
+NVIDIA ShadowPlay 11.0.9.500 :: 11.0.9.500 :: C:\Program Files\NVIDIA Corporation\NVIDIA App\ShadowPlay
+NVIDIA Telemetry Client :: 19.8.6.0 :: C:\Program Files\NVIDIA Corporation\NvTelemetry
+NVIDIA USBC Driver 1.52.831.832 :: 1.52.831.832 :: C:\Program Files\NVIDIA Corporation\Installer2\USBC.{13E22680-443C-44FA-828B-7FB51E0DD5C1}
+NVIDIA User Container :: 1.51 :: C:\Program Files\NVIDIA Corporation\Installer2\NvContainer.User.{78F02B71-674B-4AB4-9EB5-6C22028BAA4B}
+NVIDIA Virtual Audio 4.92.0.0 :: 4.92.0.0 :: C:\Program Files\NVIDIA Corporation\Installer2\VirtualAudio.Driver.{B11465B5-3716-49A5-A1DC-29AEB71519C2}
+NVIDIA Watchdog Plugin for NvContainer :: 1.51 :: C:\Program Files\NVIDIA Corporation\Installer2\NvPlugin.Watchdog.{B4B800B3-4632-4433-9E38-923234DC8F1E}
+Ollama version 0.35.1 :: 0.35.1 :: C:\Users\Administrator.医院\AppData\Local\Programs\Ollama\
+Python 3.10.11 (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Core Interpreter (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Development Libraries (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Documentation (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Executables (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 pip Bootstrap (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Standard Library (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Tcl/Tk Support (64-bit) :: 3.10.11150.0 :: 
+Python 3.10.11 Utility Scripts (64-bit) :: 3.10.11150.0 :: 
+Python 3.11.9 (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Add to Path (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Core Interpreter (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Development Libraries (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Documentation (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Executables (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 pip Bootstrap (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Standard Library (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Tcl/Tk Support (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Test Suite (64-bit) :: 3.11.9150.0 :: 
+Python 3.11.9 Utility Scripts (64-bit) :: 3.11.9150.0 :: 
+Python 3.12.10 (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Add to Path (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Core Interpreter (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Development Libraries (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Documentation (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Executables (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 pip Bootstrap (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Standard Library (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Tcl/Tk Support (64-bit) :: 3.12.10150.0 :: 
+Python 3.12.10 Test Suite (64-bit) :: 3.12.10150.0 :: 
+Python 3.13.0 (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 Core Interpreter (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 Development Libraries (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 Executables (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 pip Bootstrap (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 Standard Library (64-bit) :: 3.13.150.0 :: 
+Python 3.13.0 Tcl/Tk Support (64-bit) :: 3.13.150.0 :: 
+Python 3.13.7 Add to Path (64-bit) :: 3.13.7150.0 :: 
+Python 3.13.7 Core Interpreter (64-bit) :: 3.13.7150.0 :: 
+Python 3.13.7 Development Libraries (64-bit) :: 3.13.7150.0 :: 
+Python 3.13.7 Executables (64-bit) :: 3.13.7150.0 :: 
+Python 3.13.7 pip Bootstrap (64-bit) :: 3.13.7150.0 :: 
+Python 3.13.7 Standard Library (64-bit) :: 3.13.7150.0 :: 
+Python Launcher :: 3.12.10150.0 :: 
+Rustup: the Rust toolchain installer :: 1.29.0 :: 
+Visual Studio 生成工具 2022 :: 17.14.33 :: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
+vs_githubprotocolhandlermsi :: 17.14.36015 :: 
+Windows SDK :: 10.1.26100.7705 :: 
+Windows SDK AddOn :: 10.1.0.0 :: 
+Windows SDK ARM64 Desktop Tools :: 10.1.26100.7705 :: 
+Windows SDK Desktop Headers arm64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Headers x64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Headers x86 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Libs arm64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Libs x64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Libs x86 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Tools arm64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Tools x64 :: 10.1.26100.7705 :: 
+Windows SDK Desktop Tools x86 :: 10.1.26100.7705 :: 
+Windows SDK DirectX x64 Remote :: 10.1.26100.7705 :: 
+Windows SDK DirectX x86 Remote :: 10.1.26100.7705 :: 
+Windows SDK EULA :: 10.1.26100.7705 :: 
+Windows SDK Facade Windows WinMD Versioned :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Contracts :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps DirectX x86 Remote :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Headers :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Headers OnecoreUap :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Libs :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Metadata :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Apps Tools :: 10.1.26100.7705 :: 
+Windows SDK for Windows Store Managed Apps Libs :: 10.1.26100.7705 :: 
+Windows SDK Modern Non-Versioned Developer Tools :: 10.1.26100.7705 :: 
+Windows SDK Modern Versioned Developer Tools :: 10.1.26100.7705 :: 
+Windows SDK OnecoreUap Headers arm64 :: 10.1.26100.7705 :: 
+Windows SDK OnecoreUap Headers x64 :: 10.1.26100.7705 :: 
+Windows SDK OnecoreUap Headers x86 :: 10.1.26100.7705 :: 
+Windows SDK Redistributables :: 10.1.26100.7705 :: 
+Windows SDK Signing Tools :: 10.1.26100.7705 :: 
+
+===== 4 关键目录/文件确认 =====
+[有] E:\Program Files\llama.cpp\bin\llama-server.exe
+[有] E:\Model_Zone\Qwen3.8-27B-UD-Q4_K_M\Qwen3.8-27B-UD-Q4_K_M.gguf
+[有] E:\PowerFocus\统一内存模式.ps1
+[有] E:\PowerFocus\电脑算力调度中心.ps1
+[有] E:\PowerFocus\统一内存模式增强.ps1
+[缺] G:\ProgramFiles
+[有] C:\Program1

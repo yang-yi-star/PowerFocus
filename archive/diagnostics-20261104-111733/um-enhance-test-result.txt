@@ -1,0 +1,11 @@
+语法校验: 通过
+dot-source 后 script:LlamaHost=[127.0.0.1] LlamaPort=[8080]
+函数 Get-ContextRemainingEstimate : 存在
+函数 Test-PerformanceDegradation : 存在
+函数 Invoke-ContextCleanup : 存在
+函数 Monitor-WeightDistributionEnhanced : 存在
+=== Get-ContextRemainingEstimate 实测 ===
+{"KvCacheMB":0.0,"ContextUsedPct":0.0,"GpuFreeMB":0,"Healthy":false,"RemainingTokens":0}
+降速检测 3.6 vs 3.7: Degraded=False Ratio=0.973 队列=1
+降速检测 1.2 vs 3.7: Degraded=True Ratio=0.3243 队列=2
+=== Monitor 增强版短跑 2 轮 ===

@@ -1,0 +1,13 @@
+﻿Found existing installation: tensorrt 10.16.1.11
+Uninstalling tensorrt-10.16.1.11:
+  Successfully uninstalled tensorrt-10.16.1.11
+Found existing installation: tensorrt_cu13 10.16.1.11
+Uninstalling tensorrt_cu13-10.16.1.11:
+  Successfully uninstalled tensorrt_cu13-10.16.1.11
+Found existing installation: tensorrt_cu13_bindings 10.16.1.11
+Uninstalling tensorrt_cu13_bindings-10.16.1.11:
+  Successfully uninstalled tensorrt_cu13_bindings-10.16.1.11
+Found existing installation: tensorrt_cu13_libs 10.16.1.11
+Uninstalling tensorrt_cu13_libs-10.16.1.11:
+  Successfully uninstalled tensorrt_cu13_libs-10.16.1.11
+

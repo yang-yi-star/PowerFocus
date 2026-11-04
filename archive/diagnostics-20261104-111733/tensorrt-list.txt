@@ -1,0 +1,7 @@
+﻿
+onnxruntime-directml 1.24.4
+sherpa-onnx          2.0.1
+sherpa-onnx-core     2.0.1
+
+
+

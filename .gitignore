@@ -1,0 +1,51 @@
+# ============================================================
+# PowerFocus git 忽略规则
+# 原则：源码与配置入库，运行态、日志、产物、密钥一律不入库
+# ============================================================
+
+# ---- 运行时日志与状态 ----
+logs/
+out/
+*.log
+*.lock
+**/rules_state.json
+**/*heartbeat*.json
+**/v2_heartbeat.json
+
+# ---- 命令总线（只保留 README 与示例） ----
+/commands/in/
+/commands/out/
+/commands/done/
+/v2/commands/
+/v3/commands/
+
+# ---- 回滚运行时记录 ----
+/v3/rollback/*.json
+/v3/rollback/*.log
+
+# ---- 密钥与令牌（绝不入库） ----
+.auth_token
+**/.auth_token
+*.token
+*.secret
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+.dev/
+
+# ---- 编辑器与系统 ----
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# ---- 归档与模型大文件（模型本体在 E:\Model_Zone，不在本仓） ----
+archive/*.zip
+archive/*.7z
+archive/**/*.png
+archive/**/*.log
+*.gguf
+*.safetensors

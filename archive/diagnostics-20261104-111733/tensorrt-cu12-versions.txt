@@ -1,0 +1,15 @@
+﻿py : WARNING: pip index is currently an experimental command. It may be removed/changed in a future release without pri
+or warning.
+At line:1 char:6
++ $r = py -3.11 -m pip index versions tensorrt_cu12 2>&1 | Out-String
++      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: pip in... prior warning.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+tensorrt_cu12 (11.4.0.106)
+Available versions: 11.4.0.106, 11.3.0.99, 11.2.1.2, 11.1.0.106, 11.0.0.114, 10.16.1.11, 10.16.0.72, 10.15.1.29, 10.14.1.48.post1, 10.14.1.48, 10.13.3.9.post1, 10.13.3.9, 10.13.2.6, 10.13.0.35, 10.12.0.36, 10.11.0.33, 10.10.0.31, 10.9.0.34, 10.8.0.43, 10.7.0.post1, 10.7.0, 10.6.0.post2, 10.6.0.post1, 10.6.0, 10.5.0, 10.4.0, 10.3.0, 10.2.0.post1, 10.2.0, 10.1.0, 10.0.1
+
+[notice] A new release of pip is available: 24.0 -> 26.2.2
+[notice] To update, run: C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311\python.exe -m pip install --
+upgrade pip
+

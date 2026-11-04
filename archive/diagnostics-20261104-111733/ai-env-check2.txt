@@ -1,0 +1,9 @@
+pwsh: PowerShell 7.6.9 位置 C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\Microsoft.PowerShell_8wekyb3d8bbwe\pwsh.exe
+Windows Terminal: 有 (C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\wt.exe)
+Terminal 相关注册表项: 无
+
+磁盘空间:
+  C 盘 剩余 42.1 GB / 总 275.9 GB
+  D 盘 剩余 1425.9 GB / 总 2794.5 GB
+  E 盘 剩余 55.4 GB / 总 200 GB
+  Temp 盘 剩余 42.1 GB / 总 275.9 GB

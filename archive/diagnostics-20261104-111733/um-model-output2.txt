@@ -1,0 +1,436 @@
+<think>
+用户要求我续写被截断的 PowerShell 7 脚本。让我仔细分析需求：
+
+1. 补全 Start-UnifiedMemoryMode 函数的截断部分（进程启动代码处被截断）
+2. 新增 Monitor-WeightDistribution 函数
+3. 新增 Show-MemoryStatus 函数
+4. 新增 Stop-UnifiedMemoryMode 函数
+5. 输出独立的 5 轮测试方案脚本
+
+已存在的变量：LlamaServerPath、ModelPath、LlamaHost、LlamaPort、CtxSize、LogFilePath、UnifiedMemoryState、ToolRoot
+已存在的函数：Write-ToolLog、Get-GpuMemoryInfo、Get-SystemMemoryInfo、Build-LlamaServerArgs、Start-UnifiedMemoryMode
+
+约束：
+- 只输出新增与补全的代码
+- 代码前不输出任何解释文字
+- 使用 script: 冒号前缀
+- 简体中文注释
+- 禁止依赖未安装外部模块
+
+让我开始编写：
+
+**补全 Start-UnifiedMemoryMode 函数：**
+截断在进程启动代码处，需要补全：
+- BeginOutputReadLine
+- BeginErrorReadLine
+- 写入运行状态
+- 返回进程对象
+
+**Monitor-WeightDistribution 函数：**
+- 参数：采样次数、间隔秒
+- 每次调用 nvidia-smi 查询显存占用
+- 查询系统内存可用量
+- 输出模型权重在 GPU 显存与系统内存中的驻留分布
+- 循环采样
+
+**Show-MemoryStatus 函数：**
+- 单次采样
+- 显示 GPU 显存占用 MB 与系统内存占用 GB
+
+**Stop-UnifiedMemoryMode 函数：**
+- 停止 llama-server 进程
+- 清理 UnifiedMemoryState 状态
+- 恢复原参数
+
+**5 轮测试脚本：**
+- 独立可执行 PowerShell 7 文件
+- dot-source 加载主脚本
+- 每轮调用 127.0.0.1:8080 生成接口，固定 256 token
+- 记录生成速度 tokens/s
+- 记录 GPU 显存占用（nvidia-smi）
+- 记录系统内存可用量
+- 记录 llama 进程 CPU 占用核数（CPU 累计秒差值/耗时）
+- 轮间等待 5 秒，共 5 轮
+- 结果写入 E:\PowerFocus\统一内存测试结果.txt，UTF-8
+- 输出包含：轮次、生成 token 数、耗时毫秒、tokens/s、GPU 显存占用 MB、系统内存可用 GB、llama CPU 占用核数
+- 每轮一行输出到控制台
+- 详细中文注释
+
+让我编写代码：
+</think>
+
+    #region Start-UnifiedMemoryMode 函数截断补全（进程启动后续代码）
+
+        # 配置标准输出与错误输出的异步读取
+        $script:UnifiedMemoryState.OutputReader = $proc.StandardOutput
+        $script:UnifiedMemoryState.ErrorReader  = $proc.StandardError
+        $script:UnifiedMemoryState.OutputReader.BeginOutputReadLine()
+        $script:UnifiedMemoryState.ErrorReader.BeginErrorReadLine()
+
+        # 将进程对象写入状态字典，供后续函数引用
+        $script:UnifiedMemoryState.Process = $proc
+        $script:UnifiedMemoryState.StartTime = [DateTime]::Now
+
+        # 等待端口就绪（最多 60 秒）
+        $portReady = $false
+        for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            try {
+                $tcp = New-Object System.Net.Sockets.TcpClient
+                $tcp.Connect($script:LlamaHost, $script:LlamaPort)
+                $tcp.Close()
+                $portReady = $true
+                break
+            } catch {
+                # 端口尚未就绪，继续等待
+            }
+        }
+
+        if (-not $portReady) {
+            Write-ToolLog -Level "ERROR" -Message "llama-server 在 60 秒内未监听端口 ${script:LlamaPort}，统一内存模式启动失败。"
+            $proc.Kill()
+            $script:UnifiedMemoryState = $null
+            return $null
+        }
+
+        # 写入运行状态标记
+        $script:UnifiedMemoryState.Running = $true
+        Write-ToolLog -Level "INFO" -Message "统一内存模式已启动，llama-server PID=$($proc.Id)，端口=${script:LlamaPort}。"
+
+        # 返回进程对象
+        return $proc
+
+    #endregion
+
+
+    <#
+    .SYNOPSIS
+        循环采样模型权重在 GPU 显存与系统内存中的驻留分布。
+    .DESCRIPTION
+        按指定次数与间隔，每次调用 nvidia-smi 获取显存占用，同时查询系统可用内存，
+        据此推算模型权重分别驻留在 GPU 显存和系统内存中的大致比例。
+    #>
+    function Monitor-WeightDistribution {
+        param(
+            [int]$SampleCount = 10,
+            [int]$IntervalSec = 3
+        )
+
+        Write-ToolLog -Level "INFO" -Message "开始采样权重分布，共 ${SampleCount} 次，间隔 ${IntervalSec} 秒。"
+
+        for ($i = 1; $i -le $SampleCount; $i++) {
+
+            # --- GPU 显存占用（MB）---
+            $gpuInfo = Get-GpuMemoryInfo
+            $gpuUsedMB   = $gpuInfo.UsedMB
+            $gpuTotalMB  = $gpuInfo.TotalMB
+
+            # --- 系统内存可用量（GB）---
+            $sysInfo    = Get-SystemMemoryInfo
+            $sysAvailGB = [math]::Round($sysInfo.AvailableGB, 2)
+            $sysTotalGB = [math]::Round($sysInfo.TotalGB, 2)
+
+            # --- 推算权重分布 ---
+            # 模型文件总大小（MB），用于估算权重总量
+            if (Test-Path $script:ModelPath) {
+                $modelSizeMB = [math]::Round((Get-Item $script:ModelPath).Length / 1MB, 1)
+            } else {
+                $modelSizeMB = 0
+            }
+
+            # GPU 上驻留的权重估算（MB）：取显存占用中扣除框架开销后的部分
+            $frameworkOverheadMB = 256
+            $gpuWeightMB = [math]::Max(0, $gpuUsedMB - $frameworkOverheadMB)
+            $gpuWeightPct = if ($modelSizeMB -gt 0) { [math]::Round(($gpuWeightMB / $modelSizeMB) * 100, 1) } else { 0 }
+
+            # 系统内存中驻留的权重估算（GB）
+            $sysWeightGB = [math]::Max(0, ($modelSizeMB - $gpuWeightMB) / 1024)
+            $sysWeightPct = [math]::Round(100 - $gpuWeightPct, 1)
+
+            # --- 输出当前采样行 ---
+            $line = ("[{0}/{1}] GPU显存: {2} MB (权重≈{3} MB, {4}%) | 系统内存可用: {5} GB (权重≈{6} GB, {7}%)" -f `
+                $i, $SampleCount, $gpuUsedMB, $gpuWeightMB, $gpuWeightPct, $sysAvailGB, $sysWeightGB, $sysWeightPct)
+            Write-Host $line
+
+            # 日志记录
+            Write-ToolLog -Level "DEBUG" -Message $line
+
+            if ($i -lt $SampleCount) {
+                Start-Sleep -Seconds $IntervalSec
+            }
+        }
+
+        Write-ToolLog -Level "INFO" -Message "权重分布采样完成。"
+    }
+
+
+    <#
+    .SYNOPSIS
+        单次采样并显示当前 GPU 显存占用与系统内存占用概况。
+    #>
+    function Show-MemoryStatus {
+        # GPU 显存（MB）
+        $gpuInfo = Get-GpuMemoryInfo
+        $gpuUsedMB  = $gpuInfo.UsedMB
+        $gpuTotalMB = $gpuInfo.TotalMB
+
+        # 系统内存（GB）
+        $sysInfo    = Get-SystemMemoryInfo
+        $sysAvailGB = [math]::Round($sysInfo.AvailableGB, 2)
+        $sysTotalGB = [math]::Round($sysInfo.TotalGB, 2)
+        $sysUsedGB  = [math]::Round($sysTotalGB - $sysAvailGB, 2)
+
+        # 格式化输出
+        $statusLine = ("GPU显存占用: {0} MB / {1} MB | 系统内存占用: {2} GB / {3} GB (可用 {4} GB)" -f `
+            $gpuUsedMB, $gpuTotalMB, $sysUsedGB, $sysTotalGB, $sysAvailGB)
+
+        Write-Host $statusLine
+        Write-ToolLog -Level "INFO" -Message $statusLine
+
+        # 返回结构化数据供调用方使用
+        return @{
+            GpuUsedMB      = $gpuUsedMB
+            GpuTotalMB     = $gpuTotalMB
+            SysAvailGB     = $sysAvailGB
+            SysTotalGB     = $sysTotalGB
+            SysUsedGB      = $sysUsedGB
+        }
+    }
+
+
+    <#
+    .SYNOPSIS
+        停止统一内存模式下的 llama-server 进程，清理状态并恢复原参数。
+    #>
+    function Stop-UnifiedMemoryMode {
+
+        if (-not $script:UnifiedMemoryState) {
+            Write-ToolLog -Level "WARN" -Message "当前无运行中的统一内存模式，无需停止。"
+            return
+        }
+
+        $proc = $script:UnifiedMemoryState.Process
+
+        if ($proc -and -not $proc.HasExited) {
+            Write-ToolLog -Level "INFO" -Message "正在停止 llama-server (PID=$($proc.Id))..."
+            try {
+                # 优先使用 Kill 确保进程终止
+                $proc.Kill()
+                $proc.WaitForExit(10000)
+                if (-not $proc.HasExited) {
+                    Write-ToolLog -Level "WARN" -Message "进程未在 10 秒内退出，尝试强制结束。"
+                    [System.Diagnostics.Process]::Kill($proc.Id)
+                }
+            } catch {
+                Write-ToolLog -Level "ERROR" -Message "停止 llama-server 时出错: $($_.Exception.Message)"
+            }
+
+            # 释放异步读取器资源
+            if ($script:UnifiedMemoryState.OutputReader) {
+                try { $script:UnifiedMemoryState.OutputReader.Dispose() } catch {}
+            }
+            if ($script:UnifiedMemoryState.ErrorReader) {
+                try { $script:UnifiedMemoryState.ErrorReader.Dispose() } catch {}
+            }
+
+            Write-ToolLog -Level "INFO" -Message "llama-server 已停止。"
+        } else {
+            Write-ToolLog -Level "WARN" -Message "llama-server 进程已不存在，跳过停止操作。"
+        }
+
+        # 恢复原参数（如果保存了原始参数）
+        if ($script:UnifiedMemoryState.OriginalArgs) {
+            Write-ToolLog -Level "INFO" -Message "已记录原始启动参数，可供后续恢复使用。"
+        }
+
+        # 清理状态字典
+        $script:UnifiedMemoryState = $null
+        Write-ToolLog -Level "INFO" -Message "统一内存模式状态已清理。"
+    }
+
+
+# ============================================================================
+# 独立测试脚本：5 轮统一内存性能测试
+# 文件名建议：Test-UnifiedMemoryPerf.ps1
+# 用法：pwsh -File .\Test-UnifiedMemoryPerf.ps1 -MainScript .\UnifiedMemoryMode.ps1
+# ============================================================================
+
+<#
+.SYNOPSIS
+    对统一内存模式下的 llama-server 执行 5 轮生成性能测试。
+.DESCRIPTION
+    每轮调用 127.0.0.1:8080/completion 接口，固定生成 256 token，
+    记录耗时、tokens/s、GPU 显存占用、系统内存可用量、llama 进程 CPU 占用核数。
+    结果写入 E:\PowerFocus\统一内存测试结果.txt（UTF-8），同时每轮一行输出到控制台。
+.NOTES
+    - 需要主脚本（UnifiedMemoryMode.ps1）中已定义 Start-UnifiedMemoryMode 等函数。
+    - 依赖：nvidia-smi（NVIDIA 驱动自带）、PowerShell 7 内置 cmdlet，无第三方模块。
+#>
+
+param(
+    # 主脚本路径，通过 dot-source 加载
+    [string]$MainScript = ".\UnifiedMemoryMode.ps1"
+)
+
+# -------------------------- 全局常量与变量 --------------------------
+
+# 测试目标地址（llama-server 统一内存模式）
+$script:TestHost      = "127.0.0.1"
+$script:TestPort      = 8080
+$script:TestEndpoint  = "http://${script:TestHost}:${script:TestPort}/completion"
+
+# 每轮固定生成 token 数
+$script:MaxTokens     = 256
+
+# 总测试轮次
+$script:TotalRounds   = 5
+
+# 轮间等待秒数
+$script:RoundInterval = 5
+
+# 结果输出文件路径（E 盘 PowerFocus 目录）
+$script:ResultDir     = "E:\PowerFocus"
+$script:ResultFile    = Join-Path $script:ResultDir "统一内存测试结果.txt"
+
+# -------------------------- 辅助函数 --------------------------
+
+<#
+.SYNOPSIS
+    通过 nvidia-smi 查询当前 GPU 显存已用 MB。
+.NOTES
+    仅使用 NVIDIA 驱动自带的 nvidia-smi，不依赖任何外部模块。
+#>
+function Get-TestGpuUsedMB {
+    try {
+        $raw = & nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>&1
+        # 取第一块 GPU 的值（多卡场景）
+        $val = ($raw | Select-Object -First 1).Trim()
+        return [int]$val
+    } catch {
+        Write-Host "  [WARN] nvidia-smi 查询失败: $($_.Exception.Message)"
+        return -1
+    }
+}
+
+<#
+.SYNOPSIS
+    查询当前系统可用内存（GB），使用 CIM 查询，无外部依赖。
+#>
+function Get-TestSysAvailGB {
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem
+        # FreePhysicalMemory 单位为 KB
+        $availKB = $os.FreePhysicalMemory
+        return [math]::Round($availKB / 1MB, 2)
+    } catch {
+        Write-Host "  [WARN] 系统内存查询失败: $($_.Exception.Message)"
+        return -1
+    }
+}
+
+<#
+.SYNOPSIS
+    获取 llama-server 进程的 CPU 累计时间（秒）。
+    用于两轮之间计算 CPU 占用核数 = (本次累计 - 上次累计) / 耗时秒。
+#>
+function Get-LlamaCpuSeconds {
+    param([int]$ProcessId)
+    try {
+        $p = Get-Process -Id $ProcessId -ErrorAction Stop
+        # TotalProcessorTime 为 TimeSpan，转换为秒
+        return $p.TotalProcessorTime.TotalSeconds
+    } catch {
+        return -1
+    }
+}
+
+<#
+.SYNOPSIS
+    查找 llama-server 进程的 PID（按进程名匹配）。
+#>
+function Find-LlamaProcessId {
+    $procs = Get-Process -Name "llama-server" -ErrorAction SilentlyContinue
+    if ($procs) { return $procs[0].Id }
+    # 兼容：某些版本进程名可能为 llama_server 或带路径
+    $procs2 = Get-Process | Where-Object { $_.Path -like "*llama*server*" } -ErrorAction SilentlyContinue
+    if ($procs2) { return $procs2[0].Id }
+    return -1
+}
+
+# -------------------------- 主流程 --------------------------
+
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  统一内存模式 5 轮性能测试" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+# --- Step 1: dot-source 加载主脚本 ---
+if (-not (Test-Path $MainScript)) {
+    Write-Error "主脚本不存在: ${MainScript}"
+    exit 1
+}
+. $MainScript
+Write-Host "[INFO] 已加载主脚本: ${MainScript}"
+
+# --- Step 2: 启动统一内存模式 ---
+$llamaProc = Start-UnifiedMemoryMode
+if (-not $llamaProc) {
+    Write-Error "统一内存模式启动失败，测试终止。"
+    exit 1
+}
+Write-Host "[INFO] llama-server 已就绪 (PID=$($llamaProc.Id))"
+
+# --- Step 3: 确保结果目录存在 ---
+if (-not (Test-Path $script:ResultDir)) {
+    New-Item -Path $script:ResultDir -ItemType Directory -Force | Out-Null
+}
+
+# --- Step 4: 初始化结果文件（UTF-8，带表头）---
+$headerLine = "轮次`t生成Token数`t耗时毫秒`tTokens/秒`tGPU显存MB`t系统可用GB`tLLamaCPU核数"
+[System.IO.File]::WriteAllText($script:ResultFile, $headerLine + [Environment]::NewLine, [System.Text.Encoding]::UTF8)
+
+# 用于 CPU 核数计算的基准值
+$prevCpuSec   = -1.0
+$prevRoundEnd = [DateTime]::MinValue
+
+Write-Host ""
+Write-Host "开始 ${script:TotalRounds} 轮测试，每轮生成 ${script:MaxTokens} token..." -ForegroundColor Yellow
+Write-Host ""
+
+# --- Step 5: 执行 5 轮测试循环 ---
+for ($round = 1; $round -le $script:TotalRounds; $round++) {
+
+    # ===== 5a. 获取本轮开始前的 CPU 累计秒（用于计算核数）=====
+    $llamaPid = Find-LlamaProcessId
+    if ($llamaPid -lt 0) {
+        Write-Host "  [ERROR] 未找到 llama-server 进程，测试终止。" -ForegroundColor Red
+        break
+    }
+    $cpuBefore = Get-LlamaCpuSeconds -ProcessId $llamaPid
+
+    # ===== 5b. 记录本轮开始时间 =====
+    $roundStart = [DateTime]::Now
+
+    # ===== 5c. 调用 /completion 接口，固定生成 256 token =====
+    $body = @{
+        prompt      = "The quick brown fox jumps over the lazy dog. Please continue this text."
+        n_predict   = $script:MaxTokens
+        temperature = 0.7
+        stream      = $false
+    } | ConvertTo-Json -Depth 4
+
+    try {
+        $response = Invoke-RestMethod `
+            -Uri       $script:TestEndpoint `
+            -Method    POST `
+            -Body      $body `
+            -ContentType "application/json" `
+            -TimeoutSec 300
+
+        # 从响应中获取实际生成的 token 数
+        if ($response.content) {
+            $generatedTokens = $script:MaxTokens  # /completion 不直接返回 token 计数，按请求值记录
+        } else {
+            $generatedTokens = 0
+        }

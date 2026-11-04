@@ -1,0 +1,35 @@
+﻿=== GPU 状态 ===
+28 %, 1559 MiB, 8151 MiB, 6341 MiB
+
+=== 关键端口监听 ===
+
+LocalAddress LocalPort OwningProcess
+------------ --------- -------------
+127.0.0.1         6099         54724
+
+
+
+
+=== 相关进程 ===
+
+ProcessName    Id 内存MB
+-----------    -- ----
+ollama      11472   12
+ollama app  11520   10
+pwsh          700    0
+pwsh         8952    0
+pwsh        12620   45
+pwsh        38436   11
+python       8056    1
+python       8524   11
+python      16276    1
+python      40964   11
+python      43788    1
+python      49560    2
+pythonw     33576    3
+
+
+
+
+=== 内存状态 ===
+总内存: 31.2 GB | 空闲: 18.9 GB

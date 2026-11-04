@@ -1,0 +1,9 @@
+﻿--- 端口状态 ---
+9931 -> PID 40424
+--- 响应结构探测（先起基线） ---
+基线 PID 40192 health=True
+--- timing 字段 ---
+--- 顶层字段名 ---
+content, generation_settings, has_new_line, id_slot, index, model, prompt, stop, stopping_word, stop_type, timings, tokens, tokens_cached, tokens_evaluated, tokens_predicted, truncated
+--- 内容前120字符 ---
+ to the best friends of the 2

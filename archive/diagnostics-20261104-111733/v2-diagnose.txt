@@ -1,0 +1,33 @@
+﻿v2 进程: CPU 3.1s | 内存 215MB | 启动 11/03/2026 08:29:45
+响应状态: True
+
+=== verify2.json 是否还在 in 目录（未处理=总线没轮询）===
+已移走（总线处理过）
+
+=== v2 日志文件 ===
+修改: 11/03/2026 08:30:12 | 大小: 1784 bytes
+--- 最后 12 行 ---
+2026-11-03 05:23:11 [INFO] 命令总线收到 action=trim_memory
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=set_io_priority
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=apply_scene
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=unfocus
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=set_power_plan
+2026-11-03 05:23:12 [WARN] native 命令失败 (exit=1): 切换平衡
+2026-11-03 05:23:12 [INFO] 场景 [relax] 已应用（2 步）
+2026-11-03 05:24:57 [INFO] 命令总线收到 action=trim_memory
+2026-11-03 08:30:09 [INFO] 电脑算力调度中心 v2 已启动（命令总线: True）
+2026-11-03 08:30:09 [INFO] 命令总线已启动: 每 2 秒轮询 E:\PowerFocus\commands\in
+2026-11-03 08:30:11 [INFO] 命令总线收到 action=status
+2026-11-03 08:30:12 [INFO] 命令 verify2.json 完成: OK: 状态已写入 E:\PowerFocus\commands\out\status.json
+
+=== pwsh 进程列表（找 v2 关联进程）===
+
+ProcessId ParentProcessId cmd                                                                                          
+--------- --------------- ---                                                                                          
+    12620            2772 "C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe" -NoProfile -Execu...
+     8952           10076 "C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe" -NoProfile -Execu...
+      700           31332 "C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe" -NoProfile -Execu...
+    17252           29676 "C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe" -NoProfile -Windo...
+
+
+

@@ -1,0 +1,13 @@
+测试目标 cmd: PID 7332
+=== MCP 输出 ===
+{"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {"listChanged": false}}, "serverInfo": {"name": "powerfocus-mcp", "version": "1.0.0"}}}
+{"jsonrpc": "2.0", "id": 2, "result": {"content": [{"type": "text", "text": "2026-11-03 10:26:15\nOK: 算力已补给 cmd (PID 7332) level=gentle，持续 30 秒，已压低 72 个其他应用（DeepSeek/系统关键/授权/前台/豆包/调度中心未动）"}], "isError": false}}
+{"jsonrpc": "2.0", "id": 3, "result": {"content": [{"type": "text", "text": "2026-11-03 10:26:17\nOK: 算力已释放，还原 72 个进程（cmd 已回 Normal）"}], "isError": false}}
+申请期间 cmd 优先级: Normal（应 AboveNormal）
+释放后 cmd 优先级: Normal（应回 Normal）
+--- v2 日志 ---
+2026-11-03 10:26:15 [INFO] 算力补给: cmd(7332) level=gentle duration=30 reason=MCP端到端测试，压低 72 进程
+2026-11-03 10:26:15 [INFO] 命令 mcp-1793672775-1.json 完成: OK: 算力已补给 cmd (PID 7332) level=gentle，持续 30 秒，已压低 72 个其他应用（DeepSeek/系统关键/授权/前台/豆包/调度中心未动）
+2026-11-03 10:26:17 [INFO] 命令总线收到 action=release_power
+2026-11-03 10:26:17 [INFO] 算力释放: cmd(7332)，还原 72 进程
+2026-11-03 10:26:17 [INFO] 命令 mcp-1793672775-2.json 完成: OK: 算力已释放，还原 72 个进程（cmd 已回 Normal）

@@ -1,0 +1,2 @@
+2026-11-04 10:26:42
+OK: 状态已写入 E:\PowerFocus\commands\out\status.json

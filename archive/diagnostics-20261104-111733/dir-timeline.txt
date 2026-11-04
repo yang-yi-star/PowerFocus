@@ -1,0 +1,280 @@
+﻿=== E:\PowerFocus 全部文件（按修改时间倒序）===
+
+Name                             KB LastWriteTime     
+----                             -- -------------     
+center-status3.txt                1 2026/11/3 8:26:41 
+um-restart64k-result.txt          1 2026/11/3 8:22:09 
+统一内存模式_日志.txt                    17 2026/11/3 8:20:24 
+locmodel-rect.txt                 0 2026/11/3 8:11:47 
+locmodel-win.txt                  2 2026/11/3 8:11:32 
+locmodel-probe.txt                0 2026/11/3 8:10:11 
+locmodel-cmd-zoom.png           126 2026/11/3 8:09:10 
+locmodel-screen.png            2940 2026/11/3 8:09:10 
+locmodel-check.txt                0 2026/11/3 8:06:48 
+qwen14b-verify.txt                1 2026/11/3 7:47:38 
+qwen14b-test2.txt                 7 2026/11/3 7:47:19 
+qwen14b-stderr.log               13 2026/11/3 7:47:19 
+qwen14b-test.txt                  0 2026/11/3 7:43:22 
+qwen14b-status2.txt               1 2026/11/3 7:41:29 
+qwen14b-stdout.log                0 2026/11/3 7:40:20 
+qwen14b-status.txt                0 2026/11/3 7:40:11 
+model-inventory.txt               3 2026/11/3 7:38:42 
+center-status2.txt                2 2026/11/3 7:30:57 
+center-status.txt                 1 2026/11/3 7:30:44 
+DEVELOPMENT_LOG.md               10 2026/11/3 5:25:27 
+电脑算力调度中心_v2.log                   1 2026/11/3 5:24:57 
+电脑算力调度中心_v2.ps1                  48 2026/11/3 5:24:45 
+nl-parser.ps1                    11 2026/11/3 5:24:36 
+scenes.json                       1 2026/11/3 5:23:11 
+.auth_token                       0 2026/11/3 5:23:11 
+nl-gateway.ps1                   11 2026/11/3 5:22:48 
+commands                            2026/11/3 5:12:17 
+authorized_apps.json              0 2026/11/3 5:03:07 
+icon-item-v2.xml                  0 2026/11/3 4:37:33 
+icon-zoom.png                   241 2026/11/3 4:37:02 
+desktop-verify.png             2810 2026/11/3 4:37:02 
+电脑算力调度中心.ico                    124 2026/11/3 4:35:46 
+ico-fix-log.txt                   1 2026/11/3 4:35:46 
+powerfocus-icon-1024.png       1145 2026/11/3 4:35:46 
+ico-convert.txt                   0 2026/11/3 4:32:46 
+powerfocus-icon-src.jpg         797 2026/11/3 4:32:46 
+icon-item.xml                     0 2026/11/3 4:31:57 
+desktop-mode-change.txt           0 2026/11/3 4:27:37 
+desktop-bags-flags.txt           14 2026/11/3 4:27:21 
+desktop-shot-status.txt           0 2026/11/3 4:13:50 
+desktop-shot.png               1218 2026/11/3 4:13:50 
+desktop-shot-full.png          3860 2026/11/3 4:13:49 
+desktop-shortcut.txt              0 2026/11/3 4:12:44 
+gpu-after-unload.txt              0 2026/11/3 4:04:22 
+stop-all-models.txt               0 2026/11/3 4:04:11 
+stop-27b-before.txt               0 2026/11/3 4:03:28 
+tensorrt-verify.txt               1 2026/11/3 2:58:58 
+tensorrt-pip-cu12-install2.log    3 2026/11/3 2:58:44 
+tensorrt-uninstall2.txt           1 2026/11/3 2:52:30 
+tensorrt-cu12-versions.txt        1 2026/11/3 2:52:21 
+tensorrt-pip-cu12-install.log     4 2026/11/3 2:52:08 
+tensorrt-list.txt                 0 2026/11/3 2:46:54 
+tensorrt-uninstall.txt            1 2026/11/3 2:46:44 
+tensorrt-pip-install.log          4 2026/11/3 2:46:18 
+edge-windows.txt                  0 2026/11/3 2:02:10 
+tensorrt-recheck.txt              0 2026/11/3 1:51:05 
+tensorrt-check.txt                0 2026/11/3 1:46:14 
+install-verify2.txt               0 2026/11/3 1:44:07 
+install-verify.txt                0 2026/11/3 1:43:58 
+ninja-retry-log.txt               0 2026/11/3 1:43:56 
+winget-install-log.txt            1 2026/11/3 1:43:37 
+center-build-result.txt           0 2026/11/3 1:39:48 
+build-ai-center.ps1               8 2026/11/3 1:39:37 
+onnx-install-log.txt              3 2026/11/3 1:32:53 
+tensorrt-search.txt               0 2026/11/3 1:32:38 
+py-default-check.txt              0 2026/11/3 1:32:19 
+py-check.txt                      1 2026/11/3 1:31:58 
+cmake-path-result.txt             0 2026/11/3 1:31:45 
+ai-env-check2.txt                 0 2026/11/3 1:28:57 
+ai-env-check2.ps1                 1 2026/11/3 1:28:52 
+ai-env-check.txt                 11 2026/11/3 1:28:22 
+ai-env-check.ps1                  3 2026/11/3 1:28:10 
+gen-test-done.txt                 0 2026/11/3 1:13:33 
+dev-err.log                      67 2026/11/3 1:13:30 
+um-enhance-regress.ps1            0 2026/11/3 1:13:12 
+统一内存模式增强.ps1                     12 2026/11/3 1:13:08 
+monitor-live-test2.ps1            1 2026/11/3 1:12:25 
+slots-live.txt                    0 2026/11/3 1:12:12 
+monitor-live-test.ps1             1 2026/11/3 1:11:32 
+gen-test.ps1                      1 2026/11/3 1:11:17 
+um-enhance-test3-result.txt       1 2026/11/3 1:11:01 
+um-enhance-test3.ps1              1 2026/11/3 1:10:52 
+gpu-type-probe.txt                0 2026/11/3 1:09:46 
+gpu-type-probe.ps1                1 2026/11/3 1:09:40 
+scope-probe2.txt                  0 2026/11/3 1:09:04 
+scope-probe2.ps1                  1 2026/11/3 1:08:59 
+um-enhance-test-result.txt        1 2026/11/3 1:07:51 
+um-enhance-test2.ps1              2 2026/11/3 1:07:41 
+scope-probe.txt                   0 2026/11/3 1:07:09 
+scope-probe.ps1                   0 2026/11/3 1:07:02 
+um-enhance-test.ps1               2 2026/11/3 1:05:57 
+api-probe.txt                     0 2026/11/3 1:04:40 
+openapi-probe.txt                 0 2026/11/3 1:04:32 
+slots-post-probe.txt              0 2026/11/3 1:04:21 
+metrics-probe.txt                 0 2026/11/3 1:04:00 
+dev-round3-out.txt               10 2026/11/3 1:00:30 
+dev-round3-meta.txt               0 2026/11/3 1:00:30 
+slots-probe.txt                   3 2026/11/3 0:40:55 
+dev-round3.ps1                    5 2026/11/3 0:40:39 
+dev-round2-out.txt                7 2026/11/3 0:36:53 
+dev-round2-meta.txt               0 2026/11/3 0:36:53 
+dev-check.txt                     1 2026/11/3 0:34:00 
+dev-out.log                       0 2026/11/3 0:25:48 
+dev-round2.ps1                    6 2026/11/3 0:25:36 
+reasoning-help.txt                1 2026/11/3 0:25:02 
+dev-round1-out.txt                0 2026/11/3 0:22:34 
+dev-round1-meta.txt               0 2026/11/3 0:22:34 
+dev-round1.ps1                    5 2026/11/2 23:50:57
+mtp-quality-base.txt              2 2026/11/2 23:32:36
+mtp-phase2-result.txt             0 2026/11/2 23:32:36
+base-err.log                     20 2026/11/2 23:32:36
+base-out.log                      0 2026/11/2 23:23:23
+mtp-phase2.ps1                    4 2026/11/2 23:23:14
+mtp-phase1-result.txt             0 2026/11/2 23:21:53
+mtp-quality-mtp.txt               2 2026/11/2 23:21:53
+mtp-mtp-err.log                  41 2026/11/2 23:21:53
+um-mtp-result.txt                 1 2026/11/2 23:21:43
+mtp-phase1.ps1                    2 2026/11/2 23:06:20
+mtp-check2.txt                    3 2026/11/2 23:05:37
+mtp-mtp-out.log                   0 2026/11/2 22:57:44
+probe-err.log                    21 2026/11/2 22:57:40
+um-mtp-test.ps1                   6 2026/11/2 22:49:03
+probe2-result.txt                 0 2026/11/2 22:48:31
+probe-result.txt                  0 2026/11/2 22:48:05
+probe-out.log                     0 2026/11/2 22:47:56
+mtp-fail-check.txt                2 2026/11/2 22:47:31
+spec-help.txt                     4 2026/11/2 22:32:31
+千问上下文增强方案.md                      5 2026/11/2 22:26:18
+统一内存模式.ps1                       31 2026/11/2 22:24:28
+um-64k-kvline.txt                61 2026/11/2 22:23:49
+um-64k-loghead.txt                5 2026/11/2 22:23:42
+um-64k-verify.txt                 0 2026/11/2 22:23:30
+um-debug-err.log                922 2026/11/2 22:23:30
+um-debug-tail.txt                 4 2026/11/2 22:22:14
+um-debug-result.txt               0 2026/11/2 22:22:14
+um-debug-out.log                  0 2026/11/2 22:22:04
+um-debug-run.ps1                  2 2026/11/2 22:21:57
+um-state-check.txt                0 2026/11/2 22:11:05
+um-restart64k.ps1                 2 2026/11/2 22:07:13
+gguf-kv-params.txt                0 2026/11/2 22:04:45
+gguf-kv-params.ps1                3 2026/11/2 22:04:34
+llama-server-help-增强.txt          1 2026/11/2 22:01:53
+统一内存模式实测报告.md                     4 2026/11/2 19:19:26
+um-calibrate-console.txt          0 2026/11/2 19:17:20
+统一内存测试-校准.txt                     0 2026/11/2 19:17:20
+um-calibrate-run.txt              0 2026/11/2 19:16:04
+um-calibrate.ps1                  2 2026/11/2 19:15:59
+Test-UnifiedMemoryPerf.ps1       11 2026/11/2 19:15:43
+um-proccheck.txt                  1 2026/11/2 19:15:12
+um-test-watch2.txt                0 2026/11/2 19:14:50
+um-test-console.txt               1 2026/11/2 19:12:56
+统一内存测试结果-5轮原始.txt                 0 2026/11/2 19:12:56
+统一内存测试结果.txt                      0 2026/11/2 19:12:56
+um-test-watch.txt                 1 2026/11/2 19:11:36
+um-validate-result.txt            0 2026/11/2 19:04:02
+um-validate.ps1                   2 2026/11/2 19:03:50
+um-debug.ps1                      3 2026/11/2 19:02:05
+um-verify2.txt                    0 2026/11/2 19:00:58
+um-gen3-watch3.txt                0 2026/11/2 18:57:00
+um-model-output3.txt.meta         0 2026/11/2 18:51:56
+um-model-output3.txt              9 2026/11/2 18:51:55
+um-gen3-watch2.txt                0 2026/11/2 18:46:51
+um-gen3-watch.txt                 0 2026/11/2 18:33:43
+um-prompt-tail.txt                2 2026/11/2 18:21:05
+um-gen2-watch8.txt                0 2026/11/2 18:20:20
+um-model-output2.txt.meta         0 2026/11/2 18:20:11
+um-model-output2.txt             16 2026/11/2 18:20:11
+um-gen2-check.txt                 0 2026/11/2 18:11:09
+um-gen2-watch7.txt                0 2026/11/2 18:11:02
+um-gen2-watch6.txt                0 2026/11/2 18:05:51
+um-gen2-watch4.txt                0 2026/11/2 18:03:23
+um-gen2-watch3.txt                0 2026/11/2 17:52:13
+um-gen2-watch2.txt                0 2026/11/2 17:40:03
+um-gen2-watch.txt                 0 2026/11/2 17:24:50
+um-prompt-continue.txt            2 2026/11/2 17:09:18
+um-gen-watch17.txt                0 2026/11/2 17:08:01
+um-model-output.txt.meta          0 2026/11/2 16:59:20
+um-model-output.txt              25 2026/11/2 16:59:20
+um-gen-watch15.txt                0 2026/11/2 16:57:30
+um-gen-watch16.txt                0 2026/11/2 16:52:52
+um-gen-watch13.txt                0 2026/11/2 16:37:01
+um-gen-watch14.txt                0 2026/11/2 16:32:18
+um-gen-check.txt                  1 2026/11/2 16:11:42
+um-gen-watch12.txt                0 2026/11/2 16:11:29
+um-gen-watch11.txt                0 2026/11/2 16:04:15
+um-gen-watch10.txt                0 2026/11/2 15:58:00
+um-gen-watch9.txt                 0 2026/11/2 15:49:51
+um-gen-watch8.txt                 0 2026/11/2 15:39:38
+um-gen-watch7.txt                 0 2026/11/2 15:29:22
+um-gen-watch6.txt                 0 2026/11/2 15:19:11
+um-gen-watch5.txt                 0 2026/11/2 15:09:02
+um-gen-watch4.txt                 0 2026/11/2 14:58:52
+um-gen-watch3.txt                 0 2026/11/2 14:48:43
+um-prompt-test.txt                1 2026/11/2 14:41:37
+um-gen-watch2.txt                 0 2026/11/2 14:41:20
+stream-gen.ps1                    2 2026/11/2 14:37:49
+um-diagnose.txt                   3 2026/11/2 14:36:55
+um-gen-status4.txt                0 2026/11/2 14:36:24
+um-model-meta.txt                 0 2026/11/2 14:36:04
+slot-check.txt                    0 2026/11/2 14:31:07
+um-gen-status3.txt                0 2026/11/2 14:30:53
+um-gen-status2.txt                0 2026/11/2 14:22:40
+um-gen-status.txt                 0 2026/11/2 14:06:20
+run-um-gen.ps1                    1 2026/11/2 13:35:58
+um-prompt.txt                     2 2026/11/2 13:35:48
+um-probe.txt                      0 2026/11/2 13:33:58
+算力调度对比报告.html                     8 2026/11/2 13:28:07
+算力调度对比报告.md                       7 2026/11/2 13:27:38
+cleanup-check.txt                 0 2026/11/2 13:26:22
+watchdog-result.txt               0 2026/11/2 13:25:43
+电脑算力调度中心.log                      4 2026/11/2 13:25:43
+watchdog-test.ps1                 1 2026/11/2 13:25:21
+bench-results.jsonl               1 2026/11/2 13:25:01
+aggressive-verify.txt             0 2026/11/2 13:16:15
+gui-runner-out.txt                0 2026/11/2 13:16:13
+llama-procs.txt                   0 2026/11/2 13:07:34
+gentle-verify.txt                 0 2026/11/2 13:07:16
+gui-runner.ps1                    2 2026/11/2 13:07:05
+tool-check.txt                    0 2026/11/2 12:53:42
+tool-pid.txt                      0 2026/11/2 12:53:34
+bench-phase.ps1                   3 2026/11/2 12:53:25
+last-sample.txt                   0 2026/11/2 12:52:57
+cpu-sample-results.txt            0 2026/11/2 12:52:57
+sample-gen.ps1                    2 2026/11/2 12:50:11
+cpu-sampler.ps1                   1 2026/11/2 12:47:26
+stress-check.txt                  0 2026/11/2 12:37:37
+start-stress.ps1                  1 2026/11/2 12:37:10
+stress.js                         0 2026/11/2 12:37:08
+stop-stress.ps1                   0 2026/11/2 12:36:17
+闲置程序扫描报告.md                      47 2026/11/2 10:47:47
+电脑算力调度中心-使用说明.md                  4 2026/11/2 10:17:24
+电脑算力调度中心.ps1                     16 2026/11/2 10:16:29
+smoke-out.txt                     0 2026/11/2 10:16:09
+test-autostart-out.txt            0 2026/11/2 10:03:49
+test-autostart.ps1                1 2026/11/2 10:03:32
+test-out.txt                      2 2026/11/2 10:02:39
+test-functional.ps1               3 2026/11/2 9:59:52 
+model-output2.json               18 2026/11/2 9:46:47 
+prompt2.json                      2 2026/11/2 9:13:07 
+probe.json                        0 2026/11/2 9:12:03 
+model-output1.json               19 2026/11/2 9:10:10 
+prompt.json                       3 2026/11/2 8:41:35 
+
+
+
+
+=== 电脑算力调度中心.ps1 详情 ===
+大小: 16 KB | 修改时间: 11/02/2026 10:16:29
+行数: 370
+
+=== 最近 30 分钟内修改过的文件 ===
+
+Name                     LastWriteTime    
+----                     -------------    
+center-status3.txt       2026/11/3 8:26:41
+um-restart64k-result.txt 2026/11/3 8:22:09
+统一内存模式_日志.txt            2026/11/3 8:20:24
+locmodel-rect.txt        2026/11/3 8:11:47
+locmodel-win.txt         2026/11/3 8:11:32
+locmodel-probe.txt       2026/11/3 8:10:11
+locmodel-cmd-zoom.png    2026/11/3 8:09:10
+locmodel-screen.png      2026/11/3 8:09:10
+locmodel-check.txt       2026/11/3 8:06:48
+qwen14b-verify.txt       2026/11/3 7:47:38
+qwen14b-test2.txt        2026/11/3 7:47:19
+qwen14b-stderr.log       2026/11/3 7:47:19
+qwen14b-test.txt         2026/11/3 7:43:22
+qwen14b-status2.txt      2026/11/3 7:41:29
+qwen14b-stdout.log       2026/11/3 7:40:20
+qwen14b-status.txt       2026/11/3 7:40:11
+model-inventory.txt      2026/11/3 7:38:42
+center-status2.txt       2026/11/3 7:30:57
+center-status.txt        2026/11/3 7:30:44
+
+
+

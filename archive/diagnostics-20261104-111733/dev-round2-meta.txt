@@ -1,0 +1,7 @@
+停旧实例 PID 38160
+无思考模式实例 PID=33896 health=True
+请求发送: 00:26:04
+响应到达: 00:36:53
+finish_reason: stop
+usage: {"completion_tokens":1764,"prompt_tokens":1068,"total_tokens":2832,"prompt_tokens_details":{"cached_tokens":0}}
+输出长度: 3197 字符

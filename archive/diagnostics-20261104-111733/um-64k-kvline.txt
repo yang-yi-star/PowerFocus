@@ -1,0 +1,719 @@
+﻿0.00.256.142 I llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+0.00.256.150 I llama_model_loader: - kv   0:                       general.architecture str              = qwen35
+0.00.256.151 I llama_model_loader: - kv   1:                               general.type str              = model
+0.00.256.155 I llama_model_loader: - kv   2:                     general.sampling.top_k i32              = 20
+0.00.256.161 I llama_model_loader: - kv   3:                     general.sampling.top_p f32              = 0.950000
+0.00.256.162 I llama_model_loader: - kv   4:                      general.sampling.temp f32              = 1.000000
+0.00.256.163 I llama_model_loader: - kv   5:                               general.name str              = Qwen3.8-27B
+0.00.256.164 I llama_model_loader: - kv   6:                           general.basename str              = Qwen3.8-27B
+0.00.256.165 I llama_model_loader: - kv   7:                        general.description str              = Renewal of the beloved Qwen model, de...
+0.00.256.166 I llama_model_loader: - kv   8:                       general.quantized_by str              = Unsloth
+0.00.256.166 I llama_model_loader: - kv   9:                         general.size_label str              = 27B
+0.00.256.167 I llama_model_loader: - kv  10:                            general.license str              = apache-2.0
+0.00.256.167 I llama_model_loader: - kv  11:                           general.repo_url str              = https://huggingface.co/unsloth
+0.00.256.168 I llama_model_loader: - kv  12:                   general.base_model.count u32              = 1
+0.00.256.169 I llama_model_loader: - kv  13:                  general.base_model.0.name str              = Qwen3.8 27B
+0.00.256.169 I llama_model_loader: - kv  14:          general.base_model.0.organization str              = Qwen
+0.00.256.170 I llama_model_loader: - kv  15:              general.base_model.0.repo_url str              = https://huggingface.co/Qwen/Qwen3.8-27B
+0.00.256.172 I llama_model_loader: - kv  16:                               general.tags arr[str,1]       = ["unsloth"]
+0.00.256.172 I llama_model_loader: - kv  17:                         qwen35.block_count u32              = 65
+0.00.256.173 I llama_model_loader: - kv  18:                      qwen35.context_length u32              = 262144
+0.00.256.173 I llama_model_loader: - kv  19:                    qwen35.embedding_length u32              = 5120
+0.00.256.174 I llama_model_loader: - kv  20:                 qwen35.feed_forward_length u32              = 17408
+0.00.256.174 I llama_model_loader: - kv  21:                qwen35.attention.head_count u32              = 24
+0.00.256.175 I llama_model_loader: - kv  22:             qwen35.attention.head_count_kv u32              = 4
+0.00.256.176 I llama_model_loader: - kv  23:             qwen35.rope.dimension_sections arr[i32,4]       = [11, 11, 10, 0]
+0.00.256.177 I llama_model_loader: - kv  24:                      qwen35.rope.freq_base f32              = 10000000.000000
+0.00.256.178 I llama_model_loader: - kv  25:    qwen35.attention.layer_norm_rms_epsilon f32              = 0.000001
+0.00.256.179 I llama_model_loader: - kv  26:                qwen35.attention.key_length u32              = 256
+0.00.256.179 I llama_model_loader: - kv  27:              qwen35.attention.value_length u32              = 256
+0.00.256.180 I llama_model_loader: - kv  28:                qwen35.nextn_predict_layers u32              = 1
+0.00.256.180 I llama_model_loader: - kv  29:                     qwen35.ssm.conv_kernel u32              = 4
+0.00.256.181 I llama_model_loader: - kv  30:                      qwen35.ssm.state_size u32              = 128
+0.00.256.181 I llama_model_loader: - kv  31:                     qwen35.ssm.group_count u32              = 16
+0.00.256.181 I llama_model_loader: - kv  32:                  qwen35.ssm.time_step_rank u32              = 48
+0.00.256.182 I llama_model_loader: - kv  33:                      qwen35.ssm.inner_size u32              = 6144
+0.00.256.182 I llama_model_loader: - kv  34:             qwen35.full_attention_interval u32              = 4
+0.00.256.182 I llama_model_loader: - kv  35:                qwen35.rope.dimension_count u32              = 64
+0.00.256.183 I llama_model_loader: - kv  36:                       tokenizer.ggml.model str              = gpt2
+0.00.256.183 I llama_model_loader: - kv  37:                         tokenizer.ggml.pre str              = qwen35
+0.00.256.187 I llama_model_loader: - kv  38:                      tokenizer.ggml.tokens arr[str,248320]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+0.00.256.189 I llama_model_loader: - kv  39:                  tokenizer.ggml.token_type arr[i32,248320]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+0.00.256.190 I llama_model_loader: - kv  40:                      tokenizer.ggml.merges arr[str,247587]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+0.00.256.191 I llama_model_loader: - kv  41:                tokenizer.ggml.eos_token_id u32              = 248046
+0.00.256.191 I llama_model_loader: - kv  42:            tokenizer.ggml.padding_token_id u32              = 248055
+0.00.256.192 I llama_model_loader: - kv  43:                tokenizer.ggml.bos_token_id u32              = 248044
+0.00.256.192 I llama_model_loader: - kv  44:               general.quantization_version u32              = 2
+0.00.256.193 I llama_model_loader: - kv  45:                          general.file_type u32              = 15
+0.00.256.193 I llama_model_loader: - kv  46:                      quantize.imatrix.file str              = Qwen3.8-27B-GGUF/imatrix_unsloth.gguf
+0.00.256.194 I llama_model_loader: - kv  47:             quantize.imatrix.entries_count u32              = 496
+0.00.256.194 I llama_model_loader: - kv  48:              quantize.imatrix.chunks_count u32              = 1251
+0.00.256.197 I llama_model_loader: - kv  49:                    tokenizer.chat_template str              = {%- set image_count = namespace(value...
+0.00.422.502 I print_info: n_ctx_train           = 262144
+0.00.422.504 I print_info: n_layer               = 64
+0.00.422.504 I print_info: n_layer_all           = 65
+0.00.422.525 I print_info: n_head_kv             = 4
+0.00.422.542 I print_info: n_ctx_orig_yarn       = 262144
+0.00.422.611 D load_tensors: layer   0 assigned to device CPU, is_swa = 0
+0.00.422.612 D load_tensors: layer   1 assigned to device CPU, is_swa = 0
+0.00.422.612 D load_tensors: layer   2 assigned to device CPU, is_swa = 0
+0.00.422.612 D load_tensors: layer   3 assigned to device CPU, is_swa = 0
+0.00.422.613 D load_tensors: layer   4 assigned to device CPU, is_swa = 0
+0.00.422.613 D load_tensors: layer   5 assigned to device CPU, is_swa = 0
+0.00.422.614 D load_tensors: layer   6 assigned to device CPU, is_swa = 0
+0.00.422.614 D load_tensors: layer   7 assigned to device CPU, is_swa = 0
+0.00.422.615 D load_tensors: layer   8 assigned to device CPU, is_swa = 0
+0.00.422.615 D load_tensors: layer   9 assigned to device CPU, is_swa = 0
+0.00.422.616 D load_tensors: layer  10 assigned to device CPU, is_swa = 0
+0.00.422.616 D load_tensors: layer  11 assigned to device CPU, is_swa = 0
+0.00.422.616 D load_tensors: layer  12 assigned to device CPU, is_swa = 0
+0.00.422.617 D load_tensors: layer  13 assigned to device CPU, is_swa = 0
+0.00.422.617 D load_tensors: layer  14 assigned to device CPU, is_swa = 0
+0.00.422.618 D load_tensors: layer  15 assigned to device CPU, is_swa = 0
+0.00.422.618 D load_tensors: layer  16 assigned to device CPU, is_swa = 0
+0.00.422.619 D load_tensors: layer  17 assigned to device CPU, is_swa = 0
+0.00.422.619 D load_tensors: layer  18 assigned to device CPU, is_swa = 0
+0.00.422.620 D load_tensors: layer  19 assigned to device CPU, is_swa = 0
+0.00.422.620 D load_tensors: layer  20 assigned to device CPU, is_swa = 0
+0.00.422.620 D load_tensors: layer  21 assigned to device CPU, is_swa = 0
+0.00.422.621 D load_tensors: layer  22 assigned to device CPU, is_swa = 0
+0.00.422.622 D load_tensors: layer  23 assigned to device CPU, is_swa = 0
+0.00.422.622 D load_tensors: layer  24 assigned to device CPU, is_swa = 0
+0.00.422.623 D load_tensors: layer  25 assigned to device CPU, is_swa = 0
+0.00.422.623 D load_tensors: layer  26 assigned to device CPU, is_swa = 0
+0.00.422.624 D load_tensors: layer  27 assigned to device CPU, is_swa = 0
+0.00.422.624 D load_tensors: layer  28 assigned to device CPU, is_swa = 0
+0.00.422.624 D load_tensors: layer  29 assigned to device CPU, is_swa = 0
+0.00.422.625 D load_tensors: layer  30 assigned to device CPU, is_swa = 0
+0.00.422.625 D load_tensors: layer  31 assigned to device CPU, is_swa = 0
+0.00.422.626 D load_tensors: layer  32 assigned to device CPU, is_swa = 0
+0.00.422.626 D load_tensors: layer  33 assigned to device CPU, is_swa = 0
+0.00.422.627 D load_tensors: layer  34 assigned to device CPU, is_swa = 0
+0.00.422.627 D load_tensors: layer  35 assigned to device CPU, is_swa = 0
+0.00.422.627 D load_tensors: layer  36 assigned to device CPU, is_swa = 0
+0.00.422.628 D load_tensors: layer  37 assigned to device CPU, is_swa = 0
+0.00.422.628 D load_tensors: layer  38 assigned to device CPU, is_swa = 0
+0.00.422.629 D load_tensors: layer  39 assigned to device CPU, is_swa = 0
+0.00.422.629 D load_tensors: layer  40 assigned to device CPU, is_swa = 0
+0.00.422.630 D load_tensors: layer  41 assigned to device CPU, is_swa = 0
+0.00.422.630 D load_tensors: layer  42 assigned to device CPU, is_swa = 0
+0.00.422.631 D load_tensors: layer  43 assigned to device CPU, is_swa = 0
+0.00.422.631 D load_tensors: layer  44 assigned to device CPU, is_swa = 0
+0.00.422.632 D load_tensors: layer  45 assigned to device CPU, is_swa = 0
+0.00.422.632 D load_tensors: layer  46 assigned to device CUDA0, is_swa = 0
+0.00.422.633 D load_tensors: layer  47 assigned to device CUDA0, is_swa = 0
+0.00.422.633 D load_tensors: layer  48 assigned to device CUDA0, is_swa = 0
+0.00.422.634 D load_tensors: layer  49 assigned to device CUDA0, is_swa = 0
+0.00.422.634 D load_tensors: layer  50 assigned to device CUDA0, is_swa = 0
+0.00.422.635 D load_tensors: layer  51 assigned to device CUDA0, is_swa = 0
+0.00.422.635 D load_tensors: layer  52 assigned to device CUDA0, is_swa = 0
+0.00.422.636 D load_tensors: layer  53 assigned to device CUDA0, is_swa = 0
+0.00.422.636 D load_tensors: layer  54 assigned to device CUDA0, is_swa = 0
+0.00.422.637 D load_tensors: layer  55 assigned to device CUDA0, is_swa = 0
+0.00.422.637 D load_tensors: layer  56 assigned to device CUDA0, is_swa = 0
+0.00.422.637 D load_tensors: layer  57 assigned to device CUDA0, is_swa = 0
+0.00.422.638 D load_tensors: layer  58 assigned to device CUDA0, is_swa = 0
+0.00.422.638 D load_tensors: layer  59 assigned to device CUDA0, is_swa = 0
+0.00.422.639 D load_tensors: layer  60 assigned to device CUDA0, is_swa = 0
+0.00.422.639 D load_tensors: layer  61 assigned to device CUDA0, is_swa = 0
+0.00.422.640 D load_tensors: layer  62 assigned to device CUDA0, is_swa = 0
+0.00.422.640 D load_tensors: layer  63 assigned to device CUDA0, is_swa = 0
+0.00.422.641 D load_tensors: layer  64 assigned to device CUDA0, is_swa = 0
+0.00.422.641 D load_tensors: layer  65 assigned to device CUDA0, is_swa = 0
+0.00.777.100 I load_tensors: offloading output layer to GPU
+0.00.777.101 I load_tensors: offloading 19 repeating layers to GPU
+0.00.777.101 I load_tensors: offloaded 20/66 layers to GPU
+0.00.782.385 I llama_context: n_ctx                 = 65536
+0.00.782.386 I llama_context: n_ctx_seq             = 65536
+0.00.782.393 I llama_context: n_ctx_seq (65536) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+0.00.783.537 D llama_kv_cache: layer   0: filtered
+0.00.783.538 D llama_kv_cache: layer   1: filtered
+0.00.783.538 D llama_kv_cache: layer   2: filtered
+0.00.783.539 D llama_kv_cache: layer   3: dev = CPU
+0.00.783.550 D llama_kv_cache: layer   4: filtered
+0.00.783.551 D llama_kv_cache: layer   5: filtered
+0.00.783.551 D llama_kv_cache: layer   6: filtered
+0.00.783.551 D llama_kv_cache: layer   7: dev = CPU
+0.00.783.552 D llama_kv_cache: layer   8: filtered
+0.00.783.553 D llama_kv_cache: layer   9: filtered
+0.00.783.553 D llama_kv_cache: layer  10: filtered
+0.00.783.553 D llama_kv_cache: layer  11: dev = CPU
+0.00.783.555 D llama_kv_cache: layer  12: filtered
+0.00.783.555 D llama_kv_cache: layer  13: filtered
+0.00.783.555 D llama_kv_cache: layer  14: filtered
+0.00.783.555 D llama_kv_cache: layer  15: dev = CPU
+0.00.783.557 D llama_kv_cache: layer  16: filtered
+0.00.783.557 D llama_kv_cache: layer  17: filtered
+0.00.783.557 D llama_kv_cache: layer  18: filtered
+0.00.783.558 D llama_kv_cache: layer  19: dev = CPU
+0.00.783.559 D llama_kv_cache: layer  20: filtered
+0.00.783.559 D llama_kv_cache: layer  21: filtered
+0.00.783.559 D llama_kv_cache: layer  22: filtered
+0.00.783.560 D llama_kv_cache: layer  23: dev = CPU
+0.00.783.560 D llama_kv_cache: layer  24: filtered
+0.00.783.560 D llama_kv_cache: layer  25: filtered
+0.00.783.561 D llama_kv_cache: layer  26: filtered
+0.00.783.561 D llama_kv_cache: layer  27: dev = CPU
+0.00.783.562 D llama_kv_cache: layer  28: filtered
+0.00.783.563 D llama_kv_cache: layer  29: filtered
+0.00.783.563 D llama_kv_cache: layer  30: filtered
+0.00.783.563 D llama_kv_cache: layer  31: dev = CPU
+0.00.783.564 D llama_kv_cache: layer  32: filtered
+0.00.783.564 D llama_kv_cache: layer  33: filtered
+0.00.783.565 D llama_kv_cache: layer  34: filtered
+0.00.783.565 D llama_kv_cache: layer  35: dev = CPU
+0.00.783.566 D llama_kv_cache: layer  36: filtered
+0.00.783.566 D llama_kv_cache: layer  37: filtered
+0.00.783.567 D llama_kv_cache: layer  38: filtered
+0.00.783.567 D llama_kv_cache: layer  39: dev = CPU
+0.00.783.569 D llama_kv_cache: layer  40: filtered
+0.00.783.569 D llama_kv_cache: layer  41: filtered
+0.00.783.569 D llama_kv_cache: layer  42: filtered
+0.00.783.569 D llama_kv_cache: layer  43: dev = CPU
+0.00.783.570 D llama_kv_cache: layer  44: filtered
+0.00.783.570 D llama_kv_cache: layer  45: filtered
+0.00.783.570 D llama_kv_cache: layer  46: filtered
+0.00.783.571 D llama_kv_cache: layer  47: dev = CUDA0
+0.00.783.573 D llama_kv_cache: layer  48: filtered
+0.00.783.574 D llama_kv_cache: layer  49: filtered
+0.00.783.574 D llama_kv_cache: layer  50: filtered
+0.00.783.574 D llama_kv_cache: layer  51: dev = CUDA0
+0.00.783.575 D llama_kv_cache: layer  52: filtered
+0.00.783.575 D llama_kv_cache: layer  53: filtered
+0.00.783.576 D llama_kv_cache: layer  54: filtered
+0.00.783.576 D llama_kv_cache: layer  55: dev = CUDA0
+0.00.783.578 D llama_kv_cache: layer  56: filtered
+0.00.783.578 D llama_kv_cache: layer  57: filtered
+0.00.783.578 D llama_kv_cache: layer  58: filtered
+0.00.783.578 D llama_kv_cache: layer  59: dev = CUDA0
+0.00.783.579 D llama_kv_cache: layer  60: filtered
+0.00.783.579 D llama_kv_cache: layer  61: filtered
+0.00.783.580 D llama_kv_cache: layer  62: filtered
+0.00.783.580 D llama_kv_cache: layer  63: dev = CUDA0
+0.00.783.581 D llama_kv_cache: layer  64: filtered
+0.00.783.585 I llama_kv_cache:        CPU KV buffer size =     0.00 MiB
+0.00.783.585 I llama_kv_cache:      CUDA0 KV buffer size =     0.00 MiB
+0.00.783.588 I llama_kv_cache: size = 2176.00 MiB ( 65536 cells,  16 layers,  4/1 seqs), K (q8_0): 1088.00 MiB, V (q8_0): 1088.00 MiB
+0.00.783.653 D llama_memory_recurrent, layer   0: dev = CPU
+0.00.783.656 D llama_memory_recurrent, layer   1: dev = CPU
+0.00.783.656 D llama_memory_recurrent, layer   2: dev = CPU
+0.00.783.657 D llama_memory_recurrent: layer   3: skipped
+0.00.783.657 D llama_memory_recurrent, layer   4: dev = CPU
+0.00.783.657 D llama_memory_recurrent, layer   5: dev = CPU
+0.00.783.658 D llama_memory_recurrent, layer   6: dev = CPU
+0.00.783.658 D llama_memory_recurrent: layer   7: skipped
+0.00.783.658 D llama_memory_recurrent, layer   8: dev = CPU
+0.00.783.659 D llama_memory_recurrent, layer   9: dev = CPU
+0.00.783.659 D llama_memory_recurrent, layer  10: dev = CPU
+0.00.783.660 D llama_memory_recurrent: layer  11: skipped
+0.00.783.660 D llama_memory_recurrent, layer  12: dev = CPU
+0.00.783.661 D llama_memory_recurrent, layer  13: dev = CPU
+0.00.783.661 D llama_memory_recurrent, layer  14: dev = CPU
+0.00.783.662 D llama_memory_recurrent: layer  15: skipped
+0.00.783.662 D llama_memory_recurrent, layer  16: dev = CPU
+0.00.783.663 D llama_memory_recurrent, layer  17: dev = CPU
+0.00.783.663 D llama_memory_recurrent, layer  18: dev = CPU
+0.00.783.663 D llama_memory_recurrent: layer  19: skipped
+0.00.783.664 D llama_memory_recurrent, layer  20: dev = CPU
+0.00.783.664 D llama_memory_recurrent, layer  21: dev = CPU
+0.00.783.664 D llama_memory_recurrent, layer  22: dev = CPU
+0.00.783.665 D llama_memory_recurrent: layer  23: skipped
+0.00.783.665 D llama_memory_recurrent, layer  24: dev = CPU
+0.00.783.665 D llama_memory_recurrent, layer  25: dev = CPU
+0.00.783.666 D llama_memory_recurrent, layer  26: dev = CPU
+0.00.783.666 D llama_memory_recurrent: layer  27: skipped
+0.00.783.666 D llama_memory_recurrent, layer  28: dev = CPU
+0.00.783.667 D llama_memory_recurrent, layer  29: dev = CPU
+0.00.783.667 D llama_memory_recurrent, layer  30: dev = CPU
+0.00.783.667 D llama_memory_recurrent: layer  31: skipped
+0.00.783.668 D llama_memory_recurrent, layer  32: dev = CPU
+0.00.783.668 D llama_memory_recurrent, layer  33: dev = CPU
+0.00.783.669 D llama_memory_recurrent, layer  34: dev = CPU
+0.00.783.669 D llama_memory_recurrent: layer  35: skipped
+0.00.783.669 D llama_memory_recurrent, layer  36: dev = CPU
+0.00.783.670 D llama_memory_recurrent, layer  37: dev = CPU
+0.00.783.670 D llama_memory_recurrent, layer  38: dev = CPU
+0.00.783.670 D llama_memory_recurrent: layer  39: skipped
+0.00.783.671 D llama_memory_recurrent, layer  40: dev = CPU
+0.00.783.671 D llama_memory_recurrent, layer  41: dev = CPU
+0.00.783.671 D llama_memory_recurrent, layer  42: dev = CPU
+0.00.783.672 D llama_memory_recurrent: layer  43: skipped
+0.00.783.672 D llama_memory_recurrent, layer  44: dev = CPU
+0.00.783.672 D llama_memory_recurrent, layer  45: dev = CPU
+0.00.783.673 D llama_memory_recurrent, layer  46: dev = CUDA0
+0.00.783.674 D llama_memory_recurrent: layer  47: skipped
+0.00.783.675 D llama_memory_recurrent, layer  48: dev = CUDA0
+0.00.783.675 D llama_memory_recurrent, layer  49: dev = CUDA0
+0.00.783.676 D llama_memory_recurrent, layer  50: dev = CUDA0
+0.00.783.676 D llama_memory_recurrent: layer  51: skipped
+0.00.783.676 D llama_memory_recurrent, layer  52: dev = CUDA0
+0.00.783.676 D llama_memory_recurrent, layer  53: dev = CUDA0
+0.00.783.677 D llama_memory_recurrent, layer  54: dev = CUDA0
+0.00.783.677 D llama_memory_recurrent: layer  55: skipped
+0.00.783.677 D llama_memory_recurrent, layer  56: dev = CUDA0
+0.00.783.678 D llama_memory_recurrent, layer  57: dev = CUDA0
+0.00.783.678 D llama_memory_recurrent, layer  58: dev = CUDA0
+0.00.783.679 D llama_memory_recurrent: layer  59: skipped
+0.00.783.679 D llama_memory_recurrent, layer  60: dev = CUDA0
+0.00.783.679 D llama_memory_recurrent, layer  61: dev = CUDA0
+0.00.783.680 D llama_memory_recurrent, layer  62: dev = CUDA0
+0.00.783.680 D llama_memory_recurrent: layer  63: skipped
+0.00.783.685 I llama_memory_recurrent: size =  598.50 MiB (     4 cells,  64 layers,  4 seqs  0 rs_seq), R (f32):   22.50 MiB, S (f32):  576.00 MiB, P (f32):    0.00 MiB
+0.01.086.704 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 20, abort
+0.01.139.022 I llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+0.01.139.025 I llama_model_loader: - kv   0:                       general.architecture str              = qwen35
+0.01.139.025 I llama_model_loader: - kv   1:                               general.type str              = model
+0.01.139.027 I llama_model_loader: - kv   2:                     general.sampling.top_k i32              = 20
+0.01.139.031 I llama_model_loader: - kv   3:                     general.sampling.top_p f32              = 0.950000
+0.01.139.032 I llama_model_loader: - kv   4:                      general.sampling.temp f32              = 1.000000
+0.01.139.032 I llama_model_loader: - kv   5:                               general.name str              = Qwen3.8-27B
+0.01.139.033 I llama_model_loader: - kv   6:                           general.basename str              = Qwen3.8-27B
+0.01.139.034 I llama_model_loader: - kv   7:                        general.description str              = Renewal of the beloved Qwen model, de...
+0.01.139.035 I llama_model_loader: - kv   8:                       general.quantized_by str              = Unsloth
+0.01.139.035 I llama_model_loader: - kv   9:                         general.size_label str              = 27B
+0.01.139.036 I llama_model_loader: - kv  10:                            general.license str              = apache-2.0
+0.01.139.036 I llama_model_loader: - kv  11:                           general.repo_url str              = https://huggingface.co/unsloth
+0.01.139.037 I llama_model_loader: - kv  12:                   general.base_model.count u32              = 1
+0.01.139.038 I llama_model_loader: - kv  13:                  general.base_model.0.name str              = Qwen3.8 27B
+0.01.139.038 I llama_model_loader: - kv  14:          general.base_model.0.organization str              = Qwen
+0.01.139.039 I llama_model_loader: - kv  15:              general.base_model.0.repo_url str              = https://huggingface.co/Qwen/Qwen3.8-27B
+0.01.139.040 I llama_model_loader: - kv  16:                               general.tags arr[str,1]       = ["unsloth"]
+0.01.139.041 I llama_model_loader: - kv  17:                         qwen35.block_count u32              = 65
+0.01.139.041 I llama_model_loader: - kv  18:                      qwen35.context_length u32              = 262144
+0.01.139.042 I llama_model_loader: - kv  19:                    qwen35.embedding_length u32              = 5120
+0.01.139.042 I llama_model_loader: - kv  20:                 qwen35.feed_forward_length u32              = 17408
+0.01.139.043 I llama_model_loader: - kv  21:                qwen35.attention.head_count u32              = 24
+0.01.139.043 I llama_model_loader: - kv  22:             qwen35.attention.head_count_kv u32              = 4
+0.01.139.044 I llama_model_loader: - kv  23:             qwen35.rope.dimension_sections arr[i32,4]       = [11, 11, 10, 0]
+0.01.139.045 I llama_model_loader: - kv  24:                      qwen35.rope.freq_base f32              = 10000000.000000
+0.01.139.046 I llama_model_loader: - kv  25:    qwen35.attention.layer_norm_rms_epsilon f32              = 0.000001
+0.01.139.047 I llama_model_loader: - kv  26:                qwen35.attention.key_length u32              = 256
+0.01.139.047 I llama_model_loader: - kv  27:              qwen35.attention.value_length u32              = 256
+0.01.139.048 I llama_model_loader: - kv  28:                qwen35.nextn_predict_layers u32              = 1
+0.01.139.048 I llama_model_loader: - kv  29:                     qwen35.ssm.conv_kernel u32              = 4
+0.01.139.048 I llama_model_loader: - kv  30:                      qwen35.ssm.state_size u32              = 128
+0.01.139.049 I llama_model_loader: - kv  31:                     qwen35.ssm.group_count u32              = 16
+0.01.139.049 I llama_model_loader: - kv  32:                  qwen35.ssm.time_step_rank u32              = 48
+0.01.139.050 I llama_model_loader: - kv  33:                      qwen35.ssm.inner_size u32              = 6144
+0.01.139.050 I llama_model_loader: - kv  34:             qwen35.full_attention_interval u32              = 4
+0.01.139.051 I llama_model_loader: - kv  35:                qwen35.rope.dimension_count u32              = 64
+0.01.139.051 I llama_model_loader: - kv  36:                       tokenizer.ggml.model str              = gpt2
+0.01.139.051 I llama_model_loader: - kv  37:                         tokenizer.ggml.pre str              = qwen35
+0.01.139.053 I llama_model_loader: - kv  38:                      tokenizer.ggml.tokens arr[str,248320]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+0.01.139.055 I llama_model_loader: - kv  39:                  tokenizer.ggml.token_type arr[i32,248320]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+0.01.139.057 I llama_model_loader: - kv  40:                      tokenizer.ggml.merges arr[str,247587]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+0.01.139.057 I llama_model_loader: - kv  41:                tokenizer.ggml.eos_token_id u32              = 248046
+0.01.139.058 I llama_model_loader: - kv  42:            tokenizer.ggml.padding_token_id u32              = 248055
+0.01.139.058 I llama_model_loader: - kv  43:                tokenizer.ggml.bos_token_id u32              = 248044
+0.01.139.059 I llama_model_loader: - kv  44:               general.quantization_version u32              = 2
+0.01.139.059 I llama_model_loader: - kv  45:                          general.file_type u32              = 15
+0.01.139.060 I llama_model_loader: - kv  46:                      quantize.imatrix.file str              = Qwen3.8-27B-GGUF/imatrix_unsloth.gguf
+0.01.139.060 I llama_model_loader: - kv  47:             quantize.imatrix.entries_count u32              = 496
+0.01.139.061 I llama_model_loader: - kv  48:              quantize.imatrix.chunks_count u32              = 1251
+0.01.139.063 I llama_model_loader: - kv  49:                    tokenizer.chat_template str              = {%- set image_count = namespace(value...
+0.01.306.592 I print_info: n_ctx_train           = 262144
+0.01.306.594 I print_info: n_layer               = 64
+0.01.306.594 I print_info: n_layer_all           = 65
+0.01.306.607 I print_info: n_head_kv             = 4
+0.01.306.632 I print_info: n_ctx_orig_yarn       = 262144
+0.01.306.678 D load_tensors: layer   0 assigned to device CPU, is_swa = 0
+0.01.306.678 D load_tensors: layer   1 assigned to device CPU, is_swa = 0
+0.01.306.679 D load_tensors: layer   2 assigned to device CPU, is_swa = 0
+0.01.306.679 D load_tensors: layer   3 assigned to device CPU, is_swa = 0
+0.01.306.679 D load_tensors: layer   4 assigned to device CPU, is_swa = 0
+0.01.306.680 D load_tensors: layer   5 assigned to device CPU, is_swa = 0
+0.01.306.680 D load_tensors: layer   6 assigned to device CPU, is_swa = 0
+0.01.306.681 D load_tensors: layer   7 assigned to device CPU, is_swa = 0
+0.01.306.681 D load_tensors: layer   8 assigned to device CPU, is_swa = 0
+0.01.306.681 D load_tensors: layer   9 assigned to device CPU, is_swa = 0
+0.01.306.682 D load_tensors: layer  10 assigned to device CPU, is_swa = 0
+0.01.306.682 D load_tensors: layer  11 assigned to device CPU, is_swa = 0
+0.01.306.682 D load_tensors: layer  12 assigned to device CPU, is_swa = 0
+0.01.306.683 D load_tensors: layer  13 assigned to device CPU, is_swa = 0
+0.01.306.683 D load_tensors: layer  14 assigned to device CPU, is_swa = 0
+0.01.306.684 D load_tensors: layer  15 assigned to device CPU, is_swa = 0
+0.01.306.684 D load_tensors: layer  16 assigned to device CPU, is_swa = 0
+0.01.306.684 D load_tensors: layer  17 assigned to device CPU, is_swa = 0
+0.01.306.685 D load_tensors: layer  18 assigned to device CPU, is_swa = 0
+0.01.306.685 D load_tensors: layer  19 assigned to device CPU, is_swa = 0
+0.01.306.685 D load_tensors: layer  20 assigned to device CPU, is_swa = 0
+0.01.306.686 D load_tensors: layer  21 assigned to device CPU, is_swa = 0
+0.01.306.687 D load_tensors: layer  22 assigned to device CPU, is_swa = 0
+0.01.306.687 D load_tensors: layer  23 assigned to device CPU, is_swa = 0
+0.01.306.688 D load_tensors: layer  24 assigned to device CPU, is_swa = 0
+0.01.306.688 D load_tensors: layer  25 assigned to device CPU, is_swa = 0
+0.01.306.689 D load_tensors: layer  26 assigned to device CPU, is_swa = 0
+0.01.306.689 D load_tensors: layer  27 assigned to device CPU, is_swa = 0
+0.01.306.689 D load_tensors: layer  28 assigned to device CPU, is_swa = 0
+0.01.306.690 D load_tensors: layer  29 assigned to device CPU, is_swa = 0
+0.01.306.690 D load_tensors: layer  30 assigned to device CPU, is_swa = 0
+0.01.306.691 D load_tensors: layer  31 assigned to device CPU, is_swa = 0
+0.01.306.691 D load_tensors: layer  32 assigned to device CPU, is_swa = 0
+0.01.306.692 D load_tensors: layer  33 assigned to device CPU, is_swa = 0
+0.01.306.692 D load_tensors: layer  34 assigned to device CPU, is_swa = 0
+0.01.306.693 D load_tensors: layer  35 assigned to device CPU, is_swa = 0
+0.01.306.693 D load_tensors: layer  36 assigned to device CPU, is_swa = 0
+0.01.306.694 D load_tensors: layer  37 assigned to device CPU, is_swa = 0
+0.01.306.694 D load_tensors: layer  38 assigned to device CPU, is_swa = 0
+0.01.306.694 D load_tensors: layer  39 assigned to device CPU, is_swa = 0
+0.01.306.695 D load_tensors: layer  40 assigned to device CPU, is_swa = 0
+0.01.306.695 D load_tensors: layer  41 assigned to device CPU, is_swa = 0
+0.01.306.696 D load_tensors: layer  42 assigned to device CPU, is_swa = 0
+0.01.306.696 D load_tensors: layer  43 assigned to device CPU, is_swa = 0
+0.01.306.697 D load_tensors: layer  44 assigned to device CPU, is_swa = 0
+0.01.306.697 D load_tensors: layer  45 assigned to device CPU, is_swa = 0
+0.01.306.697 D load_tensors: layer  46 assigned to device CUDA0, is_swa = 0
+0.01.306.698 D load_tensors: layer  47 assigned to device CUDA0, is_swa = 0
+0.01.306.698 D load_tensors: layer  48 assigned to device CUDA0, is_swa = 0
+0.01.306.699 D load_tensors: layer  49 assigned to device CUDA0, is_swa = 0
+0.01.306.699 D load_tensors: layer  50 assigned to device CUDA0, is_swa = 0
+0.01.306.700 D load_tensors: layer  51 assigned to device CUDA0, is_swa = 0
+0.01.306.700 D load_tensors: layer  52 assigned to device CUDA0, is_swa = 0
+0.01.306.700 D load_tensors: layer  53 assigned to device CUDA0, is_swa = 0
+0.01.306.701 D load_tensors: layer  54 assigned to device CUDA0, is_swa = 0
+0.01.306.701 D load_tensors: layer  55 assigned to device CUDA0, is_swa = 0
+0.01.306.701 D load_tensors: layer  56 assigned to device CUDA0, is_swa = 0
+0.01.306.702 D load_tensors: layer  57 assigned to device CUDA0, is_swa = 0
+0.01.306.702 D load_tensors: layer  58 assigned to device CUDA0, is_swa = 0
+0.01.306.703 D load_tensors: layer  59 assigned to device CUDA0, is_swa = 0
+0.01.306.703 D load_tensors: layer  60 assigned to device CUDA0, is_swa = 0
+0.01.306.704 D load_tensors: layer  61 assigned to device CUDA0, is_swa = 0
+0.01.306.704 D load_tensors: layer  62 assigned to device CUDA0, is_swa = 0
+0.01.306.704 D load_tensors: layer  63 assigned to device CUDA0, is_swa = 0
+0.01.306.705 D load_tensors: layer  64 assigned to device CUDA0, is_swa = 0
+0.01.306.705 D load_tensors: layer  65 assigned to device CUDA0, is_swa = 0
+0.04.553.554 I load_tensors: offloading output layer to GPU
+0.04.553.555 I load_tensors: offloading 19 repeating layers to GPU
+0.04.553.556 I load_tensors: offloaded 20/66 layers to GPU
+0.06.591.474 I llama_context: n_ctx                 = 65536
+0.06.591.475 I llama_context: n_ctx_seq             = 65536
+0.06.591.483 I llama_context: n_ctx_seq (65536) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+0.06.592.796 D llama_kv_cache: layer   0: filtered
+0.06.592.797 D llama_kv_cache: layer   1: filtered
+0.06.592.797 D llama_kv_cache: layer   2: filtered
+0.06.592.798 D llama_kv_cache: layer   3: dev = CPU
+0.06.592.803 D llama_kv_cache: layer   4: filtered
+0.06.592.804 D llama_kv_cache: layer   5: filtered
+0.06.592.804 D llama_kv_cache: layer   6: filtered
+0.06.592.804 D llama_kv_cache: layer   7: dev = CPU
+0.06.592.809 D llama_kv_cache: layer   8: filtered
+0.06.592.809 D llama_kv_cache: layer   9: filtered
+0.06.592.809 D llama_kv_cache: layer  10: filtered
+0.06.592.810 D llama_kv_cache: layer  11: dev = CPU
+0.06.592.811 D llama_kv_cache: layer  12: filtered
+0.06.592.812 D llama_kv_cache: layer  13: filtered
+0.06.592.812 D llama_kv_cache: layer  14: filtered
+0.06.592.812 D llama_kv_cache: layer  15: dev = CPU
+0.06.592.814 D llama_kv_cache: layer  16: filtered
+0.06.592.814 D llama_kv_cache: layer  17: filtered
+0.06.592.814 D llama_kv_cache: layer  18: filtered
+0.06.592.814 D llama_kv_cache: layer  19: dev = CPU
+0.06.592.817 D llama_kv_cache: layer  20: filtered
+0.06.592.817 D llama_kv_cache: layer  21: filtered
+0.06.592.818 D llama_kv_cache: layer  22: filtered
+0.06.592.818 D llama_kv_cache: layer  23: dev = CPU
+0.06.592.819 D llama_kv_cache: layer  24: filtered
+0.06.592.819 D llama_kv_cache: layer  25: filtered
+0.06.592.819 D llama_kv_cache: layer  26: filtered
+0.06.592.820 D llama_kv_cache: layer  27: dev = CPU
+0.06.592.822 D llama_kv_cache: layer  28: filtered
+0.06.592.823 D llama_kv_cache: layer  29: filtered
+0.06.592.823 D llama_kv_cache: layer  30: filtered
+0.06.592.824 D llama_kv_cache: layer  31: dev = CPU
+0.06.592.825 D llama_kv_cache: layer  32: filtered
+0.06.592.825 D llama_kv_cache: layer  33: filtered
+0.06.592.825 D llama_kv_cache: layer  34: filtered
+0.06.592.826 D llama_kv_cache: layer  35: dev = CPU
+0.06.592.827 D llama_kv_cache: layer  36: filtered
+0.06.592.827 D llama_kv_cache: layer  37: filtered
+0.06.592.827 D llama_kv_cache: layer  38: filtered
+0.06.592.828 D llama_kv_cache: layer  39: dev = CPU
+0.06.592.830 D llama_kv_cache: layer  40: filtered
+0.06.592.831 D llama_kv_cache: layer  41: filtered
+0.06.592.831 D llama_kv_cache: layer  42: filtered
+0.06.592.831 D llama_kv_cache: layer  43: dev = CPU
+0.06.592.832 D llama_kv_cache: layer  44: filtered
+0.06.592.832 D llama_kv_cache: layer  45: filtered
+0.06.592.832 D llama_kv_cache: layer  46: filtered
+0.06.592.833 D llama_kv_cache: layer  47: dev = CUDA0
+0.06.592.837 D llama_kv_cache: layer  48: filtered
+0.06.592.837 D llama_kv_cache: layer  49: filtered
+0.06.592.837 D llama_kv_cache: layer  50: filtered
+0.06.592.838 D llama_kv_cache: layer  51: dev = CUDA0
+0.06.592.839 D llama_kv_cache: layer  52: filtered
+0.06.592.839 D llama_kv_cache: layer  53: filtered
+0.06.592.839 D llama_kv_cache: layer  54: filtered
+0.06.592.840 D llama_kv_cache: layer  55: dev = CUDA0
+0.06.592.842 D llama_kv_cache: layer  56: filtered
+0.06.592.843 D llama_kv_cache: layer  57: filtered
+0.06.592.843 D llama_kv_cache: layer  58: filtered
+0.06.592.843 D llama_kv_cache: layer  59: dev = CUDA0
+0.06.592.844 D llama_kv_cache: layer  60: filtered
+0.06.592.844 D llama_kv_cache: layer  61: filtered
+0.06.592.845 D llama_kv_cache: layer  62: filtered
+0.06.592.845 D llama_kv_cache: layer  63: dev = CUDA0
+0.06.592.846 D llama_kv_cache: layer  64: filtered
+0.06.737.306 I llama_kv_cache:        CPU KV buffer size =  1496.00 MiB
+0.06.754.300 I llama_kv_cache:      CUDA0 KV buffer size =   680.00 MiB
+0.06.754.305 I llama_kv_cache: size = 2176.00 MiB ( 65536 cells,  16 layers,  4/1 seqs), K (q8_0): 1088.00 MiB, V (q8_0): 1088.00 MiB
+0.06.757.227 D llama_memory_recurrent, layer   0: dev = CPU
+0.06.757.236 D llama_memory_recurrent, layer   1: dev = CPU
+0.06.757.236 D llama_memory_recurrent, layer   2: dev = CPU
+0.06.757.237 D llama_memory_recurrent: layer   3: skipped
+0.06.757.237 D llama_memory_recurrent, layer   4: dev = CPU
+0.06.757.238 D llama_memory_recurrent, layer   5: dev = CPU
+0.06.757.238 D llama_memory_recurrent, layer   6: dev = CPU
+0.06.757.240 D llama_memory_recurrent: layer   7: skipped
+0.06.757.241 D llama_memory_recurrent, layer   8: dev = CPU
+0.06.757.241 D llama_memory_recurrent, layer   9: dev = CPU
+0.06.757.241 D llama_memory_recurrent, layer  10: dev = CPU
+0.06.757.242 D llama_memory_recurrent: layer  11: skipped
+0.06.757.242 D llama_memory_recurrent, layer  12: dev = CPU
+0.06.757.243 D llama_memory_recurrent, layer  13: dev = CPU
+0.06.757.243 D llama_memory_recurrent, layer  14: dev = CPU
+0.06.757.245 D llama_memory_recurrent: layer  15: skipped
+0.06.757.245 D llama_memory_recurrent, layer  16: dev = CPU
+0.06.757.245 D llama_memory_recurrent, layer  17: dev = CPU
+0.06.757.246 D llama_memory_recurrent, layer  18: dev = CPU
+0.06.757.246 D llama_memory_recurrent: layer  19: skipped
+0.06.757.247 D llama_memory_recurrent, layer  20: dev = CPU
+0.06.757.247 D llama_memory_recurrent, layer  21: dev = CPU
+0.06.757.249 D llama_memory_recurrent, layer  22: dev = CPU
+0.06.757.249 D llama_memory_recurrent: layer  23: skipped
+0.06.757.249 D llama_memory_recurrent, layer  24: dev = CPU
+0.06.757.250 D llama_memory_recurrent, layer  25: dev = CPU
+0.06.757.250 D llama_memory_recurrent, layer  26: dev = CPU
+0.06.757.250 D llama_memory_recurrent: layer  27: skipped
+0.06.757.251 D llama_memory_recurrent, layer  28: dev = CPU
+0.06.757.251 D llama_memory_recurrent, layer  29: dev = CPU
+0.06.757.253 D llama_memory_recurrent, layer  30: dev = CPU
+0.06.757.253 D llama_memory_recurrent: layer  31: skipped
+0.06.757.253 D llama_memory_recurrent, layer  32: dev = CPU
+0.06.757.254 D llama_memory_recurrent, layer  33: dev = CPU
+0.06.757.254 D llama_memory_recurrent, layer  34: dev = CPU
+0.06.757.254 D llama_memory_recurrent: layer  35: skipped
+0.06.757.254 D llama_memory_recurrent, layer  36: dev = CPU
+0.06.757.256 D llama_memory_recurrent, layer  37: dev = CPU
+0.06.757.257 D llama_memory_recurrent, layer  38: dev = CPU
+0.06.757.257 D llama_memory_recurrent: layer  39: skipped
+0.06.757.258 D llama_memory_recurrent, layer  40: dev = CPU
+0.06.757.258 D llama_memory_recurrent, layer  41: dev = CPU
+0.06.757.258 D llama_memory_recurrent, layer  42: dev = CPU
+0.06.757.259 D llama_memory_recurrent: layer  43: skipped
+0.06.757.259 D llama_memory_recurrent, layer  44: dev = CPU
+0.06.757.261 D llama_memory_recurrent, layer  45: dev = CPU
+0.06.757.262 D llama_memory_recurrent, layer  46: dev = CUDA0
+0.06.757.265 D llama_memory_recurrent: layer  47: skipped
+0.06.757.265 D llama_memory_recurrent, layer  48: dev = CUDA0
+0.06.757.266 D llama_memory_recurrent, layer  49: dev = CUDA0
+0.06.757.266 D llama_memory_recurrent, layer  50: dev = CUDA0
+0.06.757.267 D llama_memory_recurrent: layer  51: skipped
+0.06.757.267 D llama_memory_recurrent, layer  52: dev = CUDA0
+0.06.757.268 D llama_memory_recurrent, layer  53: dev = CUDA0
+0.06.757.269 D llama_memory_recurrent, layer  54: dev = CUDA0
+0.06.757.270 D llama_memory_recurrent: layer  55: skipped
+0.06.757.270 D llama_memory_recurrent, layer  56: dev = CUDA0
+0.06.757.271 D llama_memory_recurrent, layer  57: dev = CUDA0
+0.06.757.271 D llama_memory_recurrent, layer  58: dev = CUDA0
+0.06.757.271 D llama_memory_recurrent: layer  59: skipped
+0.06.757.272 D llama_memory_recurrent, layer  60: dev = CUDA0
+0.06.757.272 D llama_memory_recurrent, layer  61: dev = CUDA0
+0.06.757.274 D llama_memory_recurrent, layer  62: dev = CUDA0
+0.06.757.274 D llama_memory_recurrent: layer  63: skipped
+0.06.885.851 I llama_memory_recurrent: size =  598.50 MiB (     4 cells,  64 layers,  4 seqs  0 rs_seq), R (f32):   22.50 MiB, S (f32):  576.00 MiB, P (f32):    0.00 MiB
+0.09.803.655 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 65536, kv_unified = 'true'
+0.09.803.709 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 65536
+0.09.803.715 I slot   load_model: id  1 | task -1 | new slot, n_ctx = 65536
+0.09.803.716 I slot   load_model: id  2 | task -1 | new slot, n_ctx = 65536
+0.09.803.716 I slot   load_model: id  3 | task -1 | new slot, n_ctx = 65536
+0.29.516.632 D slot launch_slot_: id  0 | task -1 | launching slot : {"id":0,"n_ctx":65536,"speculative":false,"is_processing":false}
+0.29.516.839 I slot   operator(): id  0 | task 0 | new prompt, n_ctx_slot = 65536, n_keep = 0, task.n_tokens = 17
+0.30.618.555 D slot handle_last_: id  0 | task 0 | slot decode token, id=271, n_ctx = 65536, n_tokens = 17, truncated = 0
+0.30.925.468 D slot handle_last_: id  0 | task 0 | slot decode token, id=760, n_ctx = 65536, n_tokens = 18, truncated = 0
+0.31.234.970 D slot handle_last_: id  0 | task 0 | slot decode token, id=3841, n_ctx = 65536, n_tokens = 19, truncated = 0
+0.31.536.581 D slot handle_last_: id  0 | task 0 | slot decode token, id=13477, n_ctx = 65536, n_tokens = 20, truncated = 0
+0.31.833.700 D slot handle_last_: id  0 | task 0 | slot decode token, id=37550, n_ctx = 65536, n_tokens = 21, truncated = 0
+0.32.132.690 D slot handle_last_: id  0 | task 0 | slot decode token, id=33075, n_ctx = 65536, n_tokens = 22, truncated = 0
+0.32.426.311 D slot handle_last_: id  0 | task 0 | slot decode token, id=888, n_ctx = 65536, n_tokens = 23, truncated = 0
+0.32.728.386 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 24, truncated = 0
+0.33.057.757 D slot handle_last_: id  0 | task 0 | slot decode token, id=15217, n_ctx = 65536, n_tokens = 25, truncated = 0
+0.33.381.272 D slot handle_last_: id  0 | task 0 | slot decode token, id=5388, n_ctx = 65536, n_tokens = 26, truncated = 0
+0.33.690.540 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 27, truncated = 0
+0.33.989.965 D slot handle_last_: id  0 | task 0 | slot decode token, id=1141, n_ctx = 65536, n_tokens = 28, truncated = 0
+0.34.284.532 D slot handle_last_: id  0 | task 0 | slot decode token, id=280, n_ctx = 65536, n_tokens = 29, truncated = 0
+0.34.572.616 D slot handle_last_: id  0 | task 0 | slot decode token, id=8371, n_ctx = 65536, n_tokens = 30, truncated = 0
+0.34.863.545 D slot handle_last_: id  0 | task 0 | slot decode token, id=19710, n_ctx = 65536, n_tokens = 31, truncated = 0
+0.35.157.117 D slot handle_last_: id  0 | task 0 | slot decode token, id=54166, n_ctx = 65536, n_tokens = 32, truncated = 0
+0.35.451.513 D slot handle_last_: id  0 | task 0 | slot decode token, id=383, n_ctx = 65536, n_tokens = 33, truncated = 0
+0.35.735.002 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 34, truncated = 0
+0.36.026.053 D slot handle_last_: id  0 | task 0 | slot decode token, id=7948, n_ctx = 65536, n_tokens = 35, truncated = 0
+0.36.318.108 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 36, truncated = 0
+0.36.605.213 D slot handle_last_: id  0 | task 0 | slot decode token, id=6797, n_ctx = 65536, n_tokens = 37, truncated = 0
+0.36.894.799 D slot handle_last_: id  0 | task 0 | slot decode token, id=1676, n_ctx = 65536, n_tokens = 38, truncated = 0
+0.37.190.533 D slot handle_last_: id  0 | task 0 | slot decode token, id=52159, n_ctx = 65536, n_tokens = 39, truncated = 0
+0.37.488.207 D slot handle_last_: id  0 | task 0 | slot decode token, id=15879, n_ctx = 65536, n_tokens = 40, truncated = 0
+0.37.776.461 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 41, truncated = 0
+0.38.062.179 D slot handle_last_: id  0 | task 0 | slot decode token, id=561, n_ctx = 65536, n_tokens = 42, truncated = 0
+0.38.347.497 D slot handle_last_: id  0 | task 0 | slot decode token, id=5388, n_ctx = 65536, n_tokens = 43, truncated = 0
+0.38.633.452 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 44, truncated = 0
+0.38.923.537 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 45, truncated = 0
+0.39.210.535 D slot handle_last_: id  0 | task 0 | slot decode token, id=20117, n_ctx = 65536, n_tokens = 46, truncated = 0
+0.39.517.822 D slot handle_last_: id  0 | task 0 | slot decode token, id=10443, n_ctx = 65536, n_tokens = 47, truncated = 0
+0.39.806.183 D slot handle_last_: id  0 | task 0 | slot decode token, id=415, n_ctx = 65536, n_tokens = 48, truncated = 0
+0.40.099.340 D slot handle_last_: id  0 | task 0 | slot decode token, id=440, n_ctx = 65536, n_tokens = 49, truncated = 0
+0.40.406.338 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 50, truncated = 0
+0.40.719.077 D slot handle_last_: id  0 | task 0 | slot decode token, id=22162, n_ctx = 65536, n_tokens = 51, truncated = 0
+0.41.002.076 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 52, truncated = 0
+0.41.289.480 D slot handle_last_: id  0 | task 0 | slot decode token, id=1829, n_ctx = 65536, n_tokens = 53, truncated = 0
+0.41.582.319 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 54, truncated = 0
+0.41.876.036 D slot handle_last_: id  0 | task 0 | slot decode token, id=2235, n_ctx = 65536, n_tokens = 55, truncated = 0
+0.42.167.365 D slot handle_last_: id  0 | task 0 | slot decode token, id=24924, n_ctx = 65536, n_tokens = 56, truncated = 0
+0.42.459.667 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 57, truncated = 0
+0.42.744.357 D slot handle_last_: id  0 | task 0 | slot decode token, id=3105, n_ctx = 65536, n_tokens = 58, truncated = 0
+0.43.039.489 D slot handle_last_: id  0 | task 0 | slot decode token, id=914, n_ctx = 65536, n_tokens = 59, truncated = 0
+0.43.330.366 D slot handle_last_: id  0 | task 0 | slot decode token, id=1442, n_ctx = 65536, n_tokens = 60, truncated = 0
+0.43.622.237 D slot handle_last_: id  0 | task 0 | slot decode token, id=22347, n_ctx = 65536, n_tokens = 61, truncated = 0
+0.43.909.919 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 62, truncated = 0
+0.44.203.731 D slot handle_last_: id  0 | task 0 | slot decode token, id=1049, n_ctx = 65536, n_tokens = 63, truncated = 0
+0.44.494.372 D slot handle_last_: id  0 | task 0 | slot decode token, id=15756, n_ctx = 65536, n_tokens = 64, truncated = 0
+0.44.782.721 D slot handle_last_: id  0 | task 0 | slot decode token, id=57407, n_ctx = 65536, n_tokens = 65, truncated = 0
+0.45.078.800 D slot handle_last_: id  0 | task 0 | slot decode token, id=290, n_ctx = 65536, n_tokens = 66, truncated = 0
+0.45.365.743 D slot handle_last_: id  0 | task 0 | slot decode token, id=799, n_ctx = 65536, n_tokens = 67, truncated = 0
+0.45.656.991 D slot handle_last_: id  0 | task 0 | slot decode token, id=2351, n_ctx = 65536, n_tokens = 68, truncated = 0
+0.45.946.912 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 69, truncated = 0
+0.46.233.503 D slot handle_last_: id  0 | task 0 | slot decode token, id=430, n_ctx = 65536, n_tokens = 70, truncated = 0
+0.46.533.345 D slot handle_last_: id  0 | task 0 | slot decode token, id=413, n_ctx = 65536, n_tokens = 71, truncated = 0
+0.46.821.746 D slot handle_last_: id  0 | task 0 | slot decode token, id=58565, n_ctx = 65536, n_tokens = 72, truncated = 0
+0.47.108.984 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 73, truncated = 0
+0.47.428.426 D slot handle_last_: id  0 | task 0 | slot decode token, id=10268, n_ctx = 65536, n_tokens = 74, truncated = 0
+0.47.723.737 D slot handle_last_: id  0 | task 0 | slot decode token, id=31540, n_ctx = 65536, n_tokens = 75, truncated = 0
+0.48.007.720 D slot handle_last_: id  0 | task 0 | slot decode token, id=440, n_ctx = 65536, n_tokens = 76, truncated = 0
+0.48.295.439 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 77, truncated = 0
+0.48.583.892 D slot handle_last_: id  0 | task 0 | slot decode token, id=78973, n_ctx = 65536, n_tokens = 78, truncated = 0
+0.48.877.015 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 79, truncated = 0
+0.49.164.280 D slot handle_last_: id  0 | task 0 | slot decode token, id=632, n_ctx = 65536, n_tokens = 80, truncated = 0
+0.49.451.625 D slot handle_last_: id  0 | task 0 | slot decode token, id=726, n_ctx = 65536, n_tokens = 81, truncated = 0
+0.49.741.513 D slot handle_last_: id  0 | task 0 | slot decode token, id=677, n_ctx = 65536, n_tokens = 82, truncated = 0
+0.50.023.176 D slot handle_last_: id  0 | task 0 | slot decode token, id=290, n_ctx = 65536, n_tokens = 83, truncated = 0
+0.50.313.478 D slot handle_last_: id  0 | task 0 | slot decode token, id=29154, n_ctx = 65536, n_tokens = 84, truncated = 0
+0.50.604.430 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 85, truncated = 0
+0.50.891.002 D slot handle_last_: id  0 | task 0 | slot decode token, id=271, n_ctx = 65536, n_tokens = 86, truncated = 0
+0.51.189.781 D slot handle_last_: id  0 | task 0 | slot decode token, id=2381, n_ctx = 65536, n_tokens = 87, truncated = 0
+0.51.483.139 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 88, truncated = 0
+0.51.772.690 D slot handle_last_: id  0 | task 0 | slot decode token, id=4299, n_ctx = 65536, n_tokens = 89, truncated = 0
+0.52.065.771 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 90, truncated = 0
+0.52.352.332 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 91, truncated = 0
+0.52.646.207 D slot handle_last_: id  0 | task 0 | slot decode token, id=13159, n_ctx = 65536, n_tokens = 92, truncated = 0
+0.52.928.300 D slot handle_last_: id  0 | task 0 | slot decode token, id=5467, n_ctx = 65536, n_tokens = 93, truncated = 0
+0.53.214.702 D slot handle_last_: id  0 | task 0 | slot decode token, id=1141, n_ctx = 65536, n_tokens = 94, truncated = 0
+0.53.507.138 D slot handle_last_: id  0 | task 0 | slot decode token, id=11155, n_ctx = 65536, n_tokens = 95, truncated = 0
+0.53.797.915 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 96, truncated = 0
+0.54.093.533 D slot handle_last_: id  0 | task 0 | slot decode token, id=561, n_ctx = 65536, n_tokens = 97, truncated = 0
+0.54.379.503 D slot handle_last_: id  0 | task 0 | slot decode token, id=37550, n_ctx = 65536, n_tokens = 98, truncated = 0
+0.54.673.742 D slot handle_last_: id  0 | task 0 | slot decode token, id=85946, n_ctx = 65536, n_tokens = 99, truncated = 0
+0.54.995.510 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 100, truncated = 0
+0.55.289.154 D slot handle_last_: id  0 | task 0 | slot decode token, id=23469, n_ctx = 65536, n_tokens = 101, truncated = 0
+0.55.582.370 D slot handle_last_: id  0 | task 0 | slot decode token, id=1953, n_ctx = 65536, n_tokens = 102, truncated = 0
+0.55.875.320 D slot handle_last_: id  0 | task 0 | slot decode token, id=340, n_ctx = 65536, n_tokens = 103, truncated = 0
+0.56.167.418 D slot handle_last_: id  0 | task 0 | slot decode token, id=19447, n_ctx = 65536, n_tokens = 104, truncated = 0
+0.56.457.301 D slot handle_last_: id  0 | task 0 | slot decode token, id=1040, n_ctx = 65536, n_tokens = 105, truncated = 0
+0.56.746.830 D slot handle_last_: id  0 | task 0 | slot decode token, id=22486, n_ctx = 65536, n_tokens = 106, truncated = 0
+0.57.036.121 D slot handle_last_: id  0 | task 0 | slot decode token, id=24958, n_ctx = 65536, n_tokens = 107, truncated = 0
+0.57.328.637 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 108, truncated = 0
+0.57.621.899 D slot handle_last_: id  0 | task 0 | slot decode token, id=13879, n_ctx = 65536, n_tokens = 109, truncated = 0
+0.57.913.657 D slot handle_last_: id  0 | task 0 | slot decode token, id=310, n_ctx = 65536, n_tokens = 110, truncated = 0
+0.58.205.476 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 111, truncated = 0
+0.58.498.882 D slot handle_last_: id  0 | task 0 | slot decode token, id=35091, n_ctx = 65536, n_tokens = 112, truncated = 0
+0.58.786.396 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 113, truncated = 0
+0.59.075.374 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 114, truncated = 0
+0.59.358.344 D slot handle_last_: id  0 | task 0 | slot decode token, id=1814, n_ctx = 65536, n_tokens = 115, truncated = 0
+0.59.649.760 D slot handle_last_: id  0 | task 0 | slot decode token, id=2094, n_ctx = 65536, n_tokens = 116, truncated = 0
+0.59.933.846 D slot handle_last_: id  0 | task 0 | slot decode token, id=424, n_ctx = 65536, n_tokens = 117, truncated = 0
+1.00.227.940 D slot handle_last_: id  0 | task 0 | slot decode token, id=25, n_ctx = 65536, n_tokens = 118, truncated = 0
+1.00.524.970 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 119, truncated = 0
+1.00.817.767 D slot handle_last_: id  0 | task 0 | slot decode token, id=2696, n_ctx = 65536, n_tokens = 120, truncated = 0
+1.01.110.093 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 121, truncated = 0
+1.01.398.625 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 122, truncated = 0
+1.01.696.562 D slot handle_last_: id  0 | task 0 | slot decode token, id=27786, n_ctx = 65536, n_tokens = 123, truncated = 0
+1.01.979.432 D slot handle_last_: id  0 | task 0 | slot decode token, id=2253, n_ctx = 65536, n_tokens = 124, truncated = 0
+1.02.271.770 D slot handle_last_: id  0 | task 0 | slot decode token, id=19038, n_ctx = 65536, n_tokens = 125, truncated = 0
+1.02.583.813 D slot handle_last_: id  0 | task 0 | slot decode token, id=1162, n_ctx = 65536, n_tokens = 126, truncated = 0
+1.02.880.492 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 127, truncated = 0
+1.03.172.472 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 128, truncated = 0
+1.03.460.624 D slot handle_last_: id  0 | task 0 | slot decode token, id=22353, n_ctx = 65536, n_tokens = 129, truncated = 0
+1.03.746.592 D slot handle_last_: id  0 | task 0 | slot decode token, id=273, n_ctx = 65536, n_tokens = 130, truncated = 0
+1.04.035.818 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 131, truncated = 0
+1.04.326.583 D slot handle_last_: id  0 | task 0 | slot decode token, id=36620, n_ctx = 65536, n_tokens = 132, truncated = 0
+1.04.612.350 D slot handle_last_: id  0 | task 0 | slot decode token, id=10583, n_ctx = 65536, n_tokens = 133, truncated = 0
+1.04.902.869 D slot handle_last_: id  0 | task 0 | slot decode token, id=303, n_ctx = 65536, n_tokens = 134, truncated = 0
+1.05.192.468 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 135, truncated = 0
+1.05.481.261 D slot handle_last_: id  0 | task 0 | slot decode token, id=43776, n_ctx = 65536, n_tokens = 136, truncated = 0
+1.05.765.333 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 137, truncated = 0
+1.06.054.905 D slot handle_last_: id  0 | task 0 | slot decode token, id=321, n_ctx = 65536, n_tokens = 138, truncated = 0
+1.06.340.254 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 139, truncated = 0
+1.06.636.278 D slot handle_last_: id  0 | task 0 | slot decode token, id=23271, n_ctx = 65536, n_tokens = 140, truncated = 0
+1.06.932.684 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 141, truncated = 0
+1.07.218.706 D slot handle_last_: id  0 | task 0 | slot decode token, id=270, n_ctx = 65536, n_tokens = 142, truncated = 0
+1.07.514.017 D slot handle_last_: id  0 | task 0 | slot decode token, id=52508, n_ctx = 65536, n_tokens = 143, truncated = 0
+1.07.798.045 D slot handle_last_: id  0 | task 0 | slot decode token, id=26357, n_ctx = 65536, n_tokens = 144, truncated = 0
+1.08.085.732 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 145, truncated = 0
+1.08.373.346 D slot handle_last_: id  0 | task 0 | slot decode token, id=1141, n_ctx = 65536, n_tokens = 146, truncated = 0
+1.08.659.926 D slot handle_last_: id  0 | task 0 | slot decode token, id=1765, n_ctx = 65536, n_tokens = 147, truncated = 0
+1.08.947.286 D slot handle_last_: id  0 | task 0 | slot decode token, id=4593, n_ctx = 65536, n_tokens = 148, truncated = 0
+1.09.241.159 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 149, truncated = 0
+1.09.533.165 D slot handle_last_: id  0 | task 0 | slot decode token, id=271, n_ctx = 65536, n_tokens = 150, truncated = 0
+1.09.868.509 D slot handle_last_: id  0 | task 0 | slot decode token, id=11861, n_ctx = 65536, n_tokens = 151, truncated = 0
+1.10.163.892 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 152, truncated = 0
+1.10.454.988 D slot handle_last_: id  0 | task 0 | slot decode token, id=38896, n_ctx = 65536, n_tokens = 153, truncated = 0
+1.10.745.392 D slot handle_last_: id  0 | task 0 | slot decode token, id=2597, n_ctx = 65536, n_tokens = 154, truncated = 0
+1.11.036.016 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 155, truncated = 0
+1.11.324.665 D slot handle_last_: id  0 | task 0 | slot decode token, id=2577, n_ctx = 65536, n_tokens = 156, truncated = 0
+1.11.610.087 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 157, truncated = 0
+1.11.899.162 D slot handle_last_: id  0 | task 0 | slot decode token, id=424, n_ctx = 65536, n_tokens = 158, truncated = 0
+1.12.195.599 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 159, truncated = 0
+1.12.490.623 D slot handle_last_: id  0 | task 0 | slot decode token, id=2985, n_ctx = 65536, n_tokens = 160, truncated = 0
+1.12.778.160 D slot handle_last_: id  0 | task 0 | slot decode token, id=264, n_ctx = 65536, n_tokens = 161, truncated = 0
+1.13.071.194 D slot handle_last_: id  0 | task 0 | slot decode token, id=27425, n_ctx = 65536, n_tokens = 162, truncated = 0
+1.13.366.514 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 163, truncated = 0
+1.13.656.605 D slot handle_last_: id  0 | task 0 | slot decode token, id=1141, n_ctx = 65536, n_tokens = 164, truncated = 0
+1.13.942.389 D slot handle_last_: id  0 | task 0 | slot decode token, id=50689, n_ctx = 65536, n_tokens = 165, truncated = 0
+1.14.229.757 D slot handle_last_: id  0 | task 0 | slot decode token, id=723, n_ctx = 65536, n_tokens = 166, truncated = 0
+1.14.519.738 D slot handle_last_: id  0 | task 0 | slot decode token, id=9495, n_ctx = 65536, n_tokens = 167, truncated = 0
+1.14.813.057 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 168, truncated = 0
+1.15.107.381 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 169, truncated = 0
+1.15.400.059 D slot handle_last_: id  0 | task 0 | slot decode token, id=37550, n_ctx = 65536, n_tokens = 170, truncated = 0
+1.15.692.932 D slot handle_last_: id  0 | task 0 | slot decode token, id=6316, n_ctx = 65536, n_tokens = 171, truncated = 0
+1.15.979.042 D slot handle_last_: id  0 | task 0 | slot decode token, id=321, n_ctx = 65536, n_tokens = 172, truncated = 0
+1.16.273.217 D slot handle_last_: id  0 | task 0 | slot decode token, id=59056, n_ctx = 65536, n_tokens = 173, truncated = 0
+1.16.562.005 D slot handle_last_: id  0 | task 0 | slot decode token, id=8574, n_ctx = 65536, n_tokens = 174, truncated = 0
+1.16.857.468 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 175, truncated = 0
+1.17.154.028 D slot handle_last_: id  0 | task 0 | slot decode token, id=4118, n_ctx = 65536, n_tokens = 176, truncated = 0
+1.17.492.896 D slot handle_last_: id  0 | task 0 | slot decode token, id=4679, n_ctx = 65536, n_tokens = 177, truncated = 0
+1.17.788.114 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 178, truncated = 0
+1.18.079.119 D slot handle_last_: id  0 | task 0 | slot decode token, id=64162, n_ctx = 65536, n_tokens = 179, truncated = 0
+1.18.375.134 D slot handle_last_: id  0 | task 0 | slot decode token, id=1083, n_ctx = 65536, n_tokens = 180, truncated = 0
+1.18.670.340 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 181, truncated = 0
+1.18.958.032 D slot handle_last_: id  0 | task 0 | slot decode token, id=33367, n_ctx = 65536, n_tokens = 182, truncated = 0
+1.19.255.419 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 183, truncated = 0
+1.19.548.399 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 184, truncated = 0
+1.19.840.433 D slot handle_last_: id  0 | task 0 | slot decode token, id=13245, n_ctx = 65536, n_tokens = 185, truncated = 0
+1.20.130.244 D slot handle_last_: id  0 | task 0 | slot decode token, id=11, n_ctx = 65536, n_tokens = 186, truncated = 0
+1.20.419.615 D slot handle_last_: id  0 | task 0 | slot decode token, id=9101, n_ctx = 65536, n_tokens = 187, truncated = 0
+1.20.709.156 D slot handle_last_: id  0 | task 0 | slot decode token, id=279, n_ctx = 65536, n_tokens = 188, truncated = 0
+1.21.001.470 D slot handle_last_: id  0 | task 0 | slot decode token, id=15217, n_ctx = 65536, n_tokens = 189, truncated = 0
+1.21.294.014 D slot handle_last_: id  0 | task 0 | slot decode token, id=5388, n_ctx = 65536, n_tokens = 190, truncated = 0
+1.21.596.632 D slot handle_last_: id  0 | task 0 | slot decode token, id=310, n_ctx = 65536, n_tokens = 191, truncated = 0
+1.21.891.281 D slot handle_last_: id  0 | task 0 | slot decode token, id=460, n_ctx = 65536, n_tokens = 192, truncated = 0
+1.22.179.397 D slot handle_last_: id  0 | task 0 | slot decode token, id=310, n_ctx = 65536, n_tokens = 193, truncated = 0
+1.22.472.313 D slot handle_last_: id  0 | task 0 | slot decode token, id=1141, n_ctx = 65536, n_tokens = 194, truncated = 0
+1.22.771.032 D slot handle_last_: id  0 | task 0 | slot decode token, id=7655, n_ctx = 65536, n_tokens = 195, truncated = 0
+1.23.059.390 D slot handle_last_: id  0 | task 0 | slot decode token, id=314, n_ctx = 65536, n_tokens = 196, truncated = 0
+1.23.346.648 D slot handle_last_: id  0 | task 0 | slot decode token, id=41416, n_ctx = 65536, n_tokens = 197, truncated = 0
+1.23.636.837 D slot handle_last_: id  0 | task 0 | slot decode token, id=77892, n_ctx = 65536, n_tokens = 198, truncated = 0
+1.23.929.264 D slot handle_last_: id  0 | task 0 | slot decode token, id=421, n_ctx = 65536, n_tokens = 199, truncated = 0
+1.24.218.241 D slot handle_last_: id  0 | task 0 | slot decode token, id=2496, n_ctx = 65536, n_tokens = 200, truncated = 0
+1.24.514.459 D slot handle_last_: id  0 | task 0 | slot decode token, id=4847, n_ctx = 65536, n_tokens = 201, truncated = 0
+1.24.802.087 D slot handle_last_: id  0 | task 0 | slot decode token, id=2445, n_ctx = 65536, n_tokens = 202, truncated = 0
+1.25.130.017 D slot handle_last_: id  0 | task 0 | slot decode token, id=2785, n_ctx = 65536, n_tokens = 203, truncated = 0
+1.25.435.039 D slot handle_last_: id  0 | task 0 | slot decode token, id=5372, n_ctx = 65536, n_tokens = 204, truncated = 0
+1.25.732.533 D slot handle_last_: id  0 | task 0 | slot decode token, id=13, n_ctx = 65536, n_tokens = 205, truncated = 0

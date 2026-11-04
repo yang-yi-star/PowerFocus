@@ -1,0 +1,450 @@
+﻿=== 全部进程（按内存降序 Top 60）===
+
+ProcessId Name                          MemMB ParentProcessId
+--------- ----                          ----- ---------------
+    49012 llama-server.exe            17266.2           18876
+     4528 Memory Compression           1711.9               4
+    30520 DoubaoWork.exe               1075.1           16704
+    14784 DeepSeek Harness.exe            442           22596
+     2172 dwm.exe                       397.8            1892
+    10392 DoubaoWork.exe                332.1           16704
+    36356 DeepSeek Harness.exe          266.3           42432
+    20884 explorer.exe                  226.4           25608
+    17252 pwsh.exe                      225.1           29676
+    47692 DeepSeek Harness.exe          216.6           42432
+    27500 DeepSeek Harness.exe            201           42432
+    38584 explorer.exe                  192.7           33912
+    32496 pip_main.exe                  183.3           14092
+    16704 DoubaoWork.exe                156.3            2696
+    12760 GCUService.exe                133.9            5884
+    12600 Taskmgr.exe                   132.8           12580
+    46544 StartMenuExperienceHost.exe   126.6            2036
+      432 Secure System                 126.3               4
+    22596 DeepSeek Harness.exe          120.4           27500
+    45532 DoubaoWork.exe                116.4           16704
+     5628 DoubaoWork.exe                114.9           16704
+    56008 SearchHost.exe                  111            2036
+    19632 DoubaoWork.exe                110.5           16704
+    48216 msedgewebview2.exe            105.9           56008
+    35292 DoubaoWork.exe                104.3           16704
+    17636 msedgewebview2.exe            103.2           55632
+    44008 DoubaoWork.exe                 99.1           16704
+    18876 powershell.exe                 90.9           14092
+    28896 TextInputHost.exe                88            2036
+    13152 WindowsTerminal.exe            86.1            2036
+     1384 MSPCManagerCore.exe            83.6           22060
+    21864 quark.exe                      82.6           45412
+    46188 TextInputHost.exe              81.6            2036
+    42432 DeepSeek Harness.exe             79           35344
+    26544 dwm.exe                        70.4           21980
+    54724 QQ.exe                           69           34848
+    43060 msedgewebview2.exe             63.8           20932
+    52268 msedgewebview2.exe             63.7           17636
+     1524 msedgewebview2.exe             63.7           48216
+    36600 msedgewebview2.exe             63.5           17636
+    51152 msedgewebview2.exe             63.2           20932
+    51676 SenaryAudioApp.exe               63           16560
+    22020 MSPCManager.exe                62.1           12580
+    20932 wetype_update.exe              58.1           48300
+    38148 quark.exe                      54.1           21864
+    29392 msedgewebview2.exe             52.4           48216
+     5916 svchost.exe                    52.4            1792
+     1416 quark.exe                      52.1           21864
+    13012 ShellHost.exe                  51.9           14912
+    32912 StartMenuExperienceHost.exe    50.6            2036
+    31232 DoubaoWork.exe                 50.3           16704
+    39124 OSDTpDetect.exe                50.2           12760
+    14912 sihost.exe                     49.5            3184
+    34760 WUDFHost.exe                   49.3            1792
+     9292 MSPCManagerService.exe         48.5            1792
+    30436 DoubaoWork.exe                 46.9           16704
+    19448 SearchHost.exe                 46.3            2036
+      472 Registry                       44.4               4
+     5884 GCUBridge.exe                  42.3            1792
+    53496 QQ.exe                         41.8           34848
+
+
+
+
+=== DeepSeek 相关（保留）===
+
+ProcessId Name                 MemMB ParentProcessId
+--------- ----                 ----- ---------------
+     8000 DeepSeek Harness.exe   0.1            4580
+    42432 DeepSeek Harness.exe    79           35344
+    41444 DeepSeek Harness.exe  13.9           42432
+    36356 DeepSeek Harness.exe 266.3           42432
+    27500 DeepSeek Harness.exe   201           42432
+    47692 DeepSeek Harness.exe 216.6           42432
+    20148 DeepSeek Harness.exe  12.2           42432
+    22596 DeepSeek Harness.exe 120.4           27500
+    14784 DeepSeek Harness.exe   442           22596
+
+
+
+
+=== 用户级非系统进程清单（截断候选）===
+候选数: 357
+
+ProcessId Name                             MemMB ParentProcessId
+--------- ----                             ----- ---------------
+    49012 llama-server.exe               17266.2           18876
+    30520 DoubaoWork.exe                  1075.1           16704
+     2172 dwm.exe                          397.8            1892
+    10392 DoubaoWork.exe                   332.1           16704
+    20884 explorer.exe                     226.4           25608
+    17252 pwsh.exe                         225.1           29676
+    38584 explorer.exe                     192.7           33912
+    32496 pip_main.exe                     183.3           14092
+    16704 DoubaoWork.exe                   156.3            2696
+    12760 GCUService.exe                   133.9            5884
+    12600 Taskmgr.exe                      132.8           12580
+    46544 StartMenuExperienceHost.exe      126.6            2036
+      432 Secure System                    126.3               4
+    45532 DoubaoWork.exe                   116.4           16704
+     5628 DoubaoWork.exe                   114.9           16704
+    56008 SearchHost.exe                     111            2036
+    19632 DoubaoWork.exe                   110.5           16704
+    48216 msedgewebview2.exe               105.9           56008
+    35292 DoubaoWork.exe                   104.3           16704
+    17636 msedgewebview2.exe               103.2           55632
+    44008 DoubaoWork.exe                    99.1           16704
+    18876 powershell.exe                    90.9           14092
+    28896 TextInputHost.exe                   88            2036
+    13152 WindowsTerminal.exe               86.1            2036
+     1384 MSPCManagerCore.exe               83.6           22060
+    21864 quark.exe                         82.6           45412
+    46188 TextInputHost.exe                 81.6            2036
+    26544 dwm.exe                           70.4           21980
+    54724 QQ.exe                              69           34848
+    43060 msedgewebview2.exe                63.8           20932
+    52268 msedgewebview2.exe                63.7           17636
+     1524 msedgewebview2.exe                63.7           48216
+    36600 msedgewebview2.exe                63.5           17636
+    51152 msedgewebview2.exe                63.2           20932
+    51676 SenaryAudioApp.exe                  63           16560
+    22020 MSPCManager.exe                   62.1           12580
+    20932 wetype_update.exe                 58.1           48300
+    38148 quark.exe                         54.1           21864
+     5916 svchost.exe                       52.4            1792
+    29392 msedgewebview2.exe                52.4           48216
+     1416 quark.exe                         52.1           21864
+    13012 ShellHost.exe                     51.9           14912
+    32912 StartMenuExperienceHost.exe       50.6            2036
+    31232 DoubaoWork.exe                    50.3           16704
+    39124 OSDTpDetect.exe                   50.2           12760
+    14912 sihost.exe                        49.5            3184
+    34760 WUDFHost.exe                      49.3            1792
+     9292 MSPCManagerService.exe            48.5            1792
+    30436 DoubaoWork.exe                    46.9           16704
+    19448 SearchHost.exe                    46.3            2036
+     5884 GCUBridge.exe                     42.3            1792
+    53496 QQ.exe                            41.8           34848
+    21724 RuntimeBroker.exe                 40.9            2036
+    22084 NVDisplay.Container.exe           39.3           28124
+     6196 WmiPrvSE.exe                      37.9            2036
+    26164 msedgewebview2.exe                36.6           48216
+    43636 msedgewebview2.exe                36.5           43060
+    29420 quark.exe                         34.1           21864
+    37944 msedgewebview2.exe                  34           17636
+    14092 DoubaoWork.exe                    33.9           16704
+    21876 PhoneExperienceHost.exe           33.8            2036
+    33708 wetype_server.exe                 33.6           48300
+    27228 nvcontainer.exe                   33.5           47984
+    17812 wetype_renderer.exe               33.4           48300
+    22272 ctfmon.exe                        32.7            4856
+    17608 nvcontainer.exe                   32.7           47984
+    51156 msedgewebview2.exe                32.5           51152
+    55284 msedgewebview2.exe                31.9           43060
+    12028 RadeonSoftware.exe                30.9           47576
+     8316 svchost.exe                       30.8            1792
+    54732 DoubaoWork.exe                    30.7           16704
+    48728 ShellHost.exe                     30.5           11952
+     2380 msedgewebview2.exe                30.1           43060
+    42668 msedgewebview2.exe                29.5           51152
+    55632 LocModel.exe                        29           26312
+    51924 quark.exe                         28.9           21864
+    32052 svchost.exe                       27.7            1792
+     2036 svchost.exe                       27.3            1792
+    17720 SearchIndexer.exe                 26.9            1792
+     1820 lsass.exe                         26.8            1720
+    45324 quark.exe                         26.1           21864
+     5988 svchost.exe                       25.6            1792
+    34848 QQ.exe                            24.5           34444
+    11952 sihost.exe                        24.5            3184
+    28232 aha_doctor.exe                    24.3           16704
+    52136 quark.exe                         24.1           21864
+    20056 ctfmon.exe                        23.8            4856
+     1200 FileCoAuth.exe                    22.7            2036
+     2384 svchost.exe                       22.5            1792
+     9168 pip_main.exe                      22.5           20884
+    28124 NVDisplay.Container.exe           21.9            1792
+     4028 svchost.exe                       21.7            1792
+    17196 QQ.exe                            21.3           34848
+    35972 svchost.exe                       21.2            1792
+    43856 audiodg.exe                       20.9            4752
+    20584 msedgewebview2.exe                20.6           51152
+    39248 EdgeGameAssist.exe                20.5            2036
+    45936 quark.exe                         20.4           21864
+    50820 quark.exe                         19.7           21864
+     2312 svchost.exe                       19.6            1792
+    30940 svchost.exe                       19.4            1792
+    29688 DoubaoWork.exe                    19.1           16704
+    26752 nvcontainer.exe                   18.9           47984
+     2540 svchost.exe                       18.8            1792
+    41620 msedgewebview2.exe                18.7           48216
+    30664 node.exe                          18.6           30488
+    29644 msedgewebview2.exe                18.4           17636
+     1792 services.exe                      18.3            1720
+     6004 MpDefenderCoreService.exe         18.1            1792
+    47984 nvcontainer.exe                     18            1792
+     5256 svchost.exe                         18            1792
+    44632 msedgewebview2.exe                17.7           51152
+    12620 pwsh.exe                          17.7            2772
+    54820 msedgewebview2.exe                17.7           43060
+    26400 nvcontainer.exe                   17.5           47984
+    15920 RuntimeBroker.exe                 16.9            2036
+    21980 winlogon.exe                      16.5           10732
+    23408 svchost.exe                       16.3            1792
+    36492 quark.exe                         16.2           21864
+     8308 svchost.exe                       15.8            1792
+    23396 taskhostw.exe                     15.7            2772
+    53556 OpenConsole.exe                   15.7            2036
+    12232 svchost.exe                       15.6            1792
+     4656 svchost.exe                       15.5            1792
+     2052 svchost.exe                       15.3            1792
+     5564 tailscaled.exe                    14.9            1792
+     8964 DoubaoWork.exe                    14.6           16704
+    31480 DoubaoWork.exe                    14.5           16704
+    24480 java.exe                          14.3           52068
+     8492 tailscaled.exe                    13.8            5564
+     4220 svchost.exe                       13.6            1792
+     4752 svchost.exe                       13.4            1792
+    36808 msedgewebview2.exe                13.2           48216
+    24416 rdpclip.exe                       13.1            8316
+    20208 nvcontainer.exe                   13.1           47984
+    17616 svchost.exe                         13            1792
+    11676 svchost.exe                       12.8            1792
+     3116 svchost.exe                       12.4            1792
+    16972 svchost.exe                       12.4            1792
+     2772 svchost.exe                       12.3            1792
+    31288 svchost.exe                       12.1            1792
+    48568 msedgewebview2.exe                  12           36808
+    54452 msedgewebview2.exe                11.8           17636
+     5096 svchost.exe                       11.7            1792
+    40440 NVDisplay.Container.exe           11.6           28124
+    54140 msedgewebview2.exe                11.6           43060
+    20892 conhost.exe                       11.6           49012
+    40964 python.exe                        11.5           43788
+     8524 python.exe                        11.5            8056
+    55644 msedgewebview2.exe                11.5           51152
+    11472 ollama.exe                        11.5           11520
+     5932 svchost.exe                       11.3            1792
+     2780 svchost.exe                         11            1792
+    12556 svchost.exe                       10.9            1792
+    48300 wetype_service.exe                10.8            1792
+      676 UserOOBEBroker.exe                10.7            2036
+    53520 taskhostw.exe                     10.7            2772
+    26524 svchost.exe                       10.6            1792
+    10944 svchost.exe                       10.4            1792
+    30248 douyin_guard.exe                  10.3            5868
+     3292 svchost.exe                       10.2            1792
+    44148 conhost.exe                       10.1           17252
+    41572 ChsIME.exe                          10            2036
+    10348 RuntimeBroker.exe                   10            2036
+    30884 SecurityHealthService.exe          9.9            1792
+    11100 WmiPrvSE.exe                       9.8            2036
+    11708 svchost.exe                        9.7            1792
+     5892 SenaryAudioApp.Svc.exe             9.6            1792
+    35068 SearchProtocolHost.exe             9.5           17720
+    12400 svchost.exe                        9.3            1792
+    22248 svchost.exe                        9.3            1792
+     5072 DoubaoWork.exe                       9           16704
+     4892 DoubaoWork.exe                     8.7           16704
+    31344 svchost.exe                        8.7            1792
+    21008 svchost.exe                        8.6            1792
+     6600 DoubaoWork.exe                     8.6           16704
+     2112 svchost.exe                        8.5            1792
+    19708 RuntimeBroker.exe                  8.4            2036
+     3184 svchost.exe                        8.4            1792
+    11520 ollama app.exe                     8.4            2772
+     1720 wininit.exe                        8.2            1400
+     3936 taskhostw.exe                      8.1            2772
+    40996 quark.exe                          8.1           21864
+    31028 svchost.exe                          8            1792
+    38408 quark.exe                          7.9           21864
+     2464 svchost.exe                        7.9            1792
+    24280 csrss.exe                          7.8           10732
+     4092 vmms.exe                           7.8            1792
+    13408 svchost.exe                        7.8            1792
+    42296 media_container.exe                7.7           21864
+    17172 XboxPcAppFT.exe                    7.5            2036
+    12080 svchost.exe                        7.4            1792
+    45076 fontdrvhost.exe                    7.3           21980
+     1740 csrss.exe                          7.3            1712
+    10484 svchost.exe                        7.2            1792
+     4404 svchost.exe                        7.2            1792
+    46196 conhost.exe                        7.2           18876
+    13536 CrossDeviceService.exe             6.9            2036
+    22996 msedgewebview2.exe                 6.9           22020
+    40280 conhost.exe                        6.7           33708
+    30728 taskhostw.exe                      6.5            2772
+    20248 DoubaoWork.exe                     6.5           16704
+     4980 svchost.exe                        6.2            1792
+     7568 svchost.exe                          6            1792
+     3192 svchost.exe                        5.9            1792
+    15884 svchost.exe                        5.8            1792
+     9436 svchost.exe                        5.7            1792
+    13172 quark.exe                          5.7           21864
+    17388 MicrosoftStartFeedProvider.exe     5.7            2036
+    42700 quark.exe                          5.7           21864
+     2996 svchost.exe                        5.6            1792
+     3512 svchost.exe                        5.6            1792
+     1516 csrss.exe                          5.6            1400
+     2988 svchost.exe                        5.5            1792
+     4396 svchost.exe                        5.4            1792
+     4356 svchost.exe                        5.4            1792
+     4388 atieclxx.exe                       5.4            4212
+    40384 quark.exe                          5.4           21864
+    42252 svchost.exe                        5.3            1792
+     7144 DoubaoWork.exe                     5.3           16704
+    45068 quark.exe                          5.2           21864
+     4508 svchost.exe                        5.2            1792
+     3012 svchost.exe                          5            1792
+     3004 svchost.exe                          5            1792
+    54584 RuntimeBroker.exe                  4.8            2036
+    13260 CrossDeviceResume.exe              4.8           11952
+     8908 svchost.exe                        4.8            1792
+    15672 WidgetBoard.exe                    4.8            2036
+    43608 svchost.exe                        4.7            1792
+     4896 spoolsv.exe                        4.6            1792
+    22160 unsecapp.exe                       4.6            2036
+     4196 svchost.exe                        4.6            1792
+     6508 svchost.exe                        4.4            1792
+     4516 svchost.exe                        4.4            1792
+    45244 svchost.exe                        4.3            1792
+     5868 svchost.exe                        4.2            1792
+     9840 svchost.exe                        4.2            1792
+    23480 msedgewebview2.exe                 4.1           22996
+     5276 svchost.exe                        4.1            1792
+     5488 svchost.exe                          4            1792
+    10120 svchost.exe                          4            1792
+     2720 svchost.exe                          4            1792
+     6168 svchost.exe                        3.9            1792
+     6388 svchost.exe                        3.9            1792
+     4856 svchost.exe                        3.9            1792
+    28748 nvcontainer.exe                    3.9           47984
+     2008 svchost.exe                        3.8            1792
+     8352 AggregatorHost.exe                 3.7            5916
+    28440 WUDFHost.exe                       3.5            1792
+     3784 svchost.exe                        3.5            1792
+     5980 wslservice.exe                     3.5            1792
+     4652 DoubaoWork.exe                     3.5           16704
+    45740 nvcontainer.exe                    3.5           47984
+    19584 RuntimeBroker.exe                  3.4            2036
+     2424 svchost.exe                        3.4            1792
+    16396 WidgetService.exe                  3.3            2036
+    42276 svchost.exe                        3.3            1792
+    10708 svchost.exe                        3.2            1792
+    52280 quark.exe                          3.2           21864
+    40568 msedgewebview2.exe                 3.1           22996
+     5668 svchost.exe                          3            1792
+    48376 media_container.exe                  3           42296
+     9780 svchost.exe                          3            1792
+    15900 FileCoAuth.exe                     2.9            2036
+     3796 svchost.exe                        2.8            1792
+    11024 svchost.exe                        2.8            1792
+    33576 pythonw.exe                        2.8            2772
+    31284 svchost.exe                        2.7            1792
+    19648 svchost.exe                        2.6            1792
+     4212 atiesrxx.exe                       2.5            1792
+     1340 fontdrvhost.exe                    2.5            1892
+    52068 cmd.exe                            2.4            2772
+    22800 msedgewebview2.exe                 2.3           22996
+    18468 svchost.exe                        2.3            1792
+     2428 svchost.exe                        2.2            1792
+    34440 conhost.exe                        2.2           15164
+    23160 msedgewebview2.exe                 2.2           22996
+     3776 svchost.exe                        2.2            1792
+     7320 RTUWPSrvcMain.exe                  2.1            1792
+     1892 winlogon.exe                       2.1            1712
+     2416 svchost.exe                        2.1            1792
+    11660 svchost.exe                        2.1            1792
+    13272 OpenConsole.exe                    2.1            2036
+    49560 python.exe                         2.1           16276
+     2448 svchost.exe                        2.1            1792
+     4716 svchost.exe                          2            1792
+    17152 RuntimeBroker.exe                  1.9            2036
+    23544 msedgewebview2.exe                 1.8           22996
+     4204 amdfendrsr.exe                     1.8            1792
+     9768 wlanext.exe                        1.8            5096
+    10852 svchost.exe                        1.8            1792
+    33448 svchost.exe                        1.7            1792
+     1744 WUDFHost.exe                       1.7            1792
+     4416 svchost.exe                        1.7            1792
+     1044 smss.exe                           1.6               4
+    50552 dllhost.exe                        1.6            2036
+     1812 LsaIso.exe                         1.6            1720
+    44732 SearchFilterHost.exe               1.6           17720
+    29912 node.exe                           1.6           17052
+    30488 node.exe                           1.5           18492
+     6104 vmcompute.exe                      1.5            1792
+    40400 SearchFilterHost.exe               1.5           17720
+     5924 svchost.exe                        1.4            1792
+     2352 svchost.exe                        1.4            1792
+     9328 svchost.exe                        1.4            1792
+     7480 CPUMetricsServer.exe               1.4            2772
+     6376 NgcIso.exe                         1.4            6168
+    39432 svchost.exe                        1.4            1792
+    39728 SearchFilterHost.exe               1.3           17720
+    53592 UserOOBEBroker.exe                 1.3            2036
+    44576 conhost.exe                        1.3           36724
+    12136 svchost.exe                        1.3            1792
+     4740 WUDFHost.exe                       1.3            1792
+    29468 SearchFilterHost.exe               1.3           17720
+    38524 cncmd.exe                          1.3           12028
+    12736 conhost.exe                        1.2           52068
+     4020 svchost.exe                        1.2            1792
+     4840 conhost.exe                        1.2           45412
+    19756 ChsIME.exe                         1.1            2036
+    31212 conhost.exe                        1.1           35344
+     2440 svchost.exe                        1.1            1792
+     3040 conhost.exe                          1           11472
+    29120 conhost.exe                          1           17052
+    39428 conhost.exe                          1            8056
+    13000 conhost.exe                          1           12620
+    19856 conhost.exe                          1           43788
+    14200 conhost.exe                          1           16276
+     5860 AmdPpkgSvc.exe                       1            1792
+    18492 cmd.exe                            0.9           29912
+    17052 cmd.exe                            0.9            7144
+    34444 NapCatWinBootMain.exe              0.8           15164
+    36724 cmd.exe                            0.8           21212
+     5944 svchost.exe                        0.8            1792
+    15164 cmd.exe                            0.7           34548
+    43788 python.exe                         0.6           27500
+    16276 python.exe                         0.6           27500
+     8056 python.exe                         0.6           27500
+     2044 fontdrvhost.exe                    0.6            1720
+    43356 SearchHost.exe                     0.1           39844
+    51324 ShellExperienceHost.exe            0.1            2036
+    46556 msedge.exe                         0.1           16376
+     5088 WebExperienceHostApp.exe           0.1           36176
+      700 pwsh.exe                             0           31332
+    40176 SearchHost.exe                       0           31504
+    51320 SearchHost.exe                       0           51144
+        0 System Idle Process                  0               0
+     5548 SearchHost.exe                       0           34136
+    43884 WebExperienceHostApp.exe             0           34272
+    20524 SearchHost.exe                       0            5400
+     2376 WebExperienceHostApp.exe             0           45492
+    49652 dllhost.exe                          0           16076
+    54652 SearchHost.exe                       0           54136
+    38740 SearchHost.exe                       0           32584
+    52140 dwm.exe                              0           41980
+     8952 pwsh.exe                             0           10076
+    37616 SearchHost.exe                       0           35972
+    11940 SearchHost.exe                       0           46176
+
+
+

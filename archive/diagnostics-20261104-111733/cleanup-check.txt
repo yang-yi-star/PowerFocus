@@ -1,0 +1,1 @@
+﻿restored_below_normal=177 remaining_below_normal=0 node_alive=3

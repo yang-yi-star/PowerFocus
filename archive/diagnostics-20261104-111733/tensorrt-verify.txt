@@ -1,0 +1,13 @@
+﻿TRT version: 10.16.1.11
+API file: C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311\Lib\site-packages\tensorrt\__init__.py
+Builder created OK
+py : Traceback (most recent call last):
+At line:11 char:6
++ $r = py -3.11 -c $code 2>&1 | Out-String
++      ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 7, in <module>
+AttributeError: 'tensorrt_bindings.tensorrt.Builder' object has no attribute 'platform_name'
+

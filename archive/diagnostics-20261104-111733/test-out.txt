@@ -1,0 +1,29 @@
+﻿pwsh version=7.6.9
+SYNTAX OK
+target pid=19656 prio=High
+after gentle: prio=High originalPlan=8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+manually demoted: prio=Normal
+after watchdog check: prio=High (expect High)
+after exit-sim: targetPid= (expect empty)
+aggressive demoted count=151
+sample AggregatorHost prio=BelowNormal (expect BelowNormal)
+target still=High (expect High)
+after stop: targetPrio=High demotedLeft=0 originalPlan= timer=
+=== log tail ===
+2026-11-02 10:00:03 [INFO] 激进聚焦: 已降级 149 个非白名单进程为 BelowNormal
+2026-11-02 10:00:03 [INFO] 电源计划已恢复: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+2026-11-02 10:00:03 [INFO] 已恢复 149 个进程优先级为 Normal
+2026-11-02 10:02:32 [INFO] 温和聚焦: llama-server (PID 19656) 优先级设为 High
+2026-11-02 10:02:32 [INFO] 原电源计划 GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+2026-11-02 10:02:32 [INFO] 电源计划已切换为高性能
+2026-11-02 10:02:34 [INFO] 监管已启动: 每 10 秒检查 llama-server
+2026-11-02 10:02:34 [INFO] 监管: llama-server 优先级被降级，已拉回 High
+2026-11-02 10:02:36 [WARN] 目标进程 nonexistent (PID 999999) 已退出，自动解除聚焦
+2026-11-02 10:02:36 [INFO] 电源计划已恢复: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+2026-11-02 10:02:36 [INFO] 温和聚焦: llama-server (PID 19656) 优先级设为 High
+2026-11-02 10:02:36 [INFO] 原电源计划 GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+2026-11-02 10:02:37 [INFO] 电源计划已切换为高性能
+2026-11-02 10:02:37 [INFO] 激进聚焦: 已降级 151 个非白名单进程为 BelowNormal
+2026-11-02 10:02:37 [INFO] 电源计划已恢复: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+2026-11-02 10:02:37 [INFO] 已恢复 151 个进程优先级为 Normal
+TEST DONE

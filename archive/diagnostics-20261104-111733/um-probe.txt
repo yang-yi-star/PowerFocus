@@ -1,0 +1,6 @@
+﻿GPU:
+NVIDIA GeForce RTX 5060 Laptop GPU, 8151 MiB, 7492 MiB, 408 MiB
+
+MEM: total_gb=31.2 free_gb=4.3
+8080_health: ok
+SERVER: pid=38352 ws_gb=12.33 cpu_s=20969

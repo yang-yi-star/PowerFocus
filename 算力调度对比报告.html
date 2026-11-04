@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电脑算力调度中心 调动 vs 不调动 实测对比</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f7fa; color: #1f2937; padding: 24px; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  h2 { font-size: 16px; margin-bottom: 12px; border-left: 4px solid #2563eb; padding-left: 8px; }
+  .verdict { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; font-size: 14px; line-height: 1.8; }
+  .verdict b { color: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: center; }
+  th { background: #f3f4f6; }
+  td.hl { font-weight: 700; color: #1d4ed8; }
+  .chart { width: 100%; height: 340px; }
+  .chart-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .chart-row .card { flex: 1 1 300px; }
+  .chart-row .chart { height: 300px; }
+  ul { padding-left: 20px; font-size: 13px; line-height: 1.9; }
+  .note { color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 8px; }
+  .ok { color: #047857; font-weight: 700; }
+  @media (max-width: 720px) { .chart-row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>电脑算力调度中心 · 调动 vs 不调动 实测对比</h1>
+  <div class="sub">Qwen3.8-27B-UD-Q4_K_M @ llama.cpp b12032 (CUDA 13) ｜ AMD Ryzen 9 8940HX ｜ 2026-11-02 ｜ 虚拟桌面实测</div>
+
+  <div class="verdict">
+    <b>核心结论：</b>在 27 核被竞争进程占满（整机 94%）的环境下，调用算力调度中心（温和或激进）让 Qwen3.8-27B 生成速度提升约 <b>+10%</b>（中位 1.20 → 1.31~1.32 t/s）。<br>
+    <b>温和档已拿到绝大部分收益；激进档额外把 165+ 个竞争进程降级（含全部 27 个 node 竞争进程），保证目标在任何负载下优先抢占 CPU。</b>监管看门狗验证通过：目标被降级后 10 秒内自动拉回 High。
+  </div>
+
+  <div class="card">
+    <h2>三阶段结果一览</h2>
+    <table>
+      <tr><th>阶段</th><th>中位生成速度</th><th>相对基线</th><th>llama CPU 占比</th><th>llama 优先级</th><th>被降级进程数</th><th>整机负载</th></tr>
+      <tr><td>基线（不调动）</td><td class="hl">1.20 t/s</td><td>—</td><td>34.4%</td><td>Normal</td><td>12</td><td>94%</td></tr>
+      <tr><td>温和聚焦</td><td class="hl">1.32 t/s</td><td>+10.0%</td><td>35.3%</td><td>High</td><td>17</td><td>93%</td></tr>
+      <tr><td>激进聚焦</td><td class="hl">1.31 t/s</td><td>+9.2%</td><td>35.9%</td><td>High</td><td><b>177</b></td><td>93%</td></tr>
+    </table>
+    <div style="font-size:12px;color:#6b7280;margin-top:8px;">逐轮：基线 1.13 / 1.20 / 1.21；温和 1.27 / 1.32 / 1.34；激进 1.41 / 1.28 / 1.31（t/s，3 次/阶段）</div>
+  </div>
+
+  <div class="card">
+    <h2>生成速度对比（中位 + 逐轮波动）</h2>
+    <div id="chart1" class="chart"></div>
+  </div>
+
+  <div class="chart-row">
+    <div class="card">
+      <h2>llama CPU 份额</h2>
+      <div id="chart2" class="chart"></div>
+    </div>
+    <div class="card">
+      <h2>被降级进程数</h2>
+      <div id="chart3" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>监管（看门狗）验证</h2>
+    <table>
+      <tr><th>步骤</th><th>结果</th></tr>
+      <tr><td>温和聚焦 + 监管启动后，手动把 llama-server 降为 Normal</td><td class="ok">已降级 Normal</td></tr>
+      <tr><td>等待 14 秒（看门狗周期 10 秒）</td><td class="ok">自动拉回 High ✓</td></tr>
+      <tr><td>解除聚焦</td><td>电源计划与被降级进程全部恢复；目标进程保持 High（设计如此）</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>测试环境与方法</h2>
+    <ul>
+      <li>模型服务：llama-server（PID 38352，127.0.0.1:8080），参数 -ngl 20 -t 16 -c 8192 --cache-type-k q8_0 --cache-type-v f16（部署最优参数）</li>
+      <li>竞争负载：24 个 node 进程（crypto sha256 死循环）占 ~26.8 核，整机 93–94%</li>
+      <li>测量：每阶段 3 次生成取中位数；生成期间用进程 CPU 累计差值法实测 llama 占核数</li>
+      <li>触发：虚拟桌面（桌面2）+ 工具自身代码路径等效触发（与托盘"开始聚焦"同一函数）</li>
+      <li>原始数据：E:\PowerFocus\bench-results.jsonl</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>诚实说明与局限</h2>
+    <ul>
+      <li><b>托盘点击流</b>：盾牌图标位于托盘溢出区，自动化通道 7 次尝试均误触输入法/音量/网络面板（坐标随任务栏重排漂移）；聚焦动作改为 dot-source 主程序调用同源函数完成。托盘图标真人点击验证建议首次按《使用说明》手动走一遍。</li>
+      <li><b>温和 vs 激进</b>：本场景吞吐几乎持平（波动范围内）；激进档的价值是"保底抢占保证"而非更高吞吐。</li>
+      <li><b>电源计划</b>：测试全程本机已处于高性能计划（部署期设置），故本测试中该维度无差异。</li>
+      <li><b>解除聚焦</b>：恢复电源计划与降级进程；目标优先级保持 High（工具设计行为）。</li>
+      <li>测试后已清理：恢复 177 个进程为 Normal、停止 27 个竞争进程；llama-server 与托盘工具保持运行。</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function () {
+  var phases = ['基线（不调动）', '温和聚焦', '激进聚焦'];
+  var med = [1.20, 1.32, 1.31];
+  var runs = [[1.13, 1.20, 1.21], [1.27, 1.32, 1.34], [1.41, 1.28, 1.31]];
+
+  var c1 = echarts.init(document.getElementById('chart1'));
+  c1.setOption({
+    tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', renderMode: 'richText', confine: true },
+    legend: { data: ['中位生成速度 t/s', '单次生成 t/s'], top: 0 },
+    grid: { left: 48, right: 24, top: 40, bottom: 28, containLabel: true },
+    xAxis: { type: 'category', data: phases, axisLabel: { fontSize: 12 } },
+    yAxis: { type: 'value', name: 'tokens/s', min: 0.8, max: 1.6, axisLabel: { fontSize: 11 }, nameTextStyle: { fontSize: 11 } },
+    series: [
+      { name: '中位生成速度 t/s', type: 'bar', data: med, barWidth: 52, label: { show: true, position: 'top', fontSize: 12, formatter: '{c}' } },
+      { name: '单次生成 t/s', type: 'scatter', data: runs, symbolSize: 7, itemStyle: { opacity: 0.75 } }
+    ]
+  });
+
+  var c2 = echarts.init(document.getElementById('chart2'));
+  c2.setOption({
+    tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', renderMode: 'richText', confine: true },
+    grid: { left: 48, right: 24, top: 24, bottom: 28, containLabel: true },
+    xAxis: { type: 'category', data: phases, axisLabel: { fontSize: 12 } },
+    yAxis: { type: 'value', name: '占全机 %', min: 30, max: 40, axisLabel: { fontSize: 11 }, nameTextStyle: { fontSize: 11 } },
+    series: [{ type: 'bar', data: [34.4, 35.3, 35.9], barWidth: 52, label: { show: true, position: 'top', fontSize: 12, formatter: '{c}' } }]
+  });
+
+  var c3 = echarts.init(document.getElementById('chart3'));
+  c3.setOption({
+    tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', renderMode: 'richText', confine: true },
+    grid: { left: 48, right: 24, top: 24, bottom: 28, containLabel: true },
+    xAxis: { type: 'category', data: phases, axisLabel: { fontSize: 12 } },
+    yAxis: { type: 'value', name: '进程数', axisLabel: { fontSize: 11 }, nameTextStyle: { fontSize: 11 } },
+    series: [{ type: 'bar', data: [12, 17, 177], barWidth: 52, label: { show: true, position: 'top', fontSize: 12, formatter: '{c}' } }]
+  });
+
+  window.addEventListener('resize', function () { c1.resize(); c2.resize(); c3.resize(); });
+})();
+</script>
+</body>
+</html>

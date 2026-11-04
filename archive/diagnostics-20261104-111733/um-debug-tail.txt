@@ -1,0 +1,63 @@
+===== stderr 尾部（通常含 KV/加载信息） =====
+0.07.077.172 D llama_graph_n_input_tensors: input tensor '                attn_inp_kq_mask' [f16, ne = { 65536,   128,     1,     1 }] is used by node 'node_2974' (FLASH_ATTN_EXT)
+0.07.077.173 D llama_graph_n_input_tensors: input tensor '                attn_inp_kq_mask' [f16, ne = { 65536,   128,     1,     1 }] is used by node 'node_3223' (FLASH_ATTN_EXT)
+0.07.077.174 D llama_graph_n_input_tensors: input tensor '                attn_inp_kq_mask' [f16, ne = { 65536,   128,     1,     1 }] is used by node 'node_3472' (FLASH_ATTN_EXT)
+0.07.077.175 D llama_graph_n_input_tensors: input tensor '                attn_inp_kq_mask' [f16, ne = { 65536,   128,     1,     1 }] is used by node 'node_3721' (FLASH_ATTN_EXT)
+0.07.077.176 D llama_graph_n_input_tensors: input tensor '                attn_inp_kq_mask' [f16, ne = { 65536,   128,     1,     1 }] is used by node 'node_3970' (FLASH_ATTN_EXT)
+0.07.079.025 I sched_reserve:      CUDA0 compute buffer size =   452.25 MiB
+0.07.079.026 I sched_reserve:  CUDA_Host compute buffer size =    33.01 MiB
+0.07.079.032 I sched_reserve: graph (pp bs=128, tg bs=4): nodes = 3993 / 3993, splits = 773 / 160, input objects = 4 / 4, input tensors = 10 / 10
+0.07.079.034 I sched_reserve: reserve took 193.17 ms, sched copies = 1
+0.07.079.255 I cmn          init: llama threadpool init, n_threads = 32
+0.07.079.269 D attach_threadpool: call
+0.07.079.289 D set_adapters_lora: adapters = 0000000000000000
+0.07.079.290 D adapters_lora_are_same: adapters = 0000000000000000
+0.07.079.291 I cmn  common_init_: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+0.09.761.244 I cmn  common_conte: the context does not support partial sequence removal
+0.09.803.645 I srv    load_model: speculative decoding will use checkpoints
+0.09.803.655 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 65536, kv_unified = 'true'
+0.09.803.704 I spec common_specu: no implementations specified for speculative decoding
+0.09.803.709 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 65536
+0.09.803.711 D slot        reset: id  0 | task -1 | 
+0.09.803.715 I slot   load_model: id  1 | task -1 | new slot, n_ctx = 65536
+0.09.803.715 D slot        reset: id  1 | task -1 | 
+0.09.803.716 I slot   load_model: id  2 | task -1 | new slot, n_ctx = 65536
+0.09.803.716 D slot        reset: id  2 | task -1 | 
+0.09.803.716 I slot   load_model: id  3 | task -1 | new slot, n_ctx = 65536
+0.09.803.717 D slot        reset: id  3 | task -1 | 
+0.09.803.746 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+0.09.803.746 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+0.09.803.747 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+0.09.803.748 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 8192
+0.09.803.785 I srv          init: idle slots will be saved to prompt cache and cleared upon starting a new task
+0.09.803.785 D srv          init: __TEST_TAG_CACHE_IDLE_SLOTS_ENABLED__
+0.09.810.525 D Using specialized template: Qwen3-Coder
+0.09.813.851 I srv          init: init: chat template, example_format: '<|im_start|>system
+Reasoning effort is set to xhigh. Please think carefully through the task, validate key assumptions, consider plausible alternatives, and prioritize correctness, consistency, and clarity in the final answer.
+
+You are a helpful assistant<|im_end|>
+<|im_start|>user
+Hello<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+Hi there<|im_end|>
+<|im_start|>user
+How are you?<|im_end|>
+<|im_start|>assistant
+<think>
+'
+0.09.814.598 I srv          init: init: chat template, thinking = 1
+0.09.814.934 I srv          init: preserve_reasoning kwarg: true
+0.09.814.937 W srv          init: chat template supports preserving reasoning, it is enabled by default (may use more tokens, disable via --no-reasoning-preserve)
+0.09.814.963 I srv  server_run_i: model loaded
+0.09.814.965 I srv  server_on_li: listening on http://127.0.0.1:8080
+0.09.815.024 D que    start_loop: processing new tasks
+0.09.815.027 D que    start_loop: update slots
+0.09.815.028 I srv  update_slots: all slots are idle
+0.09.815.028 D que    start_loop: waiting for new tasks
+0.10.161.737 D srv          stop: all tasks already finished, no need to cancel
+
+===== stdout 尾部 =====

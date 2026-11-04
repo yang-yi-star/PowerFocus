@@ -1,0 +1,63 @@
+﻿v1 已停: PID 38436
+v2 已启动: PID 17252
+--- v2 日志尾部 ---
+2026-11-03 05:23:11 [INFO] 命令总线收到 action=trim_memory
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=set_io_priority
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=apply_scene
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=unfocus
+2026-11-03 05:23:12 [INFO] 命令总线收到 action=set_power_plan
+2026-11-03 05:23:12 [WARN] native 命令失败 (exit=1): 切换平衡
+2026-11-03 05:23:12 [INFO] 场景 [relax] 已应用（2 步）
+2026-11-03 05:24:57 [INFO] 命令总线收到 action=trim_memory
+命令总线 5 秒未返回结果
+--- 新 status.json ---
+{
+  "time": "2026-11-03 05:12:18",
+  "target_name": "",
+  "target_pid": null,
+  "focus_mode": "gentle",
+  "desired_priority": "High",
+  "original_priority": null,
+  "demoted_count": 0,
+  "power_plan": "电源方案 GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (高性能)",
+  "auth_list": [
+    {
+      "name": "llama-server",
+      "level": "high",
+      "added": "2026-11-03 05:00:00"
+    }
+  ],
+  "top_cpu": [
+    {
+      "pid": 43636,
+      "mem_mb": 120.4,
+      "cpu_pct": 2.3,
+      "name": "pwsh"
+    },
+    {
+      "pid": 11184,
+      "mem_mb": 1344.8,
+      "cpu_pct": 2.2,
+      "name": "WorkBuddy"
+    },
+    {
+      "pid": 15756,
+      "mem_mb": 129.8,
+      "cpu_pct": 1.8,
+      "name": "WorkBuddy"
+    },
+    {
+      "pid": 6196,
+      "mem_mb": 52.9,
+      "cpu_pct": 0.8,
+      "name": "WmiPrvSE"
+    },
+    {
+      "pid": 16704,
+      "mem_mb": 191.4,
+      "cpu_pct": 0.8,
+      "name": "DoubaoWork"
+    }
+  ]
+}
+

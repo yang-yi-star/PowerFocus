@@ -1,0 +1,3 @@
+=== json 输出验证 ===
+{"tool":"net-qos","action":"json","policies":{"name":"Limit-BaiduNetdisk.exe","app":"BaiduNetdisk.exe","port":null,"dscp":-1,"throttle_bps":null},"ok":true,"message":"当前 QoS 策略 1 条"}
+语义: ok=True message=当前 QoS 策略 1 条 策略数=

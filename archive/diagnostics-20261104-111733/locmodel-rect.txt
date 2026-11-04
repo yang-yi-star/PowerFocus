@@ -1,0 +1,3 @@
+﻿LocModel 窗口 Rect: L=226 T=93 R=1481 B=930  宽=1255 高=837
+可见: True | 最小化(Iconic): False
+屏幕: 1920x1080

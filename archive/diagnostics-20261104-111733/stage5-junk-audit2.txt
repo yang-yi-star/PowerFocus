@@ -1,0 +1,18 @@
+v2 Parser 错误数: 0
+旧 v2 已停: 10684
+新 v2: PID 21688 优先级=Normal
+=== list_junk（收紧后）===
+2026-11-03 11:05:48
+候选可清理「明显无用」进程（共 11 个，判定同补给清场，只读不杀）:
+cmd(PID 36724) 内存1MB
+douyin_guard(PID 51788) 内存18MB
+msedge(PID 46556) 内存0MB
+OpenConsole(PID 8080) 内存15MB
+OpenConsole(PID 13272) 内存2MB
+OpenConsole(PID 15396) 内存15MB
+OpenConsole(PID 52304) 内存3MB
+OpenConsole(PID 54768) 内存16MB
+PING(PID 7148) 内存6MB
+PING(PID 23268) 内存6MB
+RadeonSoftware(PID 12028) 内存16MB
+

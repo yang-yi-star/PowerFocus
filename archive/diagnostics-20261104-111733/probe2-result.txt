@@ -1,0 +1,15 @@
+﻿已停止残留 PID 40424
+--- timings 结构 ---
+{
+    "cache_n":  0,
+    "prompt_n":  2,
+    "prompt_ms":  324.292,
+    "prompt_per_token_ms":  162.146,
+    "prompt_per_second":  6.167281339040125,
+    "predicted_n":  8,
+    "predicted_ms":  2074.01,
+    "predicted_per_token_ms":  296.2871428571429,
+    "predicted_per_second":  3.375104266613951
+}
+--- tokens_predicted ---
+8

@@ -1,0 +1,15 @@
+=== net-qos 终验 ===
+Parser 错误: 0
+--- throttle 创建 ---
+OK: 已创建限速策略「QoS终验-3M」：3 Mbps 出站
+--- list（应有 2 条）---
+== 当前 QoS 策略（2 条）==
+  Limit-BaiduNetdisk.exe: 应用=BaiduNetdisk.exe DSCP=-1
+  QoS终验-3M: 应用=C:\Windows\System32\cmd.exe DSCP=-1
+--- json ---
+{"tool":"net-qos","action":"json","policies":[{"name":"Limit-BaiduNetdisk.exe","app":"BaiduNetdisk.exe","port":null,"dscp":-1,"throttle_bps":null},{"name":"QoS终验-3M","app":"C:\\Windows\\System32\\cmd.exe","port":null,"dscp":-1,"throttle_bps":null}],"ok":true,"message":"当前 QoS 策略 2 条"}
+--- remove ---
+OK: 已删除策略「QoS终验-3M」
+--- 最终 list ---
+== 当前 QoS 策略（1 条）==
+  Limit-BaiduNetdisk.exe: 应用=BaiduNetdisk.exe DSCP=-1

@@ -1,0 +1,7 @@
+Get-GpuMemoryInfo 返回: 数量=4
+null
+顶层 URL=[http:///slots]
+顶层访问 FAIL 无法绑定参数 'Uri'。无法将值 "http:///slots" 转换为类型 "System.Uri"。错误:“Invalid URI: The hostname could not be parsed.”
+顶层定义函数: LlamaHost=[127.0.0.1] LlamaPort=[8080]
+--- 增强函数内部探针 ---
+内部插值URL=[http:///slots] 拼接URL=[http://127.0.0.1:8080/slots] LlamaHost=[127.0.0.1]

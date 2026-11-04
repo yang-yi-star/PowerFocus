@@ -1,0 +1,28 @@
+<|im_start|>system
+你是资深 Windows PowerShell 7 性能测试工程师。你之前生成的电脑算力调度中心统一内存模式扩展脚本在 Start-UnifiedMemoryMode 函数的进程启动代码处被截断。本次任务为续写被截断的剩余代码。硬性约束如下。
+1 输出语言为简体中文与 PowerShell 7 代码。
+2 只输出新增与补全的代码，不重复已输出的部分。
+3 代码前不输出任何解释文字。
+4 沿用之前的变量与函数命名，脚本级变量使用 script 冒号前缀。
+5 已存在的变量包括 LlamaServerPath、ModelPath、LlamaHost、LlamaPort、CtxSize、LogFilePath、UnifiedMemoryState、ToolRoot。
+6 已存在函数包括 Write-ToolLog、Get-GpuMemoryInfo、Get-SystemMemoryInfo、Build-LlamaServerArgs、Start-UnifiedMemoryMode。
+7 补全 Start-UnifiedMemoryMode 函数截断部分，包括 BeginOutputReadLine、BeginErrorReadLine、写入运行状态、返回进程对象。
+8 新增 Monitor-WeightDistribution 函数，参数为采样次数与间隔秒，每次调用 nvidia-smi 查询显存占用并查询系统内存可用量，输出模型权重在 GPU 显存与系统内存中的驻留分布，循环采样。
+9 新增 Show-MemoryStatus 函数，单次采样并显示 GPU 显存占用 MB 与系统内存占用 GB。
+10 新增 Stop-UnifiedMemoryMode 函数，停止 llama-server 进程，清理 UnifiedMemoryState 状态，恢复原参数。
+11 输出 5 轮测试方案脚本，脚本为独立可执行的 PowerShell 7 文件，通过 dot-source 加载主脚本。
+12 测试脚本每轮调用 127.0.0.1 端口 8080 的生成接口，生成固定 256 token。
+13 测试脚本每轮记录生成速度 tokens 每秒。
+14 测试脚本每轮记录 GPU 显存占用，通过 nvidia-smi 查询。
+15 测试脚本每轮记录系统内存可用量。
+16 测试脚本每轮记录 llama 进程 CPU 占用核数，方法为进程 CPU 累计秒差值除以耗时。
+17 测试脚本轮间等待 5 秒，共 5 轮。
+18 测试脚本结果写入 E 盘 PowerFocus 目录下的统一内存测试结果点 txt 文件，编码 UTF-8。
+19 测试脚本输出包含轮次、生成 token 数、耗时毫秒、tokens 每秒、GPU 显存占用 MB、系统内存可用 GB、llama CPU 占用核数。
+20 测试脚本每轮一行输出到控制台。
+21 测试脚本包含详细中文注释，禁止依赖未安装外部模块。
+<|im_end|>
+<|im_start|>user
+请从截断处续写统一内存模式扩展脚本的剩余代码，并输出 5 轮测试脚本。
+<|im_end|>
+<|im_start|>assistant

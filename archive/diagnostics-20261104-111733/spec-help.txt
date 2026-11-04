@@ -1,0 +1,53 @@
+﻿--spec-draft-type-k, -ctkd, --cache-type-k-draft TYPE
+--spec-draft-type-v, -ctvd, --cache-type-v-draft TYPE
+--spec-draft-hf, -hfd, -hfrd, --hf-repo-draft <user>/<model>[:quant]
+--spec-draft-threads, -td, --threads-draft N
+--spec-draft-threads-batch, -tbd, --threads-batch-draft N
+--spec-draft-cpu-mask, -Cd, --cpu-mask-draft M
+--spec-draft-cpu-range, -Crd, --cpu-range-draft lo-hi
+--spec-draft-cpu-strict, --cpu-strict-draft <0|1>
+--spec-draft-prio, --prio-draft N       set draft process/thread priority : 0-normal, 1-medium, 2-high,
+--spec-draft-poll, --poll-draft <0|1>   Use polling to wait for draft model work (default: same as --poll)
+--spec-draft-cpu-mask-batch, -Cbd, --cpu-mask-batch-draft M
+--spec-draft-cpu-strict-batch, --cpu-strict-batch-draft <0|1>
+--spec-draft-prio-batch, --prio-batch-draft N
+--spec-draft-poll-batch, --poll-batch-draft <0|1>
+--spec-draft-override-tensor, -otd, --override-tensor-draft <tensor name pattern>=<buffer type>,...
+--spec-draft-cpu-moe, -cmoed, --cpu-moe-draft
+--spec-draft-n-cpu-moe, --spec-draft-ncmoe, -ncmoed, --n-cpu-moe-draft N
+--spec-draft-n-max N                    number of tokens to draft for speculative decoding (default: 3)
+--spec-draft-n-min N                    minimum number of draft tokens to use for speculative decoding
+--spec-draft-n-ubatch N                 physical maximum batch size of the draft context, use a smaller value
+--spec-synth-len L                      target mean synthetic acceptance length, including the target token
+--spec-synth-rates P0,P1,...            comma-separated unconditional per-position synthetic acceptance
+--spec-draft-p-split, --draft-p-split P
+--spec-draft-p-min, --draft-p-min P     minimum speculative decoding probability (greedy) (default: 0.00)
+--spec-draft-backend-sampling, --no-spec-draft-backend-sampling
+--spec-draft-sampling {greedy,probabilistic}
+--spec-draft-device, -devd, --device-draft <dev1,dev2,..>
+--spec-draft-ngl, -ngld, --gpu-layers-draft, --n-gpu-layers-draft N
+--spec-draft-model, -md, --model-draft FNAME
+--spec-type none,draft-simple,draft-eagle3,draft-mtp,draft-dflash,draft-dspark,ngram-simple,ngram-map-k,ngram-map-k4v,ngram-mod,ngram-cache
+--spec-ngram-mod-n-min N                minimum number of ngram tokens to use for ngram-based speculative
+--spec-ngram-mod-n-max N                maximum number of ngram tokens to use for ngram-based speculative
+--spec-ngram-mod-n-match N              ngram-mod lookup length (default: 24)
+--spec-ngram-simple-size-n N            ngram size N for ngram-simple speculative decoding, length of lookup
+--spec-ngram-simple-size-m N            ngram size M for ngram-simple speculative decoding, length of draft
+--spec-ngram-simple-min-hits N          minimum hits for ngram-simple speculative decoding (default: 1)
+--spec-ngram-map-k-size-n N             ngram size N for ngram-map-k speculative decoding, length of lookup
+--spec-ngram-map-k-size-m N             ngram size M for ngram-map-k speculative decoding, length of draft
+--spec-ngram-map-k-min-hits N           minimum hits for ngram-map-k speculative decoding (default: 1)
+--spec-ngram-map-k4v-size-n N           ngram size N for ngram-map-k4v speculative decoding, length of lookup
+--spec-ngram-map-k4v-size-m N           ngram size M for ngram-map-k4v speculative decoding, length of draft
+--spec-ngram-map-k4v-min-hits N         minimum hits for ngram-map-k4v speculative decoding (default: 1)
+--draft, --draft-n, --draft-max N       the argument has been removed. use --spec-draft-n-max or
+--spec-ngram-mod-n-max
+--draft-min, --draft-n-min N            the argument has been removed. use --spec-draft-n-min or
+--spec-ngram-mod-n-min
+--spec-ngram-size-n N                   the argument has been removed. use the respective
+--spec-ngram-*-size-n or --spec-ngram-mod-n-match
+--spec-ngram-size-m N                   the argument has been removed. use the respective
+--spec-ngram-*-size-m
+--spec-ngram-min-hits N                 the argument has been removed. use the respective
+--spec-ngram-*-min-hits
+--spec-default                          enable default speculative decoding config

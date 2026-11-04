@@ -1,0 +1,281 @@
+# 统一内存模式模块增强代码
+
+```powershell
+# 功能：查询 /slots 接口获取活跃槽位的 n_past 与 n_ctx，计算剩余可用上下文 token 数
+# 功能：调用 Get-GpuMemoryInfo 采样显存，用每 token 0.0332 MiB 的实测系数估算当前 KV 缓存显存占用
+# 功能：输出哈希表，含 RemainingTokens、ContextUsedPct、KvCacheMB、GpuFreeMB、Healthy 字段
+function Get-ContextRemainingEstimate {
+    param(
+        [int]$Port = 8080,
+        [double]$KvPerTokenMiB = 0.0332
+    )
+
+    # 初始化默认返回值，查询失败时返回 Healthy 为假
+    $result = @{
+        RemainingTokens = 0
+        ContextUsedPct  = 0.0
+        KvCacheMB       = 0.0
+        GpuFreeMB       = 0
+        Healthy         = $false
+    }
+
+    try {
+        # 构造 /slots 接口地址
+        $url = "http://$script:LlamaHost:$Port/slots"
+        # 发送 GET 请求获取槽位信息
+        $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5
+    }
+    catch {
+        # 查询 /slots 失败时记录 WARN 日志并返回
+        Write-ToolLog -Message "查询 /slots 接口失败，端口 $Port，错误：$($_.Exception.Message)" -Level WARN
+        return $result
+    }
+
+    # 从响应中提取活跃槽位数据
+    # llama-server 的 GET /slots 接口返回槽位数组，每项含 n_past 已用 token 数和 n_ctx 槽位总长
+    $slot = $null
+    if ($response -is [System.Array]) {
+        # 取第一个活跃槽位
+        $slot = $response | Select-Object -First 1
+    }
+    else {
+        $slot = $response
+    }
+
+    if ($null -eq $slot) {
+        Write-ToolLog -Message "未获取到活跃槽位数据，端口 $Port" -Level WARN
+        return $result
+    }
+
+    # 提取 n_past 已用 token 数和 n_ctx 槽位总长
+    $nPast = [int]$slot.n_past
+    $nCtx  = [int]$slot.n_ctx
+
+    # 计算剩余可用上下文 token 数
+    $remainingTokens = [Math]::Max(0, $nCtx - $nPast)
+
+    # 计算上下文使用百分比
+    if ($nCtx -gt 0) {
+        $contextUsedPct = [Math]::Round(($nPast / $nCtx) * 100, 2)
+    }
+    else {
+        $contextUsedPct = 0.0
+    }
+
+    # 调用 Get-GpuMemoryInfo 采样显存
+    $gpuInfo = Get-GpuMemoryInfo
+    $gpuFreeMB = 0
+    if ($gpuInfo -is [System.Array] -and $gpuInfo.Count -gt 0) {
+        # 取第一块 GPU 的空闲显存
+        $gpuFreeMB = [int]$gpuInfo[0].FreeMB
+    }
+    elseif ($gpuInfo -is [System.Collections.Hashtable]) {
+        $gpuFreeMB = [int]$gpuInfo.FreeMB
+    }
+
+    # 用每 token 0.0332 MiB 的实测系数估算当前 KV 缓存显存占用
+    # Qwen3.8-27B 混合架构 65 层中仅 16 层有注意力 KV 缓存，其余 49 层无 KV
+    # 64K 上下文 KV 缓存全满实测为 2176 MiB，即每 token KV 开销约 0.0332 MiB
+    $kvCacheMB = [Math]::Round($nPast * $KvPerTokenMiB, 2)
+
+    # 健康判定：剩余 token 大于总长的 10% 且显存空闲大于 512 MB 时 Healthy 为真
+    $healthy = ($remainingTokens -gt ($nCtx * 0.1)) -and ($gpuFreeMB -gt 512)
+
+    $result.RemainingTokens = $remainingTokens
+    $result.ContextUsedPct  = $contextUsedPct
+    $result.KvCacheMB       = $kvCacheMB
+    $result.GpuFreeMB       = $gpuFreeMB
+    $result.Healthy         = $healthy
+
+    return $result
+}
+
+
+# 功能：维护一个脚本级历史采样队列 $script:PerfSamples，保存最近 10 次生成速度采样值
+# 功能：输入当前速度值与基线速度值，当当前速度低于基线速度的 50% 时判定为性能骤降
+# 功能：返回哈希表含 Degraded、CurrentTps、BaselineTps、Ratio 字段，并返回队列长度
+function Test-PerformanceDegradation {
+    param(
+        [double]$CurrentTps,
+        [double]$BaselineTps,
+        [double]$DegradeRatio = 0.5
+    )
+
+    # 初始化脚本级历史采样队列，若不存在则创建
+    if ($null -eq $script:PerfSamples) {
+        $script:PerfSamples = @()
+    }
+
+    # 将当前速度写入队列
+    $script:PerfSamples += $CurrentTps
+
+    # 数组长度超限时移除最旧
+    if ($script:PerfSamples.Count -gt 10) {
+        $script:PerfSamples = $script:PerfSamples[1..($script:PerfSamples.Count - 1)]
+    }
+
+    # 计算当前速度与基线速度的比值
+    if ($BaselineTps -gt 0) {
+        $ratio = [Math]::Round($CurrentTps / $BaselineTps, 4)
+    }
+    else {
+        $ratio = 0.0
+    }
+
+    # 当当前速度低于基线速度的 50% 时判定为性能骤降
+    $degraded = ($ratio -lt $DegradeRatio)
+
+    if ($degraded) {
+        Write-ToolLog -Message "检测到性能骤降，当前速度 $CurrentTps tps，基线速度 $BaselineTps tps，比值 $ratio" -Level WARN
+    }
+
+    $result = @{
+        Degraded    = $degraded
+        CurrentTps  = $CurrentTps
+        BaselineTps = $BaselineTps
+        Ratio       = $ratio
+        QueueLength = $script:PerfSamples.Count
+    }
+
+    return $result
+}
+
+
+# 功能：调用 llama-server 的 POST /slots 接口，请求体含 slot_id 与 cache_prompt 为 false
+# 功能：清空指定槽位的上下文缓存以释放 KV 显存
+# 功能：接口调用失败时记录 ERROR 日志并返回假，成功返回真
+function Invoke-ContextCleanup {
+    param(
+        [int]$SlotId = 0,
+        [int]$Port = 8080
+    )
+
+    # 清空前记录 WARN 日志提示上下文将被清空
+    # 此操作不可逆，清空后该槽位的所有历史上下文将丢失，无法恢复
+    Write-ToolLog -Message "即将清空槽位 $SlotId 的上下文缓存，端口 $Port，此操作不可逆" -Level WARN
+
+    try {
+        # 构造 POST /slots 接口地址
+        $url = "http://$script:LlamaHost:$Port/slots"
+        # 构造请求体，cache_prompt 为 false 表示清空上下文缓存
+        $body = @{
+            slot_id      = $SlotId
+            cache_prompt = $false
+        } | ConvertTo-Json
+
+        # 发送 POST 请求
+        $response = Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10
+
+        # 成功返回真
+        Write-ToolLog -Message "槽位 $SlotId 上下文缓存已清空，端口 $Port" -Level INFO
+        return $true
+    }
+    catch {
+        # 接口调用失败时记录 ERROR 日志并返回假
+        Write-ToolLog -Message "清空槽位 $SlotId 上下文缓存失败，端口 $Port，错误：$($_.Exception.Message)" -Level ERROR
+        return $false
+    }
+}
+
+
+# 功能：在现有显存采样输出基础上，每轮调用 Get-ContextRemainingEstimate 与 Test-PerformanceDegradation
+# 功能：输出行增加上下文剩余 token 数与性能告警状态
+# 功能：当检测到性能骤降或上下文使用超过 90% 或显存空闲低于 512 MB 时，记录 WARN 日志并提示可调用 Invoke-ContextCleanup
+function Monitor-WeightDistribution {
+    param(
+        [int]$SampleCount = 10,
+        [int]$IntervalSec = 5
+    )
+
+    # 记录监控开始
+    Write-ToolLog -Message "开始权重分布监控，采样次数 $SampleCount，间隔 $IntervalSec 秒" -Level INFO
+
+    # 获取基线速度，用于性能骤降检测
+    # 基线速度取最近一次正常采样的速度值，若队列非空则取队列中最大值作为基线
+    $baselineTps = 0.0
+    if ($null -ne $script:PerfSamples -and $script:PerfSamples.Count -gt 0) {
+        $baselineTps = [Math]::Max($script:PerfSamples)
+    }
+    else {
+        # 默认基线速度，可根据实际场景调整
+        $baselineTps = 15.0
+    }
+
+    for ($i = 1; $i -le $SampleCount; $i++) {
+        # 采样显存信息
+        $gpuInfo = Get-GpuMemoryInfo
+        $sysInfo = Get-SystemMemoryInfo
+
+        # 获取上下文剩余估算
+        $ctxEstimate = Get-ContextRemainingEstimate -Port $script:LlamaPort
+
+        # 获取当前生成速度，从 /slots 接口获取
+        $currentTps = 0.0
+        try {
+            $slotUrl = "http://$script:LlamaHost:$script:LlamaPort/slots"
+            $slotResponse = Invoke-RestMethod -Uri $slotUrl -Method Get -TimeoutSec 5
+            if ($slotResponse -is [System.Array]) {
+                $activeSlot = $slotResponse | Select-Object -First 1
+            }
+            else {
+                $activeSlot = $slotResponse
+            }
+            if ($null -ne $activeSlot -and $activeSlot.PSObject.Properties['tps'] -ne $null) {
+                $currentTps = [double]$activeSlot.tps
+            }
+        }
+        catch {
+            # 获取速度失败时记录 DEBUG 日志
+            Write-ToolLog -Message "获取当前生成速度失败：$($_.Exception.Message)" -Level DEBUG
+        }
+
+        # 调用 Test-PerformanceDegradation 检测性能骤降
+        $perfResult = Test-PerformanceDegradation -CurrentTps $currentTps -BaselineTps $baselineTps
+
+        # 构建原有输出行
+        $gpuLine = ""
+        if ($gpuInfo -is [System.Array] -and $gpuInfo.Count -gt 0) {
+            $gpuLine = "GPU0: 总 $([Math]::Round($gpuInfo[0].TotalMB / 1024, 2)) GB，已用 $([Math]::Round($gpuInfo[0].UsedMB / 1024, 2)) GB，空闲 $([Math]::Round($gpuInfo[0].FreeMB / 1024, 2)) GB"
+        }
+        $sysLine = "系统: 总 $([Math]::Round($sysInfo.TotalMB / 1024, 2)) GB，可用 $([Math]::Round($sysInfo.AvailableMB / 1024, 2)) GB，已提交 $([Math]::Round($sysInfo.CommittedMB / 1024, 2)) GB"
+
+        # 新增信息追加在行尾
+        $ctxLine = "上下文剩余 $([int]$ctxEstimate.RemainingTokens) tokens，使用 $([Math]::Round($ctxEstimate.ContextUsedPct, 1))%，KV 估算 $([Math]::Round($ctxEstimate.KvCacheMB, 1)) MB"
+        $perfLine = "速度 $([Math]::Round($currentTps, 2)) tps，基线 $([Math]::Round($baselineTps, 2)) tps，比值 $([Math]::Round($perfResult.Ratio, 3))"
+
+        $outputLine = "[$i/$SampleCount] $gpuLine | $sysLine | $ctxLine | $perfLine"
+        Write-ToolLog -Message $outputLine -Level INFO
+
+        # 告警判定：性能骤降或上下文使用超过 90% 或显存空闲低于 512 MB
+        $needWarn = $false
+        $warnReasons = @()
+
+        if ($perfResult.Degraded) {
+            $needWarn = $true
+            $warnReasons += "性能骤降"
+        }
+
+        if ($ctxEstimate.ContextUsedPct -gt 90.0) {
+            $needWarn = $true
+            $warnReasons += "上下文使用超过 90%"
+        }
+
+        if ($ctxEstimate.GpuFreeMB -lt 512) {
+            $needWarn = $true
+            $warnReasons += "显存空闲低于 512 MB"
+        }
+
+        if ($needWarn) {
+            $reasonStr = $warnReasons -join "，"
+            Write-ToolLog -Message "告警：$reasonStr，可调用 Invoke-ContextCleanup 清理上下文缓存，等待人工确认" -Level WARN
+        }
+
+        # 非最后一轮时等待间隔
+        if ($i -lt $SampleCount) {
+            Start-Sleep -Seconds $IntervalSec
+        }
+    }
+
+    Write-ToolLog -Message "权重分布监控完成" -Level INFO
+}
+```

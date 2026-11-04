@@ -1,0 +1,7 @@
+﻿8081 已监听 (PID 22956)
+--- stderr 尾部 ---
+0.00.103.313 I srv  llama_server: initializing ...
+0.00.103.325 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.103.617 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.123.323 I srv    load_model: loading model 'D:\Models\gguf\Qwen3-14B-Q4_K_M.gguf'
+0.24.447.153 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden

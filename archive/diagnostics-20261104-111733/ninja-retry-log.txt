@@ -1,0 +1,11 @@
+﻿Found ninja [Ninja-build.Ninja] Version 1.13.2
+This application is licensed to you by its owner.
+Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Downloading https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip
+Successfully verified installer hash
+Extracting archive...
+Successfully extracted archive
+Starting package install...
+Command line alias added: "ninja"
+Successfully installed
+重试完成

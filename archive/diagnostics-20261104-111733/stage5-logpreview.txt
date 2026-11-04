@@ -1,0 +1,32 @@
+总行数: 175
+=== 最后 30 行 ===
+- **前台进程保护**：`GetForegroundWindow` 拿前台 PID，规则永不降级前台进程（Selective 原则双保险：条件层 + 动作层）。
+- **热更新**：rules.json 每 60s 重读；`apply_rules` 命令强制重载。
+- **心跳**：每 2s 写 rules_state.json（含 foreground_pid），供任何 AI/上层读取规则引擎状态。
+
+### 四、v2 集成（编辑 电脑算力调度中心_v2.ps1）
+- 新命令动作：`start_rules` / `stop_rules` / `list_rules` / `apply_rules` / `set_ecoqos` / `set_affinity`（6 个）。
+- **引擎在脚本顶层 dot-source**（函数注册进脚本作用域）；评估挂接**命令总线 tick**（单线程 2s，绝无重入）。
+- `status.json` 新增 `rules_active` / `foreground_pid` 字段。
+- **自保机制**：v2 启动时自身 < Normal 回正 + **每 tick 复查**（防被外部压低；豆包环境子进程常继承 BelowNormal，`Start-Process` 创建的子进程继承父优先级类——实测 v2 重启后全程 BelowNormal，必须自保）。
+
+### 五、验证记录（10:00-10:08 全链路实测）
+- 三文件 Parser 全 OK。
+- **触发-心跳-还原链路**：selftest 规则（匹配 pwsh 必降级）→ 10:04:10 `demote pwsh(700) level=idle` 触发 → 心跳 `rules_active` 记录 → 10:04:18 stop_rules 还原 `pwsh(700) -> Idle`（原值还原正确）。
+- **EcoQoS 官方 API 实测**：ollama(11472) on/off 均 `ok=True`（SetProcessInformation 调用成功）。
+- **亲和性实测**：ollama 绑核 0-3 `mask=15 ok=True`；恢复 0-31 `mask=4294967295 ok=True`。
+- **生产规则运行**：inference-godmode + restrain-background-cpu 双启用，空闲期不误触发（rules_active=[]，心跳 10:08:57 running=true）。
+- **自保生效**：v2 PID 12944 启动回正 Normal，6s 后仍 Normal（tick 维持）。
+
+### 六、踩坑记录（铁律：诚实记录）
+1. **`$Pid` 只读自动变量**：`param([int]$Pid)` 赋值即抛"无法覆盖变量 Pid"（变量名不区分大小写，$PID 为只读）。→ 参数统一改 `$ProcId`。
+2. **System.Timers.Timer 事件线程并发**：Timer Elapsed 事件线程执行评估时与 PowerShell runspace 主线程冲突，破坏输出管线（现象：子进程/直测输出仅剩最后一行，中间全丢）。→ **废弃独立 Timer，评估挂接命令总线 tick（单线程）**。
+3. **函数内 dot-source 作用域陷阱**：命令处理函数内 dot-source 引擎 → 函数注册于函数作用域，函数返回即销毁 → tick（脚本作用域）找不到 `Invoke-RulesEngineOnce`，评估永不执行（心跳停在启动时刻）。→ **引擎必须脚本顶层 dot-source**。
+4. **Windows 优先级枚举数值无次序**：`BELOW_NORMAL=16384 > NORMAL=32`（数值上"更低"的优先级值反而更大），`-lt` 直接比较恒 False → 自保静默失效（日志误报"正常"）。→ 新增 `Get-PriorityRank` 语义排序（Idle=0…RealTime=5）。watchdog 用 `-ne`（枚举等价比较）不受影响。
+5. **`cpu_gt_pct=0` 在 PowerShell 为 falsy**：`$Cond.cpu_gt_pct -and ...` 中 0 直接跳过检查（语义变成"无条件"）。→ 改用 `$null -ne` 显式判断。
+6. **规则状态重复 key**：Invoke-RuleAction 内 key（`"$procId-demote"`）与评估层 key（`"$rname-$id"`）命名不一致 → 心跳出现重复条目。→ Invoke-RuleAction 改为纯动作执行，状态统一由评估层管理。
+
+### 七、当前边界与待办
+- **已交付**：规则引擎（条件自动化/心跳/前台保护/热更新）+ EcoQoS + 亲和性 + 自保 + 6 个命令动作，全链路实机验证通过。
+- **待办**：① MCP 化命令总线（Tools 原语让任何 AI 客户端直接调调度中心——备料已查 MCP 规范，下阶段做）；② `net_qos` 仍需管理员权限未验证；③ 份额制/动态优先级（论文素材）留作阶段五。
+

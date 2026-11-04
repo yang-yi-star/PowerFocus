@@ -1,0 +1,21 @@
+﻿--reasoning-format FORMAT               controls whether thought tags are allowed and/or extracted from the
+- deepseek: puts thoughts in `message.reasoning_content`
+- deepseek-legacy: keeps `<think>` tags in `message.content` while
+also populating `message.reasoning_content`
+(env: LLAMA_ARG_THINK)
+-rea,  --reasoning [on|off|auto]        Use reasoning/thinking in the chat ('on', 'off', or 'auto', default:
+(env: LLAMA_ARG_REASONING)
+--reasoning-effort LEVEL                reasoning effort level given to the chat template: 'default' to keep
+(env: LLAMA_ARG_REASONING_EFFORT)
+--reasoning-budget N                    token budget for thinking: -1 for unrestricted, 0 for immediate end,
+(env: LLAMA_ARG_THINK_BUDGET)
+--reasoning-budget-message MESSAGE      message injected before the end-of-thinking tag when reasoning budget
+(env: LLAMA_ARG_THINK_BUDGET_MESSAGE)
+--reasoning-preserve, --no-reasoning-preserve
+preserve reasoning trace in the full history, not just the last
+compatible with certain templates having 'supports_preserve_reasoning'
+https://docs.z.ai/guides/capabilities/thinking-mode#preserved-thinking
+(env: LLAMA_ARG_REASONING_PRESERVE)
+bailing, bailing-think, bailing2, chatglm3, chatglm4, chatml,
+bailing, bailing-think, bailing2, chatglm3, chatglm4, chatml,
+reasoning and/or tool calls (default: disabled)

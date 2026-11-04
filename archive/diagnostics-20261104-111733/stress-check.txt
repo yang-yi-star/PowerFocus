@@ -1,0 +1,1 @@
+﻿alive=27 cores_busy=26.8 load=94%

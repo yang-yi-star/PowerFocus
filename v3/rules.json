@@ -1,0 +1,44 @@
+{
+  "_说明": "阶段四规则引擎定义（电脑算力调度中心 v2）。规则按顺序评估，命中 when 条件（持续 for_seconds 秒）执行 then 动作；until 条件满足后自动还原。condition 字段说明：process_name=进程名(支持正则)，cpu_gt_pct=CPU%大于，mem_gt_mb=内存MB大于，is_foreground=true=仅当前前台进程，not_foreground=true=仅非前台进程，not_in_whitelist=true=排除系统白名单，not_authorized=true=排除授权清单(保护已开后门的进程)。动作：focus(mode: gentle/aggressive/godmode)/demote(level: idle/below_normal)/ecoqos/affinity(cores)/trim/power(plan: high/balanced)。",
+  "rules": [
+    {
+      "name": "inference-godmode",
+      "enabled": true,
+      "desc": "本地推理进程(llama-server)吃算力时自动开 GodMode，闲置时还原",
+      "when": {
+        "process_name": "llama-server",
+        "cpu_gt_pct": 3,
+        "mem_gt_mb": 800,
+        "for_seconds": 3
+      },
+      "then": {
+        "action": "focus",
+        "mode": "godmode"
+      },
+      "until": {
+        "cpu_lt_pct": 1,
+        "for_seconds": 15
+      }
+    },
+    {
+      "name": "restrain-background-cpu",
+      "enabled": true,
+      "desc": "非前台、非白名单、非授权的后台进程持续高 CPU 时临时降级，还原原值",
+      "when": {
+        "not_foreground": true,
+        "not_in_whitelist": true,
+        "not_authorized": true,
+        "cpu_gt_pct": 25,
+        "for_seconds": 6
+      },
+      "then": {
+        "action": "demote",
+        "level": "below_normal"
+      },
+      "until": {
+        "cpu_lt_pct": 8,
+        "for_seconds": 20
+      }
+    }
+  ]
+}

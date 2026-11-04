@@ -1,0 +1,2 @@
+2026-11-03 09:53:39
+ERROR: 命令解析/执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”

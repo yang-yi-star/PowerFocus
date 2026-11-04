@@ -1,0 +1,12 @@
+{
+  "time": "2026-11-04 08:28:20",
+  "llama_pid": 21172,
+  "llama_cmdline": "\"E:\\Program Files\\llama.cpp\\bin\\llama-server.exe\" -m \"E:\\Model_Zone\\Qwen3.8-27B-UD-Q4_K_M\\Qwen3.8-27B-UD-Q4_K_M.gguf\" -ngl 20 -fa off -c 8192 --cache-type-k q8_0 --cache-type-v f16 -t 16 -tb 8 --temp 0.7 --top-k 20 --top-p 0.8 --presence-penalty 1.5 --min-p 0 --host 127.0.0.1 --port 8080 --parallel 1 --alias Qwen3.8-27B",
+  "llama_priority": "High",
+  "monitor_pid": 12932,
+  "gpu_mb": "8151, 6318, 1582",
+  "free_ram_gb": 14.61,
+  "total_ram_gb": 31.22,
+  "v2_pid": 12896,
+  "v3_file": "E:\\PowerFocus\\电脑算力调度中心_v3.ps1"
+}

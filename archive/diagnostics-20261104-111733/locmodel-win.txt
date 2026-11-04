@@ -1,0 +1,49 @@
+﻿=== LocModel 主窗口 ===
+MainWindowTitle: 'LocModel' | Handle: 8589674 | 有窗口: True
+
+=== 父进程 26312 ===
+26312 已退出
+
+=== webview2 (17636) 窗口 ===
+MainWindowTitle: '' | Handle: 1315058 | 有窗口: True
+
+=== 所有 cmd.exe 进程 ===
+
+
+ProcessId       : 17052
+ParentProcessId : 7144
+CommandLine     : cmd.exe /e:ON /v:OFF /d /c ""C:\Users\Administrator.医院\AppData\Local\DoubaoWork\User Data\sandbox_run
+                  time\bases\772984f6fd3a8ae0ae7d2422cd7c2bfa\node\npx.CMD" -y chrome-devtools-mcp@latest "--headless=t
+                  rue" "--isolated=true""
+
+ProcessId       : 18492
+ParentProcessId : 29912
+CommandLine     : C:\Windows\system32\cmd.exe /d /s /c chrome-devtools-mcp --headless=true --isolated=true
+
+ProcessId       : 36724
+ParentProcessId : 21212
+CommandLine     : "C:\Windows\system32\cmd.exe" dsh --profile qqbot > "C:\Users\Administrator.医院\DoubaoWork\chats\2026-
+                  11-02\new-chat-1\qqbot_boot.log" 2>&1 
+
+ProcessId       : 15164
+ParentProcessId : 34548
+CommandLine     : "C:\Windows\system32\cmd.exe" /c cd /d D:\NapCat\NapCat.52230.Shell && NapCatWinBootMain.exe 29969266
+                  28 
+
+ProcessId       : 52068
+ParentProcessId : 2772
+CommandLine     : C:\Windows\SYSTEM32\cmd.exe /c ""E:\WDSJ\mcserver\启动服务器.bat""
+
+
+
+
+
+=== LocModel 全部窗口枚举 ===
+
+ProcessName       Id MainWindowTitle
+-----------       -- ---------------
+LocModel       55632 LocModel       
+msedgewebview2 17636                
+
+
+

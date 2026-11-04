@@ -1,0 +1,6 @@
+﻿pwsh=7.6.9
+before: exists=False
+after ON: exists=True
+action="C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\Microsoft.PowerShell_8wekyb3d8bbwe\pwsh.exe" | -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "E:\PowerFocus\PowerFocus.ps1"
+trigger=MSFT_TaskLogonTrigger | 7
+after OFF: exists=False

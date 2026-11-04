@@ -1,0 +1,5 @@
+﻿{
+    "temperature":  0.7,
+    "prompt":  "你是一个 PowerShell 工程师。请只输出一个 PowerShell 函数 Set-HighPriority，参数为进程名，功能是把该进程 PriorityClass 设为 High。只输出代码，不输出任何解释。",
+    "max_tokens":  300
+}

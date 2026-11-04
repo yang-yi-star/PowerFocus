@@ -1,0 +1,6 @@
+﻿tool_pid=38436 alive=True
+2026-11-02 10:04:47 [INFO] PowerFocus 已启动 (默认建议目标: llama-server)
+2026-11-02 10:16:03 [INFO] 开机自启已开启: E:\PowerFocus\电脑算力调度中心.ps1
+2026-11-02 10:16:06 [INFO] 开机自启已关闭
+2026-11-02 10:16:10 [INFO] 电脑算力调度中心已启动 (默认建议目标: llama-server)
+2026-11-02 12:53:37 [INFO] 电脑算力调度中心已启动 (默认建议目标: llama-server)

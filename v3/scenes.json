@@ -1,0 +1,52 @@
+{
+  "_说明": "场景模式预设：apply_scene 动作按 steps 顺序执行。禁止在 steps 中使用 authorize/revoke。",
+  "scenes": {
+    "inference": {
+      "desc": "本地推理模式：llama-server GodMode + I/O High + 内存修剪 + 高性能电源",
+      "steps": [
+        {
+          "action": "focus",
+          "mode": "godmode",
+          "process_name": "llama-server"
+        },
+        {
+          "priority": "High",
+          "action": "set_io_priority",
+          "process_name": "llama-server"
+        },
+        {
+          "action": "trim_memory",
+          "exclude_target": true
+        },
+        {
+          "action": "set_power_plan",
+          "plan": "high"
+        }
+      ]
+    },
+    "gaming": {
+      "desc": "游戏模式：高性能电源 + 后台内存修剪（游戏进程自行选择后 focus）",
+      "steps": [
+        {
+          "action": "set_power_plan",
+          "plan": "high"
+        },
+        {
+          "action": "trim_memory"
+        }
+      ]
+    },
+    "relax": {
+      "desc": "还原模式：解除全部聚焦 + 平衡电源",
+      "steps": [
+        {
+          "action": "unfocus"
+        },
+        {
+          "action": "set_power_plan",
+          "plan": "balanced"
+        }
+      ]
+    }
+  }
+}

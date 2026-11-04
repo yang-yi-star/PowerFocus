@@ -1,0 +1,10 @@
+停 MTP 实例 PID 19636
+基线实例 PID=18448 health=True
+===== phase2: 基线测速（无投机解码） =====
+速度轮1 : 3.23 t/s (predicted=256, wall=80s)
+速度轮2 : 3.18 t/s (predicted=184, wall=58.1s)
+速度轮3 : 2.99 t/s (predicted=256, wall=86s)
+速度轮4 : 3.28 t/s (predicted=256, wall=78.3s)
+速度轮5 : 3.29 t/s (predicted=256, wall=78.2s)
+翻译: predicted=512, wall=160s
+===== phase2 完成 =====

@@ -1,0 +1,10 @@
+=== 环境检查 ===
+当前用户: Administrator
+管理员: True
+Node: v22.23.2
+npm: 10.9.8
+Ghidra: D:\ghidra_12.1.4_PUBLIC
+出口 IP 检测失败: 基础连接已经关闭: 发送时发生错误。
+系统代理启用: 0  Server: 
+NetQoS 模块: True
+现有 QoS 策略数: 1

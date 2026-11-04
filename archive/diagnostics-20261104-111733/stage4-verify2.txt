@@ -1,0 +1,17 @@
+﻿已写入自测规则（selftest 启用，其余停用）
+--- t1-apply ---
+2026-11-03 09:53:35
+OK: 规则已重载 3 条
+
+--- t2-start ---
+2026-11-03 09:53:39
+ERROR: 命令解析/执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”
+
+--- rules_state.json（心跳）---
+--- v2 日志（触发证据）---
+2026-11-03 09:53:03 [INFO] 命令总线已启动: 每 2 秒轮询 E:\PowerFocus\commands\in
+2026-11-03 09:53:35 [INFO] 命令总线收到 action=apply_rules
+2026-11-03 09:53:35 [INFO] 命令 t1-apply.json 完成: OK: 规则已重载 3 条
+2026-11-03 09:53:39 [INFO] 命令总线收到 action=start_rules
+2026-11-03 09:53:39 [ERROR] 命令文件 t2-start.json 执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”
+2026-11-03 09:53:39 [INFO] 命令 t2-start.json 完成: ERROR: 命令解析/执行异常: 无法将参数“value”转换为类型“System.Action”，其值为“add_Elapsed”，用于“System.Timers.ElapsedEventHandler”：“无法将类型“System.Action”的“System.Action”值转换为类型“System.Timers.ElapsedEventHandler”。”

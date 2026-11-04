@@ -1,0 +1,29 @@
+=== net-diag 测试 ===
+Parser 错误: 0
+--- 人类报告 ---
+== 网络适配器 ==
+  以太网 3                    Up         1 Gbps
+  vEthernet (Default Switch) Up         10 Gbps
+  Tailscale                Up         100 Gbps
+  WLAN                     Up         866.7 Mbps
+== IPv4 / 网关 / DNS ==
+  以太网 3: IP=192.168.56.1 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3
+  vEthernet (Default Switch): IP=172.25.160.1 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3
+  Tailscale: IP=169.254.83.107 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3
+  WLAN: IP=192.168.1.42 网关=192.168.1.1 DNS=fe80::2a15:a4ff:fe04:9143,223.5.5.5,223.6.6.6
+  蓝牙网络连接 2: IP=169.254.224.48 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3
+  以太网: IP=169.254.164.183 网关=无 DNS=223.5.5.5
+默认网关 192.168.1.1 延迟: 4.5 ms
+== 外网连通（ping 4 次采样）==
+  www.baidu.com        通  平均 38 ms 丢包 0/4
+  www.qq.com           通  平均 36.2 ms 丢包 0/4
+  github.com           通  平均 105.5 ms 丢包 0/4
+== DNS 解析 ==
+  www.baidu.com        -> 36.152.44.132
+  www.qq.com           -> 36.155.163.177
+  github.com           -> 20.205.243.166
+== 默认路由 ==
+  WLAN via 192.168.1.1
+--- json ---
+{"tool":"net-diag","time":"2026-11-03 11:46:13","ok":true,"adapters":[{"name":"以太网 3","status":"Up","speed":"1 Gbps"},{"name":"vEthernet (Default Switch)","status":"Up","speed":"10 Gbps"},{"name":"Tailscale","status":"Up","speed":"100 Gbps"},{"name":"WLAN","status":"Up","speed":"866.7 Mbps"}],"ipv4":[{"iface":"以太网 3","ip":"192.168.56.1","gateway":null,"dns":"fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3"},{"iface":"vEthernet (Default Switch)","ip":"172.25.160.1","gateway":null,"dns":"fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3"},{"iface":"Tailscale","ip":"169.254.83.107","gateway":null,"dns":"fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3"},{"iface":"WLAN","ip":"192.168.1.42","gateway":"192.168.1.1","dns":"fe80::2a15:a4ff:fe04:9143,223.5.5.5,223.6.6.6"},{"iface":"蓝牙网络连接 2","ip":"169.254.224.48","gateway":null,"dns":"fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3"},{"iface":"以太网","ip":"169.254.164.183","gateway":null,"dns":"223.5.5.5"}],"dns":[{"domain":"www.baidu.com","ip":"36.152.44.93"},{"domain":"www.qq.com","ip":"36.155.163.177"},{"domain":"github.com","ip":"20.205.243.166"}],"gateway":"192.168.1.1","connectivity":[{"target":"www.baidu.com","reachable":true,"avg_ms":33.8,"loss":0},{"target":"www.qq.com","reachable":true,"avg_ms":36.2,"loss":0},{"target":"github.com","reachable":true,"avg_ms":96.5,"loss":0}],"summary":["== 网络适配器 ==","  以太网 3                    Up         1 Gbps","  vEthernet (Default Switch) Up         10 Gbps","  Tailscale                Up         100 Gbps","  WLAN                     Up         866.7 Mbps","== IPv4 / 网关 / DNS ==","  以太网 3: IP=192.168.56.1 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3","  vEthernet (Default Switch): IP=172.25.160.1 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3","  Tailscale: IP=169.254.83.107 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3","  WLAN: IP=192.168.1.42 网关=192.168.1.1 DNS=fe80::2a15:a4ff:fe04:9143,223.5.5.5,223.6.6.6","  蓝牙网络连接 2: IP=169.254.224.48 网关=无 DNS=fec0:0:0:ffff::1,fec0:0:0:ffff::2,fec0:0:0:ffff::3","  以太网: IP=169.254.164.183 网关=无 DNS=223.5.5.5","默认网关 192.168.1.1 延迟: 4 ms","== 外网连通（ping 4 次采样）==","  www.baidu.com        通  平均 33.8 ms 丢包 0/4","  www.qq.com           通  平均 36.2 ms 丢包 0/4","  github.com           通  平均 96.5 ms 丢包 0/4","== DNS 解析 ==","  www.baidu.com        -\u003e 36.152.44.93","  www.qq.com           -\u003e 36.155.163.177","  github.com           -\u003e 20.205.243.166","== 默认路由 ==","  WLAN via 192.168.1.1"],"gateway_latency_ms":4,"default_routes":["WLAN via 192.168.1.1"]}
+语义: ok=True 连通目标数=3 DNS数=3

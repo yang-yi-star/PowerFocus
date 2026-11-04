@@ -1,0 +1,4 @@
+2026-11-03 10:06:22
+规则清单:
+  · inference-godmode [启用] —— 本地推理进程(llama-server)吃算力时自动开 GodMode，闲置时还原
+  · restrain-background-cpu [启用] —— 非前台、非白名单、非授权的后台进程持续高 CPU 时临时降级，还原原值

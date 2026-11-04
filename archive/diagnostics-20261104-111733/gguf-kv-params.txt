@@ -1,0 +1,12 @@
+GGUF 精确参数：
+  qwen35.block_count = 65
+  qwen35.attention.head_count = 24
+  qwen35.attention.head_count_kv = 4
+  qwen35.attention.key_length = 256
+  qwen35.attention.value_length = 256
+  qwen35.embedding_length = 5120
+  qwen35.context_length = 262144
+  KV 元素/每token = 133120 (= x 4 KV头 x (256+256)维)
+  KV f16 : 0.25 MB/token x 524288 = 130 GB @512K
+  KV q8_0: 0.13 MB/token x 524288 = 65 GB @512K
+  KV q4_0: 0.06 MB/token x 524288 = 32.5 GB @512K

@@ -49,7 +49,7 @@ PowerFocus 是**通用算力调度加速器**：给任意本地模型榨干整�
 
 - 脚本内一律写**绝对路径**，不依赖 PATH 上的 `python` / `node`。
 - `dev-check.ps1` 会把这种差异报成 `WARN node 别名` / `WARN rea 别名`，看到 WARN 不是环境坏了，是执行器在沙箱里。
-- `mcp-server.py` 的 `_find_rea()` 优先取 PATH，在沙箱托管客户端里会命中 6.7.0。生产客户端正常启动则命中 6.8.0。（已知项，见开发日志「遗留」）
+- `mcp-server.py` 的 `_find_rea()` 现在按 `POWERFOCUS_REA` → `%APPDATA%\npm` → PATH 的顺序定位，优先命中全局 6.8.0（229 工具）；只在全局安装缺失时才回退到 PATH（可能命中沙箱版）。
 
 **编码**：源文件统一 UTF-8（`.editorconfig` 锁定），中文文件显式 `-Encoding utf8` 读写。`.ps1` 用 CRLF，`.py`/`.json`/`.md` 用 LF（`.gitattributes` 锁定）。
 

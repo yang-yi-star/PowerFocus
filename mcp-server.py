@@ -32,16 +32,30 @@ REA_START_COOLDOWN = 60      # 启动失败后的冷却秒数，避免每次列�
 REA_TOOL_TIMEOUT = 900       # 单个逆向任务最长等待秒数（Ghidra 反编译可能很久）
 
 def _find_rea():
-    exe = shutil.which("rea") or shutil.which("rea-agents")
-    if exe:
-        return exe
-    for cand in (
-        os.path.expandvars(r"%APPDATA%\npm\rea.cmd"),
-        r"C:\Users\Administrator.医院\AppData\Roaming\npm\rea.cmd",
-    ):
+    """定位 REA 可执行文件。
+
+    优先级：POWERFOCUS_REA 环境变量 > 全局 npm 安装(%APPDATA%\\npm) > PATH。
+    原因：PATH 可能被 agent 沙箱接管（...\\sandbox_runtime\\...），沙箱自带的 rea
+    版本更旧、工具更少（实测 6.7.0 / 207 个，全局 6.8.0 / 229 个），
+    会让 tools/list 静默缩水且不报错。
+    """
+    override = os.environ.get("POWERFOCUS_REA")
+    if override and os.path.exists(override):
+        return override
+
+    npm_dir = os.path.join(os.environ.get("APPDATA", ""), "npm")
+    for name in ("rea.cmd", "rea-agents.cmd", "rea.ps1", "rea-agents.ps1"):
+        cand = os.path.join(npm_dir, name)
         if os.path.exists(cand):
             return cand
-    return None
+
+    # APPDATA 缺失时的兜底（用户目录固定安装位置）
+    cand = r"C:\Users\Administrator.医院\AppData\Roaming\npm\rea.cmd"
+    if os.path.exists(cand):
+        return cand
+
+    return shutil.which("rea") or shutil.which("rea-agents")
+
 
 REA_EXE = _find_rea()
 

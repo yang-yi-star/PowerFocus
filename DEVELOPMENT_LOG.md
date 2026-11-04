@@ -606,3 +606,27 @@
 - `boost_model` 仍缺三项决策：能否自动重启 llama-server、允许多长停机窗口、tps 掉多少算失败回滚。
 - `model-assets.json`（29 个模型 / 159.12GB）仍未接线（上次挂起项）。
 - 无 pytest / 无 CI；当前是「脚本级自检 + 冒烟」，够用但未形成回归用例库。
+
+---
+
+## 2026-11-04 14:03 · 修复 `_find_rea()` 优先级（沙箱版 REA 静默缩水）
+
+### 一、问题
+- `mcp-server.py` 的 `_find_rea()` 先取 `shutil.which("rea")`，再退回 `%APPDATA%\npm\rea.cmd`。
+- 在豆包/WorkBuddy 等 agent 沙箱托管的环境里，PATH 上的 `rea` 指向 `...\sandbox_runtime\...\node\rea.ps1`（**6.7.0 / 207 工具**），全局安装的 6.8.0（**229 工具**）因为排在后面永远命中不了。
+- 后果：`tools/list` 从 240 静默掉到 218，且不报错——客户端只看到工具少了 22 个，没有任何提示。
+
+### 二、修复
+- 优先级改为：`POWERFOCUS_REA` 环境变量 → `%APPDATA%\npm` 下的 `rea.cmd` / `rea-agents.cmd` / `rea.ps1` / `rea-agents.ps1` → 固定兜底路径 → 最后才回退 PATH。
+- 只改定位顺序，不改代理逻辑、超时、冷却策略；原生工具与 REA 工具命名不变。
+
+### 三、验收（本机实跑）
+- `tests\run-tests.ps1`：**5/5 PASS，1.4s**，MCP 冒烟工具数 **240**（11 原生 + 229 REA），与 12:39 基线一致（此前为 218）。
+- `rea_status`：服务 **6.8.0**，可执行文件 `C:\Users\Administrator.医院\AppData\Roaming\npm\rea.cmd`，状态就绪。
+- PS 语法 35 个文件全通过；JSON 契约 5 个配置合法（含另一会话新增 4 个 `identity_only` 档案后的 `model-profiles.json`）。
+
+### 四、观察（未修，留待定）
+- `rea_status` 在「先调它、后调 tools/list」的顺序下报 `工具数: 0`——代理此时还没缓存工具清单，数字是滞后值。计数本身不影响功能，但会误导排查；如需要可让 `rea_status` 实时向 REA 拉一次 `tools/list` 再报数。
+
+### 五、提交
+- `fix: _find_rea 优先全局 npm 安装，避免沙箱版 REA 静默缩水`

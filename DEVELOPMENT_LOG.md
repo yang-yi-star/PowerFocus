@@ -561,3 +561,48 @@
 ### 四、生效条件与遗留
 - 各客户端需**重启**后才会加载新 MCP 注册。
 - Grok Bot 需在聊天内手动添加自定义 MCP：名称 `rea`，命令 `npx -y rea-agents@6.8.0 mcp`，且必须运行在该 Bot 的计算机上（本地 stdio 不会被挂载）。
+---
+
+## 2026-11-04 13:59 · 开发环境基线（git + 自检 + 测试 + 规范）
+
+### 一、版本控制
+- `E:\PowerFocus` 执行 `git init -b main`，首次提交 `63b93f6`，跟踪 **387 个文件**，工作区 0 改动。
+- 全局 git 身份未配置，按安全规矩不改全局 config，改用行内 `git -c user.name=... -c user.email=... commit`。
+- 新增 `.gitignore`：忽略 `logs\`、`out\`、`*.log`、`*.lock`、心跳、`rules_state.json`、三个命令总线、`v3\rollback\*.{json,log}`、`archive\**\*.{png,log}`、`__pycache__`，以及 `.auth_token`/`*.token`/`*.secret`/`*.key`。
+- 新增 `.gitattributes`（`.ps1` CRLF、`.py/.json/.md` LF、图片二进制）与 `.editorconfig`（UTF-8 锁定）。
+- 实测：`v3\.auth_token`、`v3\v3-lifecycle.log`、`v2\rules_state.json`、`v3\commands\done\` 均被正确忽略。
+
+### 二、目录补齐（不搬家）
+- 用户明确选择「原地补齐」：现有脚本全是 `E:\PowerFocus\` 绝对路径，桌面快捷方式与计划任务 `PowerFocusAutoV2` 指向根转发壳，硬搬会打断正在运行的 v2。
+- 仅新增三个目录：`tools\`（开发者工具）、`tests\`（测试入口）、`docs\`（规范文档）。根目录 33 个文件未动。
+
+### 三、`tools\dev-check.ps1`（环境自检）
+四组检查：工具链 / 关键文件 / 运行态 / 版本控制。实测 `PASS 23 / WARN 5 / FAIL 0`：
+- 端口 8080 监听中（llama-server PID 6024）；8686 未监听（轻量实例未启）。
+- v2 心跳存活：pid=24992、tick=810、距今 2s（v2 正在运行）。
+- `v3\.v3.lock` 为空文件：改用 `FileShare.None` 探测，判定「无进程持有 → 陈旧锁」，不再误报 v3 在跑。
+- GPU：RTX 5060 Laptop 8151MiB / 已用 5692 / 空闲 2208。
+- 5 个 WARN 全部是执行器沙箱造成的别名差异，见第五节。
+
+### 四、`tests\run-tests.ps1`（唯一测试入口）
+五类检查，实测 **5/5 PASS，耗时 2.7s**：
+1. PS 语法：35 个 `.ps1` 走 `Parser::ParseFile` 全通过。
+2. JSON 契约：`model-profiles.json` schema=`powerfocus/model-profiles/v2`，rules/scenes/authorized_apps 合法。
+3. Python 编译：`py_compile mcp-server.py` 通过（`D:\Python313\python.exe`）。
+4. MCP stdio 冒烟：`initialize` + `tools/list`，协议版本回显正确，原生 5 个必需工具齐全。
+5. 仓库卫生：387 个跟踪文件中无 `auth_token`/`*.log`/心跳/锁泄漏。
+
+### 五、实测发现：沙箱 PATH 污染（重要）
+- 本机真实版本：Node **v26.13.0**（`C:\Program Files\nodejs`）、rea-agents **6.8.0**（`%APPDATA%\npm`）、Python **3.13.0**（`D:\Python313`）。
+- agent 沙箱内 PATH 上的版本：Node **v22.23.2**、rea **6.7.0**、Python **3.13.16**（`...\sandbox_runtime\...`），且 bypass 沙箱开关也无效——变量来自执行器自身运行时。
+- 由此解释了一个此前记录不了的差异：`tools/list` 本次报 **218** 个工具（11 原生 + 207），而 12:39 的日志记录是 **240**（11 + 229）。原因是 `mcp-server.py` 的 `_find_rea()` 优先取 PATH，命中了沙箱版 6.7.0（207 工具），而非全局 6.8.0（229 工具）。**不是 REA 坏了，是解释器/静态资源被替换。**
+- 处理：`dev-check` 现在把这类差异报成 `WARN node 别名` / `WARN rea 别名`；规范文档要求脚本内一律写绝对路径。
+
+### 六、`docs\DEVELOPING.md`（开发规范）
+十节：定位与三条硬约束 / 目录规范表 / 工具链与固定解释器（含沙箱污染说明）/ 运行与调试入口 / 测试规范 / 日志与产物分离 / 配置与密钥 / 版本与归档 / 提交规范 / 排障顺序。
+
+### 七、遗留
+- `_find_rea()` 的优先级要不要改成「先 `%APPDATA%\npm\rea.cmd`，后 PATH」——本轮按用户「只做环境、暂不开发功能」的口径未改代码，待定。
+- `boost_model` 仍缺三项决策：能否自动重启 llama-server、允许多长停机窗口、tps 掉多少算失败回滚。
+- `model-assets.json`（29 个模型 / 159.12GB）仍未接线（上次挂起项）。
+- 无 pytest / 无 CI；当前是「脚本级自检 + 冒烟」，够用但未形成回归用例库。

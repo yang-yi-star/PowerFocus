@@ -45,19 +45,31 @@ PowerFocus 是**通用算力调度加速器**：给任意本地模型榨干整�
 | llama.cpp | `E:\Program Files\llama.cpp\bin\llama-server.exe`（b12032） | 推理引擎 |
 | CUDA / CMake / Ninja / aria2 / ffmpeg | 已在 PATH | 见索引 |
 
-**沙箱 PATH 污染（实测发现）**：在豆包/WorkBuddy 的 agent 沙箱里执行命令时，PATH 上的 `python` / `node` / `rea` 会被替换为沙箱自带版本（3.13.16 / 22.23.2 / rea 6.7.0），与系统真实版本不同。表现为「工具版本忽高忽低」「REA 工具数从 229 掉到 207」。
+**运行时 PATH 污染（实测发现）**：在 Trae CN 自带的 agent 运行时里执行命令时，PATH 上的 `python` / `node` / `rea` 可能被替换为运行时自带版本（3.13.16 / 22.23.2 / rea 6.7.0，位于 `…\DoubaoWork\User Data\sandbox_runtime\bases\<哈希>`），与系统真实版本不同。表现为「工具版本忽高忽低」「REA 工具数从 229 掉到 207」。是否接管取决于当前会话条件，**并非每次都有**——所以判断要做实测，不能靠猜。
 
-**统一入口 `tools\env.ps1`（解法）**。任何脚本或命令行先 dot-source 它：
+**统一入口 `tools\env.ps1`（解法，不写死任何盘符）**。任何脚本或命令行先 dot-source 它：
 
 ```powershell
 . E:\PowerFocus\tools\env.ps1
 ```
 
-它做三件事：把系统新版工具目录（Python / Node / 全局 npm）摘出来插到 PATH 队首，所以**裸敲 `python`、`node`、`rea` 也命中新版**；设置 `POWERFOCUS_REA` 指向全局安装；补上 `JAVA_HOME` / `GHIDRA_INSTALL_DIR` 供逆向引擎使用。
+它**只在该纠正时才动手**：先看裸命令当前命中谁，没被盒子接管就一动不动。被接管时按以下官方渠道找真实安装：
 
-- `dev-check.ps1` 与 `run-tests.ps1` 已在开头 dot-source，无需额外操作。
-- `mcp-server.py` 的 `_find_rea()` 按 `POWERFOCUS_REA` → `%APPDATA%\npm` → PATH 定位，优先命中全局 6.8.0（229 工具）。
-- `run-tests.ps1` 第 6 项「工具对齐」会实测三个裸命令是否真的命中系统新版，被盒子接管就报 FAIL。
+- Python：官方 `py` 启动器（`py -c "import sys;print(sys.executable)"`，版本由注册表登记决定，与装在哪无关）
+- Node：系统注册表 `HKLM\SOFTWARE\Node.js` 的 `InstallPath`（安装器自己写入，搬家不失效）
+- 逆向引擎：`%APPDATA%\npm`（环境变量拼出，随用户目录走）
+
+另补 `POWERFOCUS_REA`，并按目录探测 `JAVA_HOME` / `GHIDRA_INSTALL_DIR`（只填空值，不覆盖既有配置）。
+
+- `dev-check.ps1` 与 `run-tests.ps1` 开头已 dot-source。
+- `mcp-server.py` 的 `_find_rea()` 按 `POWERFOCUS_REA` → `%APPDATA%\npm` → PATH 定位。
+- `run-tests.ps1` 第 6 项「工具对齐」实测三个裸命令，命中 `sandbox_runtime` 直接 FAIL。
+
+**官方依据（查证自官方文档，非臆测）**：
+- Trae 官方《常见问题》明确指出：外部环境变量必须自行写进 shell 配置文件，Windows 下即 `$PROFILE`；并给出 `$env:MY_ENV="1234"` 的写法。实测本机助手终端以 `-NoProfile` 启动，故该配置只对用户自己的终端有效，**对助手进程无效**——这是本条 PATH 污染无法靠配置文件根治的原因。
+- Node 官方下载页推荐 `winget install Schniz.fnm` + `fnm install 26`，属于版本管理器方案；本机未安装，暂以注册表定位。
+- 逆向引擎官方安装页推荐 `npx rea-agents@latest setup` 与 `npx -y … mcp`，即“不写路径、按需拉最新版”。
+- Python 官方 Windows 启动器 `py` 支持 `py -3.13` 指定版本，等价于“不写路径换解释器”。
 
 **编码**：源文件统一 UTF-8（`.editorconfig` 锁定），中文文件显式 `-Encoding utf8` 读写。`.ps1` 用 CRLF，`.py`/`.json`/`.md` 用 LF（`.gitattributes` 锁定）。
 

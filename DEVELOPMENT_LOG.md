@@ -665,3 +665,34 @@
 ### 七、遗留
 - `model-profiles.json` 仍由并行会话改动（4 个 `identity_only` 档案），本提交未包含。
 - `rea_status` 在 `tools/list` 之前调用会报「工具数 0」（缓存未填充），功能无碍，是否实时拉取待定。
+
+---
+
+## 2026-11-04 14:21 · 运行时体检 + 去绝对路径改造
+
+### 一、体检结论（只读实测，未改任何软件文件）
+1. 运行时真身：`…\DoubaoWork\User Data\sandbox_runtime\bases\` 下两个版本目录（2026-10-16、2026-10-21 各建一次）。**不是每次启动重建**，只有运行时版本变化才新建。
+2. 内装版本：Node 22.23.2、Python 3.13.16、一份 pwsh；目录里自带的 `rea.cmd` 把 `_prog` 绑到 `%dp0%\node.exe`，即**逆向引擎被焊死在旧 Node 上**，这是工具数缩水的物理原因。
+3. 进程链：助手终端 pwsh ← Trae CN.exe ← Trae CN.exe。启动参数为 `-NoLogo -NoProfile -NonInteractive`，**不加载 PowerShell 配置文件**。
+4. 注入方式：用进程级环境变量 `__TRAE_PATH_<哈希>` 备份并还原 PATH；当前会话实测裸命令已命中系统新版，说明**接管是条件性的，不是常态**。
+
+### 二、官方文档查证（非臆测）
+- Trae 官方《常见问题》：外部环境变量需写进 shell 配置文件，Windows 用 `$PROFILE`；给出的写法是 `$env:MY_ENV="1234"`。→ 结论：该渠道对用户自己的终端有效，**对 `-NoProfile` 启动的助手进程无效**。
+- Node 官方下载页：推荐 `winget install Schniz.fnm` + `fnm install 26`（版本管理器方案）。本机未装。
+- 逆向引擎官方安装页：`npx rea-agents@latest setup` / `npx -y … mcp`，即“不写路径、按需拉最新”。
+- Python 官方：Windows 启动器 `py`，`py -3.13` 指定版本。
+
+### 三、按“不要绝对路径”重写 `tools\env.ps1`
+- 删除全部写死盘符的候选清单（原版含 `D:\Python313\python.exe` 等硬编码）。
+- 改为：Python 走官方 `py` 启动器报告的真实解释器；Node 读注册表 `HKLM\SOFTWARE\Node.js\InstallPath`；逆向引擎读 `%APPDATA%\npm`。
+- 行为改为**按需纠正**：先测裸命令命中谁，未命中 `sandbox_runtime` 就一动不动；命中才前移目录。
+- `JAVA_HOME` / `GHIDRA_INSTALL_DIR` 改为目录探测 + 只填空值。
+- 顺带修正一处认知偏差：运行时不叫“豆包盒子”，进程链实测归属 Trae CN。
+
+### 四、验收
+- `run-tests.ps1`：**6/6 PASS，3.1s**；工具对齐项显示 `python=D:\Python313\python.exe`、`node=C:\Program Files\nodejs\node.exe`、`rea=%APPDATA%\npm\rea.ps1`。
+- 全脚本已无写死盘符（除项目自身数据目录外）。
+
+### 五、遗留
+- 若日后确实需要“换 Node 版本”，官方路径是 `winget install Schniz.fnm`，不是改 PATH 拼字符串；本次不动。
+- `model-profiles.json` 仍属并行会话改动，未纳入本提交。

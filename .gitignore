@@ -49,3 +49,6 @@ archive/**/*.png
 archive/**/*.log
 *.gguf
 *.safetensors
+
+# ---- 带时间戳的本地备份（留档用，不入库） ----
+*.bak-[0-9]*

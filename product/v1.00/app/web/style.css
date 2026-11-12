@@ -367,3 +367,46 @@ dialog::backdrop { background: rgba(5, 6, 8, .6); backdrop-filter: blur(2px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---- 注意力审计落地组件（calm technology 模式） ---- */
+/* 状态判定条：总览第一眼必须回答「现在需要我做什么吗」 */
+.verdict {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 13px; border-radius: var(--r3);
+  border: 1px solid var(--line); background: var(--surface);
+  font-size: 12.5px; flex: none;
+}
+.verdict .vdot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--green); }
+.verdict.ok { color: var(--dim); }
+.verdict.warn { border-color: rgba(217, 165, 63, .35); background: rgba(217, 165, 63, .07); }
+.verdict.warn .vdot { background: var(--amber); }
+.verdict.bad { border-color: rgba(229, 84, 75, .4); background: rgba(229, 84, 75, .08); }
+.verdict.bad .vdot { background: var(--red); animation: breathe 1.6s ease-in-out infinite; }
+.verdict b { color: var(--txt); font-weight: 600; }
+.verdict .vact { margin-left: auto; }
+/* gauge 阈值变色：资源紧张才把注意力拉过来（水壶模式） */
+.track.warn i { background: var(--amber); }
+.track.danger i { background: var(--red); }
+.gauge .num.warn, .gauge .num.danger { color: var(--amber); }
+.gauge .num.danger { color: #f08a84; }
+/* 侧栏事件徽章：异常才出现（边缘→中心） */
+.navbadge {
+  margin-left: auto; min-width: 16px; height: 16px;
+  display: inline-grid; place-items: center;
+  padding: 0 5px; border-radius: 999px;
+  font: 600 10px/1 var(--mono);
+  background: rgba(229, 84, 75, .18); color: #f08a84;
+  border: 1px solid rgba(229, 84, 75, .4);
+}
+.navbadge.amber { background: rgba(217, 165, 63, .15); color: #e2b95c; border-color: rgba(217, 165, 63, .4); }
+body.sb-min .navbadge { position: absolute; top: 2px; right: 4px; margin: 0; min-width: 8px; height: 8px; padding: 0; font-size: 0; }
+/* 面板标题帮助按钮（静态说明的正确归宿） */
+.help-btn {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--faint); cursor: pointer;
+  font: 600 11px/1 var(--font);
+  transition: color .15s ease, border-color .15s ease;
+}
+.help-btn:hover { color: var(--accent); border-color: var(--accent-line); }

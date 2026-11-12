@@ -11,8 +11,7 @@
   const TOKEN = (document.querySelector('meta[name="pf-token"]') || {}).content || '';
   const $ = (id) => document.getElementById(id);
 
-  let reqCount = 0;
-  let snapshot = null;
+  let snapshot = null;          // 最新快照
   let selected = null;          // {pid, name}
   let activeView = 'overview';
   let chatHistory = [];
@@ -23,6 +22,7 @@
   let dialogResolve = null;
   let pollTimer = null;
   let pollErrors = 0;
+  let errBadgeCount = 0;        /* 日志视图错误事件未读数（事件驱动徽章） */
 
   /* ---------------- 基础工具 ---------------- */
   function el(tag, attrs, ...kids) {
@@ -92,7 +92,24 @@
     const node = el('div', { class: 'toast ' + (kind || '') , text: msg });
     box.appendChild(node);
     setTimeout(() => node.remove(), 4200);
+    if (kind === 'err' && activeView !== 'logs') setLogBadge(++errBadgeCount);
     logLine('[' + (kind === 'err' ? '错误' : '事件') + '] ' + msg);
+  }
+
+  /* 侧栏事件徽章：异常才出现，事件驱动而非用户巡逻（calm tech） */
+  function setLogBadge(n) {
+    const b = $('navbadge-logs');
+    if (!b) return;
+    errBadgeCount = n;
+    b.hidden = n <= 0;
+    b.textContent = n > 99 ? '99+' : String(n);
+  }
+
+  function setBootstrapBadge(missing) {
+    const b = $('navbadge-bs');
+    if (!b) return;
+    b.hidden = !(missing > 0);
+    b.textContent = String(missing);
   }
 
   function logLine(text) {
@@ -117,8 +134,6 @@
     }
     try {
       const res = await fetch(path, init);
-      reqCount += 1;
-      setText('foot-req', reqCount + ' 次请求');
       if (!res.ok) {
         let msg = 'HTTP ' + res.status;
         try {
@@ -168,7 +183,7 @@
     if (name === 'security') refreshSecurity();
     if (name === 'bootstrap' && !bootstrapLoaded) loadBootstrap();
     if (name === 'settings' && !settingsLoaded) loadSettings();
-    if (name === 'logs') renderLogs();
+    if (name === 'logs') { setLogBadge(0); renderLogs(); }
   }
 
   /* ---------------- 快照渲染 ---------------- */
@@ -177,9 +192,14 @@
     const cpu = Number(d.cpu || 0);
     const mem = Number(d.mem_percent || 0);
 
-    $('cpu-num').textContent = fmt(cpu) + '%';
+    /* gauge 阈值变色（calm：紧张才把注意力拉过来） */
+    const trackFor = (v) => v >= 95 ? ' danger' : v >= 85 ? ' warn' : '';
+    const numFor = (v) => v >= 95 ? ' danger' : v >= 85 ? ' warn' : '';
+    $('cpu-num').className = 'num' + numFor(cpu);
+    $('cpu-bar').parentElement.className = 'track cpu' + trackFor(cpu);
     $('cpu-bar').style.width = Math.min(cpu, 100) + '%';
-    $('mem-num').textContent = fmt(mem) + '%';
+    $('mem-num').className = 'num' + numFor(mem);
+    $('mem-bar').parentElement.className = 'track mem' + trackFor(mem);
     $('mem-bar').style.width = Math.min(mem, 100) + '%';
 
     $('kpi-cpu').textContent = fmt(cpu);
@@ -206,6 +226,28 @@
     renderTop(d);
     renderFocus(d);
     renderProcessTable(d);
+    renderVerdict(d);
+  }
+
+  /* 状态判定条：总览第一眼回答「现在需要我做什么吗」（calm tech 中心化） */
+  function renderVerdict(d) {
+    const box = $('ov-verdict');
+    const txt = $('verdict-text');
+    const items = [];
+    if (!d.kernel_alive) items.push(['bad', '内核未响应，调度指令不可用']);
+    if (Number(d.mem_percent || 0) >= 95) items.push(['warn', '内存紧张（' + fmt(d.mem_percent) + '%），建议「清理内存」或回收后台进程']);
+    else if (Number(d.cpu || 0) >= 95) items.push(['warn', 'CPU 持续饱和（' + fmt(d.cpu) + '%），可在「进程」视图聚焦关键应用']);
+    if (items.length) {
+      box.className = 'verdict ' + items[0][0];
+      txt.textContent = '';
+      txt.appendChild(el('b', { text: '需要处理：' }));
+      txt.appendChild(document.createTextNode(items.map((x) => x[1]).join('；')));
+      return;
+    }
+    box.className = 'verdict ok';
+    txt.textContent = '';
+    txt.appendChild(el('b', { text: '一切正常' }));
+    txt.appendChild(document.createTextNode(' · 无需操作。异常发生时会在这里给出可执行建议。'));
   }
 
   function renderTop(d) {
@@ -437,7 +479,6 @@
         headers: { 'Content-Type': 'application/json', 'X-PF-Token': TOKEN },
         body: JSON.stringify({ target: target, messages: chatHistory })
       });
-      reqCount += 1;
       if (!res.ok) {
         let msg = 'HTTP ' + res.status;
         try { const j = await res.json(); msg = j.detail || msg; } catch (e) { /* ignore */ }
@@ -623,6 +664,7 @@
     $('bs-install').disabled = !missAcq;
     const kf = (d.components || []).find((x) => x.id === 'kaspersky_free') || {};
     $('bs-wizard').disabled = !(kf.present);
+    setBootstrapBadge((d.summary || {}).missing || 0);
   }
 
   async function loadBootstrap(force) {
@@ -924,6 +966,11 @@
     $('sec-selfcheck').addEventListener('click', runSelfcheck);
     $('sec-refresh').addEventListener('click', refreshSecurity);
 
+    const sh = $('scene-help');
+    if (sh) sh.addEventListener('click', () => confirmDialog('什么是调度场景',
+      '场景是从 scenes.json 读取的预设组合：切换电源方案、批量调整进程优先级、清理后台占用。\n\n执行前会二次确认，避免误伤前台应用。',
+      '知道了', false));
+
     $('bs-refresh').addEventListener('click', () => loadBootstrap(true));
     $('bs-install').addEventListener('click', bsInstall);
     $('bs-wizard').addEventListener('click', bsWizard);
@@ -945,6 +992,11 @@
     bind();
     skeleton($('ov-top'), 6);
     skeleton($('proc-body'), 10);
+    /* 环境健康徽章：全齐时安静，缺失时侧栏亮琥珀点（水壶模式）——
+       用户不需要主动巡逻自检页，缺东西会来找他 */
+    api('/api/bootstrap/check', { timeout: 20000 })
+      .then((d) => setBootstrapBadge((d.summary || {}).missing || 0))
+      .catch(() => { /* 自检模块不可用时保持安静，不吵用户 */ });
     try {
       const d = await api('/api/snapshot', { timeout: 8000 });
       renderSnapshot(d);

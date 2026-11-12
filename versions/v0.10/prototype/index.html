@@ -353,6 +353,16 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       </div>
     </div>
     <div class="panel">
+      <div class="head">多引擎可调用性矩阵<span class="sp"></span>
+        <span class="badge live">2026-11-12 应用内实测</span>
+        <span class="hint">识别 ≠ 可调用 · 来自 engine_adapters.py --list</span></div>
+      <div class="body"><div id="en-matrix"></div></div>
+    </div>
+    <div class="panel">
+      <div class="head">真实探测证据与处置边界<span class="sp"></span><span class="badge spec">官方文档核对</span></div>
+      <div class="body"><div id="en-evidence"></div></div>
+    </div>
+    <div class="panel">
       <div class="head">支持的厂商识别清单<span class="sp"></span><span class="hint">识别方式：WMI SecurityCenter2 + 卸载项 + 安装目录 + 服务/进程</span></div>
       <div class="body"><div class="tbl-wrap"><table id="en-table"></table></div></div>
     </div>
@@ -364,6 +374,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
           契约按现有 v1.00 的 <span class="chip">/api/*</span> 风格设计，统一带 <span class="chip">X-PF-Token</span>。
           真实落地时由 server.py 提供路由，扫描作业在后端排队执行，报告落盘到版本目录内的
           <span class="chip">reports/</span>，不写系统目录、不注册系统计划任务。
+          应用内的识别 / 探测 / 调用 / 报告链路已由 <span class="chip">engine_adapters.py</span>
+          落地（不依赖 HTTP 路由）；此处 9 条 HTTP 接口仍为待实装的契约。
         </div>
       </div>
     </div>
@@ -398,6 +410,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
             </select>
             <label for="se-specified">指定引擎</label>
             <select id="se-specified" disabled></select>
+            <div class="note" id="se-engine-note" style="grid-column:1/-1;margin:2px 0 6px"></div>
             <label for="se-scantype">默认扫描范围</label>
             <select id="se-scantype">
               <option value="full">整机全盘扫描</option>
@@ -439,8 +452,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
               <div class="desc">用户点「下载」后，应用从卡巴斯基官方分发点取 KVRT.exe 到自己的 <span class="chip">engines\KVRT\</span> 目录，纯 Python 验签（WinVerifyTrust + 厂商标识 + SHA256）通过后登记为可用引擎；<b>不写系统目录、不注册服务、不随安装包分发</b>。EULA 5.4 禁止随第三方产品再分发，因此只做「用户主动下载 + 应用调用」。</div>
             </div>
             <div class="card">
-              <div class="row"><span class="name">调用已装安全软件</span><span class="badge live">实测</span></div>
-              <div class="desc">对有公开命令行的（Defender、卡巴斯基企业版）直接调用并解析输出；对没有公开接口的（多数国产管家类）降级为「打开主程序并引导扫描」，绝不伪造命令或谎报扫描结果。</div>
+              <div class="row"><span class="name">调用已装安全软件（多引擎适配层已落地）</span><span class="badge live">实测</span></div>
+              <div class="desc">engine_adapters.py 统一 8 个引擎的「识别 → 可调用性探测 → 按官方文档构造命令 → 真实执行 → 统一报告」。对有官方 CLI 的（Defender、KES、ESET、内置 KVRT）真实调用；对无公开接口的（管家类、360、火绒 Windows 版）只识别、只引导。本机实测结论：KVRT 可用；Defender 服务被接管，真跑返回 0x800106ba；腾讯管家是卸载残留；KES / ESET 未安装且未实测，默认拒绝执行。绝不伪造命令或谎报扫描结果。</div>
             </div>
           </div>
         </div>
@@ -543,6 +556,74 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   }
 };
 
+  /* ============ 多引擎可调用性矩阵（2026-11-12 应用内真实探测，非模拟） ============
+     来源：versions/v0.10/engine_adapters.py --list（probe_all 只读快照）
+     三条决定性实证：
+       ① WMI 登记的 pathToSignedProductExe 可能是卸载残留，识别 ≠ 可调用；
+       ② Defender 二进制齐全但服务被第三方接管，-Scan 真跑返回 hr=0x800106ba；
+       ③ 卡巴 KES 默认 /i2 会删文件，必须显式 /i0；Defender -DisableRemediation 仅自定义扫描有效。
+     矩阵里 available 以「真实路径 + 服务状态 + 验签结果」判定，不是按产品名猜的。
+  */
+  const ENGINE_MATRIX = [
+    { id: 'kvrt', name: 'KVRT（应用内下载）', origin: '应用内置', available: true, code: 'ready',
+      reason: '已下载并通过 WinVerifyTrust 验签，可调用', doc: true, local: true,
+      evidence: '真扫 6,943 对象 / Found=0 / exit 0 / 366.0s', mode: 'delegate',
+      remediation: '只报告不处置（不传 -processlevel）', detected: false, scopes: '自定义 / 核心 / 全盘' },
+    { id: 'defender', name: 'Microsoft Defender', origin: 'Windows 组件', available: false, code: 'service_disabled',
+      reason: 'WinDefend 服务 STOPPED（Start=3），官方错误 0x800106ba', doc: true, local: true,
+      evidence: '真跑 -Scan -ScanType 3，0.0s 即失败', mode: 'cli',
+      remediation: '仅自定义扫描可用 -DisableRemediation，不开放全盘', detected: true, scopes: '仅自定义' },
+    { id: 'kaspersky_kes', name: 'Kaspersky Endpoint Security', origin: '外部已装', available: false, code: 'not_installed',
+      reason: '本机未安装，未找到 avp.com', doc: true, local: false,
+      evidence: '本机未安装，仅核对官方文档 181236', mode: 'cli',
+      remediation: '/i0 仅通知；不加 /i0 时默认 /i2 会删文件', detected: false, scopes: '自定义 / 全盘' },
+    { id: 'eset', name: 'ESET ecls.exe', origin: '外部已装', available: false, code: 'not_installed',
+      reason: '本机未安装，未找到 ecls.exe', doc: true, local: false,
+      evidence: '本机未安装，仅核对 ESET 官方 ecls 参数文档', mode: 'cli',
+      remediation: '/clean-mode=none 不做清除或删除', detected: false, scopes: '自定义' },
+    { id: 'qqpcmgr', name: '腾讯电脑管家', origin: '外部已装', available: false, code: 'stale_registration',
+      reason: '安全中心仍注册，但登记路径已不存在（卸载残留）', doc: false, local: false,
+      evidence: '本机目录不存在，WMI 注册项为残留', mode: 'guide',
+      remediation: '不适用', detected: true, scopes: '无公开 CLI' },
+    { id: '360', name: '360 安全卫士', origin: '外部已装', available: false, code: 'not_installed',
+      reason: '未识别到产品，且 360 未公开本体命令行查杀接口', doc: false, local: false,
+      evidence: '未调用（无官方 CLI）', mode: 'guide', remediation: '不适用', detected: false, scopes: '无公开 CLI' },
+    { id: 'huorong', name: '火绒安全软件', origin: '外部已装', available: false, code: 'not_installed',
+      reason: '火绒官方仅 Linux 服务器版提供 hrconsole scan，Windows 桌面版只有 GUI', doc: false, local: false,
+      evidence: '未调用（Windows 无官方 CLI）', mode: 'guide', remediation: '不适用', detected: false, scopes: '无公开 CLI' },
+    { id: 'other', name: '其他安全软件', origin: '外部已装', available: false, code: 'not_installed',
+      reason: '未识别到产品，未查到官方公开命令行扫描接口', doc: false, local: false,
+      evidence: '未调用（无官方 CLI）', mode: 'guide', remediation: '不适用', detected: false, scopes: '无公开 CLI' }
+  ];
+
+  /* 原型 ENGINES 的 id 与真实矩阵 id 的对应关系（切换引擎时不改上层业务代码） */
+  const ENGINE_TO_MATRIX = {
+    builtin: 'kvrt', kaspersky: 'kaspersky_kes', defender: 'defender', qqpcmgr: 'qqpcmgr'
+  };
+  function matrixOf(id) {
+    return ENGINE_MATRIX.find((m) => m.id === (ENGINE_TO_MATRIX[id] || id)) || null;
+  }
+
+  /* 真实探测证据：只读快照，来自本机命令行实测而非推测 */
+  const PROBE_FACTS = [
+    { title: 'WMI 登记路径可能是卸载残留', tag: 'live',
+      text: '安全中心注册「腾讯电脑管家系统防护」，路径 C:' + BS + 'Program Files (x86)' + BS + 'Tencent' + BS +
+            'QQPCMgr' + BS + '18.2.30648.204' + BS + 'QQPCMgr.exe；本机实测该目录整个不存在。' +
+            '结论：registered ≠ callable，应用必须逐条校验路径存在性，不能把 WMI 名字当成引擎。' },
+    { title: 'Defender 真实调用失败（服务被接管）', tag: 'danger',
+      text: 'MpCmdRun.exe -? 可执行（rc=0，帮助含 -File / -DisableRemediation / -CpuThrottling）；' +
+            '但真实 -Scan -ScanType 3 -File <目录> -DisableRemediation 立刻返回 ' +
+            'CmdTool: Failed with hr = 0x800106ba，0.0 秒。Microsoft Learn 明确该错误为「Defender 服务已禁用」。' +
+            '应用不改动系统服务状态，如实判为不可用。' },
+    { title: '处置策略边界已修正', tag: 'spec',
+      text: '卡巴 KES 官方 181236：SCAN 默认 /i2（清除失败即删除文件），与「只报告不处置」冲突，' +
+            '统一改为 /i0（仅通知）。Defender 的 -DisableRemediation 官方注明仅自定义扫描(-ScanType 3)有效，' +
+            '因此全盘/快速扫描一律不开放；ESET 用 /clean-mode=none，KVRT 不传 -processlevel。' },
+    { title: '无官方 CLI 的产品只识别、只引导', tag: 'demo',
+      text: '火绒官方仅 Linux 服务器版有 hrconsole scan，Windows 桌面版只有 GUI；腾讯电脑管家、360 未查到本体公开 CLI。' +
+            '网上流传的 hrun.exe /scan、TencentPCMgr.exe /scan 无官方依据，不予采信，也绝不伪造扫描作业或谎报结果。' }
+  ];
+
   const ENGINES = [
     {
       id: 'builtin', name: 'Kaspersky Virus Removal Tool（应用内引擎）', vendor: 'AO Kaspersky Lab',
@@ -552,47 +633,47 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       why: '本机实测：真实下载 + 真实验签 + 真实扫描 + 真实官方报告，全链路已在应用内跑通'
     },
     {
-      id: 'kaspersky', name: '卡巴斯基（Kaspersky）', vendor: 'Kaspersky',
-      origin: 'external', bundled: false, usable: false, tag: 'oem', status: '本机未安装 · 引擎未随包',
-      cmd: 'avp.com SCAN /RA:<报告文件> /MEMORY /STARTUP <路径>',
-      desc: '官方 KES for Windows 命令行接口（SCAN /RA: 写全部事件），另有 GetScanState / GetLastScanTime / GetThreats。引擎与病毒库受商业许可约束，不能由本应用随包再分发；如需真正内嵌，须走 Kaspersky Scan Engine / Anti-Virus SDK v8 的 OEM 授权。',
-      why: '本机实测：卸载项 371 条、注册表 KasperskyLab、Program Files 目录、avp.com、AVP 服务/进程、扫描计划任务 全部无痕迹'
+      id: 'kaspersky', name: 'Kaspersky Endpoint Security（KES）', vendor: 'Kaspersky',
+      origin: 'external', bundled: false, usable: false, tag: 'oem', status: '本机未安装 · 官方文档已核对 · 未实测拒绝执行',
+      cmd: 'avp.com SCAN /i0 /RA:<报告文件> [/ALL] <路径>   # /i0 = 仅通知，不删文件',
+      desc: '官方文档 181236：SCAN 配合 /RA: 写全部事件、/ALL 扫整机。重要修正：默认动作是 /i2（清除失败即删除文件），与项目「只报告不处置」边界冲突，现统一显式 /i0（仅通知）。引擎与病毒库受商业许可约束，不能随第三方安装包再分发；真正内嵌须走 Kaspersky Scan Engine / Anti-Virus SDK v8 的 OEM 授权。本机未安装，未实测，适配层默认拒绝执行。',
+      why: '官方：support.kaspersky.com/kes-for-windows/14.0/181236；本机实测：未找到 avp.com'
     },
     {
       id: 'defender', name: 'Windows Defender', vendor: 'Microsoft',
-      origin: 'external', bundled: false, usable: false, tag: 'live', status: '已注册但整体停用',
-      cmd: 'MpCmdRun.exe -Scan -ScanType 2 -CpuThrottling 50',
-      desc: '官方文档：ScanType 1=快速 / 2=全盘 / 3=自定义，返回码 0=无威胁或已修复、2=发现未修复或出错，需管理员权限。本机实测 AMServiceEnabled / AntivirusEnabled / RealTimeProtectionEnabled 全为 False，WinDefend 服务 Stopped。',
-      why: '本机实测：root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct 中 productState=401664'
+      origin: 'external', bundled: false, usable: false, tag: 'live', status: '服务被接管 · 真实调用失败 0x800106ba',
+      cmd: 'MpCmdRun.exe -Scan -ScanType 3 -File <路径> -DisableRemediation -CpuThrottling 30',
+      desc: 'Microsoft Learn：ScanType 0/1/2/3，-File 仅自定义扫描，-DisableRemediation 官方注明仅自定义扫描有效，退出码 0=无威胁、2=发现未修复或出错。本机实测 MpCmdRun.exe -? 可执行（rc=0），但真实 -Scan 立刻返回 CmdTool: Failed with hr = 0x800106ba（服务已禁用），0.0 秒。WinDefend 服务 STOPPED、Start=3、productState=401664。应用不改动系统服务状态，如实判为不可用。',
+      why: '本机实测：root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct + WinDefend 服务状态 + MpCmdRun 真实调用'
     },
     {
       id: 'qqpcmgr', name: '腾讯电脑管家系统防护', vendor: 'Tencent',
-      origin: 'external', bundled: false, usable: false, tag: 'live', status: '已识别 · 无公开命令行扫描接口',
-      cmd: '（无公开命令行扫描接口）→ 降级：打开主程序引导用户扫描',
-      desc: '本机安全中心已注册该防护产品，路径 C:' + BS + 'Program Files (x86)' + BS + 'Tencent' + BS + 'QQPCMgr' + BS + '18.2.30648.204' + BS + 'QQPCMgr.exe，productState=266240。未查到官方公开的全盘扫描命令行参数，因此不臆造调用，只做识别与引导。',
-      why: '本机实测：root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct'
+      origin: 'external', bundled: false, usable: false, tag: 'live', status: 'WMI 已注册但为卸载残留 · 无公开 CLI',
+      cmd: '（无公开命令行扫描接口）→ 只识别、只引导，不伪造调用',
+      desc: '安全中心仍登记路径 C:' + BS + 'Program Files (x86)' + BS + 'Tencent' + BS + 'QQPCMgr' + BS + '18.2.30648.204' + BS + 'QQPCMgr.exe（productState=266240），但本机实测该目录整个不存在，是卸载后的残留注册项。腾讯未公开本体的命令行查杀接口（一次性 CVE 专杀工具不是产品本体），因此不臆造调用。',
+      why: '本机实测：WMI 注册项 + 安装目录存在性校验（目录不存在）'
     }
   ];
 
   /* 支持识别的厂商清单（识别能力，不代表本机已安装） */
   const VENDORS = [
-    ['卡巴斯基 Kaspersky', 'Kaspersky Lab', 'avp.com / KESCLI', '命令行扫描（企业版）', 'OEM SDK 需授权'],
-    ['Microsoft Defender', 'Microsoft', 'MpCmdRun.exe / Start-MpScan', '命令行扫描', '系统自带'],
-    ['腾讯电脑管家', 'Tencent', 'QQPCMgr.exe / QQPCTray.exe', '仅引导主程序', '无公开接口'],
-    ['360 安全卫士 / 杀毒', 'Qihoo 360', '360Safe.exe / 360sd.exe', '仅引导主程序', '无公开接口'],
-    ['火绒安全软件', 'Huorong', 'HipsMain.exe / HipsTray.exe', '仅引导主程序', '无公开接口'],
-    ['Avast / AVG', 'Gen Digital', 'ashCmd.exe / AvastUI.exe', '部分版本命令行', '版本相关'],
-    ['Bitdefender', 'Bitdefender', 'bdscan.exe / vsserv.exe', '部分版本命令行', '版本相关'],
-    ['ESET NOD32', 'ESET', 'ecls.exe', '命令行扫描', '需确认安装路径'],
-    ['Norton / McAfee / Avira', 'Gen Digital / Trellix / Avira', '厂商专属 CLI / 服务', '多数仅引导', '版本相关'],
-    ['Malwarebytes / Trend Micro', 'Malwarebytes / Trend Micro', 'mbam.exe / 服务', '多数仅引导', '版本相关']
+    ['卡巴斯基 KES', 'Kaspersky Lab', 'avp.com SCAN /i0 /RA:', '命令行扫描（需 /i0）', '官方文档 181236；本机未安装'],
+    ['Microsoft Defender', 'Microsoft', 'MpCmdRun.exe -ScanType 3', '仅自定义扫描（禁处置）', '官方 Learn；本机服务被接管'],
+    ['腾讯电脑管家', 'Tencent', 'QQPCMgr.exe', '仅引导主程序', '无公开接口；本机为卸载残留'],
+    ['360 安全卫士 / 杀毒', 'Qihoo 360', '360Safe.exe', '仅引导主程序', '未查到官方公开 CLI'],
+    ['火绒安全软件', 'Huorong', 'HipsMain.exe / hrconsole（仅 Linux 服务器版）', '仅引导主程序', 'Windows 桌面版无 CLI'],
+    ['Avast / AVG', 'Gen Digital', '安全中心注册名', '仅引导主程序', '未查证公开 CLI，不臆造'],
+    ['Bitdefender', 'Bitdefender', '安全中心注册名', '仅引导主程序', '未查证公开 CLI，不臆造'],
+    ['ESET NOD32', 'ESET', 'ecls.exe /clean-mode=none', '命令行扫描', '官方 ecls 文档；本机未安装'],
+    ['Norton / McAfee / Avira', 'Gen Digital / Trellix / Avira', '安全中心注册名', '仅引导主程序', '未查证公开 CLI，不臆造'],
+    ['Malwarebytes / Trend Micro', 'Malwarebytes / Trend Micro', '安全中心注册名', '仅引导主程序', '未查证公开 CLI，不臆造']
   ];
 
   const LOCAL_DETECTED = [
-    { name: 'KVRT（应用内引擎，非系统安装）', raw: 'AO Kaspersky Lab 有效签名 · 20.0.14.0 · 已真实扫描', state: '已注册', tag: 'live' },
-    { name: '腾讯电脑管家系统防护', raw: 'productState = 266240', state: '已注册', tag: 'live' },
-    { name: 'Windows Defender', raw: 'productState = 401664', state: '已停用', tag: 'live' },
-    { name: '卡巴斯基', raw: '无任何安装痕迹', state: '未检测到', tag: 'demo' }
+    { name: 'KVRT（应用内引擎，非系统安装）', raw: 'AO Kaspersky Lab 有效签名 · 20.0.14.0 · 真扫 6,943 对象 · 唯一可调用引擎', state: '可调用', tag: 'live' },
+    { name: '腾讯电脑管家系统防护', raw: 'productState = 266240 · 登记路径不存在（卸载残留）', state: '残留项', tag: 'live' },
+    { name: 'Windows Defender', raw: 'productState = 401664 · WinDefend STOPPED · 真跑 hr=0x800106ba', state: '不可调用', tag: 'live' },
+    { name: '卡巴斯基 KES / ESET', raw: '未找到 avp.com / ecls.exe，仅核对官方文档', state: '未安装', tag: 'demo' }
   ];
 
   const API_CONTRACT = [
@@ -659,7 +740,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   function activeEngine() {
     if (settings.policy === 'builtin') return ENGINES[0];
     if (settings.policy === 'specified') return engineById(settings.specified);
-    const found = ENGINES.find((e) => e.id !== 'builtin' && e.usable);
+    const found = ENGINES.find((e) => {
+      const m = matrixOf(e.id);
+      return e.id !== 'builtin' && m && m.available;
+    });
     return found || ENGINES[0];
   }
   function freqLabel() {
@@ -717,14 +801,29 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   function renderEngineOptions() {
     const sc = $('sc-engine'); sc.textContent = '';
     for (const e of ENGINES) {
-      const o = el('option', { value: e.id, text: e.name + (e.usable ? '' : '（当前不可用）') });
+      const m = matrixOf(e.id);
+      const o = el('option', { value: e.id,
+        text: e.name + (m && m.available ? '（可用）' : '（不可用：' + (m ? m.code : 'unknown') + '）') });
+      if (m && !m.available) o.disabled = true;
       sc.appendChild(o);
     }
     const ae = activeEngine();
     sc.value = ae.id;
     const sp = $('se-specified'); sp.textContent = '';
-    for (const e of ENGINES) sp.appendChild(el('option', { value: e.id, text: e.name }));
+    for (const e of ENGINES) {
+      const m = matrixOf(e.id);
+      const o = el('option', { value: e.id,
+        text: e.name + (m && m.available ? '' : '（' + (m ? m.code : 'unknown') + '）') });
+      if (m && !m.available) o.disabled = true;
+      sp.appendChild(o);
+    }
     sp.value = settings.specified;
+    const note = $('se-engine-note');
+    if (note) {
+      const ready = ENGINE_MATRIX.filter((m) => m.available);
+      note.textContent = '应用内实测：' + ENGINE_MATRIX.length + ' 个引擎中 ' + ready.length +
+        ' 个可调用（' + ready.map((m) => m.name).join('、') + '）；其余已禁用，原因见「引擎识别」页。';
+    }
   }
 
   function renderCurrentEngine() {
@@ -770,7 +869,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         el('div', { class: 'row' }, [
           el('span', { class: 'name', text: d.name }),
           badge(d.tag === 'live' ? 'live' : 'demo', d.tag === 'live' ? '实测' : '演示'),
-          badge(d.state === '已停用' ? 'danger' : d.state === '已注册' ? 'ok' : 'demo', d.state)
+          badge(['已停用', '不可调用', '残留项'].indexOf(d.state) >= 0 ? 'danger' :
+                d.state === '可调用' || d.state === '已注册' ? 'ok' : 'demo', d.state)
         ]),
         el('div', { class: 'cmd', text: d.raw }),
         el('div', { class: 'meta', text: d.tag === 'live' ? '来源：WMI root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct（本机查询）' : '来源：注册表卸载项 / 安装目录 / 服务 / 计划任务 全量扫描' })
@@ -804,7 +904,54 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       ]));
     }
     t.appendChild(thead); t.appendChild(tbody);
+    renderEngineMatrix();
+    renderProbeEvidence();
     $('en-api').textContent = API_CONTRACT;
+  }
+
+  /* 多引擎真实可调用性矩阵：数据来自 engine_adapters.py --list 的只读快照 */
+  function renderEngineMatrix() {
+    const box = $('en-matrix'); box.textContent = '';
+    const ready = ENGINE_MATRIX.filter((m) => m.available).length;
+    box.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' }, [
+      badge('live', '实测可用 ' + ready + ' / ' + ENGINE_MATRIX.length),
+      badge('spec', '官方文档核对 ' + ENGINE_MATRIX.filter((m) => m.doc).length + ' 家'),
+      badge('danger', '引导型 ' + ENGINE_MATRIX.filter((m) => m.mode === 'guide').length + ' 家'),
+      el('span', { class: 'meta', text: 'WMI 识别到 2 条产品，其中 1 条为卸载残留' })
+    ]));
+    const head = el('tr', {}, ['引擎', '来源', '可调用', '官方文档', '本机实测', '可扫范围', '判定原因']
+      .map((s) => el('th', { text: s })));
+    const tbody = el('tbody');
+    for (const m of ENGINE_MATRIX) {
+      tbody.appendChild(el('tr', {}, [
+        el('td', {}, [el('b', { text: m.name }), el('div', { class: 'meta', text: m.id })]),
+        el('td', { text: m.origin }),
+        el('td', {}, [badge(m.available ? 'ok' : 'danger', m.available ? '可用' : m.code)]),
+        el('td', {}, [badge(m.doc ? 'spec' : 'demo', m.doc ? '已核对' : '无公开接口')]),
+        el('td', {}, [badge(m.local ? 'live' : 'demo', m.local ? '实测' : '未实测'),
+                      el('div', { class: 'meta', text: m.evidence })]),
+        el('td', { text: m.scopes }),
+        el('td', { text: m.reason })
+      ]));
+    }
+    const t = el('table', {}, [el('thead', {}, [head]), tbody]);
+    box.appendChild(el('div', { class: 'tbl-wrap' }, [t]));
+    box.appendChild(el('div', { class: 'desc', style: 'margin-top:10px',
+      text: '统一入口 run_engine(engine_id, ScanRequest)：先 probe 判定 available → 按官方文档构造命令 → 真实执行 → 归一到统一报告 JSON。未在本机实测过的引擎（KES / ESET）默认拒绝执行；引导型引擎不产生扫描作业，也不谎报结果。' }));
+  }
+
+  function renderProbeEvidence() {
+    const box = $('en-evidence'); box.textContent = '';
+    for (const f of PROBE_FACTS) {
+      box.appendChild(el('div', { class: 'card' + (f.tag === 'danger' ? ' warn' : '') }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'name', text: f.title }),
+          badge(f.tag, f.tag === 'danger' ? '真实失败' : f.tag === 'live' ? '实测' :
+                       f.tag === 'spec' ? '官方依据' : '边界')
+        ]),
+        el('div', { class: 'desc', text: f.text })
+      ]));
+    }
   }
 
   /* ============ 报告 ============ */
@@ -1124,7 +1271,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   renderReports();
   renderKPI();
   log('原型已就绪。报告列表第 1 份为真实结果，其余为模拟；页面「立即扫描」仍是模拟。');
-  log('本机实测：卡巴斯基未安装；Defender 已停用；腾讯电脑管家系统防护已注册。');
+  log('多引擎实测：8 个引擎中 1 个可调用（KVRT）；Defender 服务被接管，真跑返回 0x800106ba。');
+  log('腾讯管家为卸载残留；KES / ESET 仅核对官方文档、本机未安装，默认拒绝执行；引导型引擎不伪造扫描作业。');
   setInterval(() => { if (document.querySelector('.view[data-view="settings"]').classList.contains('active')) renderSettings(); }, 30000);
 })();
 </script>

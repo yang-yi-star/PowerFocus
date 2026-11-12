@@ -1133,3 +1133,24 @@
 **未完成（如实）**：server.py 9 条 /api/security/* 未实装；run_scheduled_loop 未随应用主进程常驻；整机全盘真实扫描未执行；多厂商适配器未逐台验证；ClamAV 随包与 GPLv2、卡巴斯基 OEM 未做；current.json 仍 v0.09，v1.00 exe 未重打包。
 
 **文档**：E:\AI 调度中心\V0.10_真实KVRT链路_2026-11-12.md；versions\v0.10\README.md 重写；MANIFEST.json 新增 kvrt_real 段；.gitignore 补 .json.bak / real-scan-console.log / scan_settings.json 排除。
+
+
+## 2026-11-12 13:50 · V0.10 多引擎适配器（应用内真实识别 / 探测 / 调用 / 报告）
+
+**用户选择**：四条下一步里选「补全多引擎适配器」——识别并调用不同电脑上已装的各类杀毒/安全软件，设置页可选内置或已识别引擎并真跑。
+
+**先查证再动手**：本机 WMI 只识别 2 条（腾讯电脑管家 266240、Defender 401664）。只读探测发现腾讯登记的 `...\QQPCMgr\18.2.30648.204\QQPCMgr.exe` **整个安装目录不存在，是卸载残留**；Defender 的 signed_exe 是 `windowsdefender://`（URI 非路径）。`MpCmdRun.exe` 三处都在，WinDefend `Start=3` / 服务状态 STOPPED。官方文档逐条核对：Microsoft Learn（MpCmdRun -Scan/-File/-DisableRemediation）、卡巴 KES 181236（avp.com SCAN /i0 /RA: /ALL）、ESET 官方 ecls 参数（/clean-mode=none、退出码 0/1/10/50/100）、火绒官方仅 Linux 服务器版有 hrconsole scan；腾讯管家/360 无本体公开 CLI。网上流传的 `hrun.exe /scan`、`TencentPCMgr.exe /scan` 无官方依据，判定编造、不予采信。
+
+**真跑实证**：`MpCmdRun.exe -?` rc=0（帮助确认 -File/-DisableRemediation/-CpuThrottling）；再真跑 `-Scan -ScanType 3 -File <目录> -DisableRemediation -CpuThrottling 30` → **exit 2 / `CmdTool: Failed with hr = 0x800106ba` / 0.0 秒**。Microsoft Learn 明确该错误为「Defender 服务已禁用」。本机被第三方接管，应用**不改动系统服务状态**，如实判 `service_disabled` 不可用。KVRT 沿用上一轮真实报告，不重复跑 366 秒。
+
+**修正两个真实风险**：① 卡巴 KES `avp.com SCAN` 默认是 `/i2`（清除失败即删文件），旧 security_scan.py 未指定 /i，与「只报告不处置」冲突 → 统一 `/i0`；② Defender `-DisableRemediation` 官方注明仅 -ScanType 3 有效，旧代码 `-ScanType 2`（全盘）会用系统默认处置策略 → 改为只提供自定义扫描，全盘/快速一律不开放并抛 ValueError。前端原型里展示这两条过时命令的文案同步修正。
+
+**落地**：新增 `versions\v0.10\engine_adapters.py`（8 个引擎 / 4 类适配器，`EngineInfo.available` + `reason_code`、`discover_products` 路径存在性校验、纯 Python ctypes `service_state()` 不依赖 sc/reg/PowerShell、`probe_all()`、`choose_engine()`、`run_engine()` 统一入口、统一报告落盘与 `list_reports()`）；`security_scan.py` 保留为契约层并修正命令；`prototype\index.html` 内嵌 `ENGINE_MATRIX` / `PROBE_FACTS` 实测快照，引擎页加「多引擎可调用性矩阵」「真实探测证据与处置边界」两面板，设置页按 available 禁用不可选引擎并显示原因码；README 加章、MANIFEST 加 `multi_engine` 段。
+
+**四条安全边界（实测全部正确拦截）**：不可用引擎拒绝真跑（service_disabled + 0x800106ba 原因）；`scope=custom` 无 `--path` 拒绝（防悄悄退化成整机扫描）；引导型引擎拒绝（不伪造作业）；未本机实测的 KES/ESET 拒绝（需显式 --allow-unverified）。不改服务状态、不注册系统任务、不写系统目录；CLI 默认 dry-run，真跑必须 --execute。
+
+**验证**：py_compile 三模块 PASS；`--list` 8 引擎 / available_count=1；`--dry-run` 各引擎命令正确、缺件明确报错、引导型拒绝伪造；`--reports` 读到 1 份真实 clean 报告；node --check PASS；DOM 57 id / 85 引用 / 0 缺失 / 0 重复，无 fetch/eval/innerHTML/外部脚本；Edge 无头 `--dump-dom` 含 service_disabled / stale_registration / 0x800106ba / 实测可用 1 / 8，无 Uncaught/NaN/[object Object]/TypeError；三张实渲染截图 `.screenshots\v010-multi-engines.png` / `v010-multi-matrix.png` / `v010-multi-settings.png`；`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**。
+
+**未完成（如实）**：server.py 9 条 /api/security/* HTTP 路由未实装（本轮是应用内 Python 调用链，不依赖 HTTP）；run_scheduled_loop 未随主进程常驻、多引擎调度未接入每日定时器；整机全盘真扫未执行；KES/ESET/多机适配器未逐台实测；ClamAV 随包与 GPLv2、卡巴 OEM 未做；current.json 仍 v0.09、v1.00 exe 未重打包；网页「立即扫描」仍是模拟（界面已明示）。
+
+**文档**：E:\AI 调度中心\V0.10_多引擎适配器_2026-11-12.md。

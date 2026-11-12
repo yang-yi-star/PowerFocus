@@ -87,5 +87,39 @@
       "ClamAV bundle & GPLv2",
       "Kaspersky OEM licensing"
     ]
+  },
+  "multi_engine": {
+    "status": "real_probe_and_adapters_verified_2026-11-12",
+    "module": "engine_adapters.py",
+    "engine_count": 8,
+    "available_on_this_machine": 1,
+    "wmi_products_detected": 2,
+    "key_findings": [
+      "WMI pathToSignedProductExe can be a stale uninstall registration: QQPCMgr 18.2.30648.204 directory does not exist",
+      "Defender MpCmdRun.exe -? works (rc=0) but real -Scan fails with hr=0x800106ba because WinDefend is STOPPED (Start=3)",
+      "Kaspersky KES avp.com SCAN defaults to /i2 which deletes files; /i0 is required for report-only",
+      "Defender -DisableRemediation is only valid for -ScanType 3; full and quick scans are not exposed",
+      "Huorong hrconsole scan is Linux-server-only; QQPCMgr and 360 have no official Windows CLI",
+      "Unverified web claims about hrun.exe /scan and TencentPCMgr.exe /scan were rejected as unfounded"
+    ],
+    "official_docs": {
+      "defender": "https://learn.microsoft.com/defender-endpoint/command-line-arguments-microsoft-defender-antivirus",
+      "kaspersky_kes": "https://support.kaspersky.com/kes-for-windows/14.0/181236",
+      "eset": "https://help.eset.com/efsw/12.0/en-US/advanced_cmd.html",
+      "huorong": "https://www.huorong.cn/document/tech/safety-classroom/1966"
+    },
+    "safety": [
+      "engine availability derives from real path, service state and signature, never from product name alone",
+      "engines not locally verified refuse real execution without explicit --allow-unverified",
+      "guide-only engines never fabricate scan jobs or results",
+      "custom scope without --path is rejected before any real execution",
+      "no system service state changes, no scheduled tasks, no writes outside version directory"
+    ],
+    "prototype": "ENGINE_MATRIX and PROBE_FACTS are read-only real snapshots; settings dropdown disables unavailable engines",
+    "screenshots": [
+      "E:/AI 调度中心/.screenshots/v010-multi-engines.png",
+      "E:/AI 调度中心/.screenshots/v010-multi-matrix.png",
+      "E:/AI 调度中心/.screenshots/v010-multi-settings.png"
+    ]
   }
 }

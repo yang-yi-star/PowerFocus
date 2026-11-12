@@ -18,10 +18,14 @@
   2. 卡巴斯基 OEM（Scan Engine / Anti-Virus SDK v8）——需商业授权，不能自由再分发；
   3. 外部适配器——识别客户机已装安全软件，按官方命令行调用或降级为引导。
 
-命令依据（均为官方公开文档，未查证的一律标「无公开接口」）：
-  * Kaspersky KES for Windows: avp.com SCAN [/R[A]:报告] /MEMORY /STARTUP <路径>
-  * Microsoft Defender: MpCmdRun.exe -Scan -ScanType 1|2|3 [-CpuThrottling N]
+命令依据（均为官方公开文档，未查证的一律标「无公开接口」；2026-11-12 逐条复核）：
+  * Kaspersky KES: avp.com SCAN /i0 /RA:<报告> [/ALL] <路径>  —— /i0 仅通知，默认 /i2 会删文件
+  * Microsoft Defender: MpCmdRun.exe -Scan -ScanType 3 -File <路径> -DisableRemediation
+  * ESET: ecls.exe /clean-mode=none /log-file=<日志> <路径>（见 engine_adapters.py）
   * WMI 识别: root\\SecurityCenter2 -> AntiVirusProduct (displayName / productState / pathToSignedProductExe)
+
+本文件保留为「接口契约 + 安全占位」层；真实的可调用性探测、命令执行与报告落盘
+由同目录 engine_adapters.py 承担。WMI 登记路径可能是卸载残留，不能直接当引擎用。
 """
 
 from __future__ import annotations
@@ -212,6 +216,9 @@ class KasperskyAdapter(EngineAdapter):
     重要：卡巴斯基引擎与病毒库不能随第三方安装包再分发。
     若产品要求「内嵌卡巴斯基品牌引擎」，须走官方 OEM 授权
     （Kaspersky Scan Engine / Anti-Virus SDK v8），本类保留接入位。
+
+    2026-11-12 修正：官方 181236 文档写明 /i2（清除失败即删除文件）是默认动作，
+    与项目「只报告不处置」边界冲突，必须显式 /i0（仅通知）。
     """
 
     def __init__(self, avp_com: str = ""):
@@ -219,36 +226,48 @@ class KasperskyAdapter(EngineAdapter):
             id="kaspersky", name="卡巴斯基 Kaspersky",
             origin="external", bundled=False, verified=True,
             license_note="商业专有；仅可调用已安装实例；内嵌需 OEM SDK 商业授权",
-            command_template="avp.com SCAN /RA:<report> /MEMORY /STARTUP <path>",
+            command_template="avp.com SCAN /i0 /RA:<report> [/ALL] <path>   # /i0 = 仅通知，不删文件",
             report_format="kaspersky-text",
         )
         self.avp_com = avp_com
 
     def build_command(self, scope: str, report_path: str, cpu_limit: int = 50) -> List[str]:
         exe = self.avp_com or "avp.com"
-        target = "C:\\" if scope == "full" else "C:\\Windows"
-        return [exe, "SCAN", "/RA:" + report_path, "/MEMORY", "/STARTUP", target]
+        cmd = [exe, "SCAN", "/i0", "/RA:" + report_path]
+        cmd.append("/ALL" if scope == "full" else "C:\\Windows")
+        return cmd
 
 
 class DefenderAdapter(EngineAdapter):
-    """Windows 自带 Defender，无需安装；命令来自 Microsoft Learn。"""
+    """
+    Windows 自带 Defender，无需安装；命令来自 Microsoft Learn。
+
+    2026-11-12 修正：-DisableRemediation 官方明确「仅自定义扫描(-ScanType 3)有效」。
+    全盘/快速扫描会走系统默认处置策略，违背「只报告不处置」边界，因此本契约层
+    不再提供 -ScanType 1/2，只保留自定义扫描形态。真实可用性判定见 engine_adapters.py。
+    """
 
     def __init__(self, mpcmdrun: str = ""):
         super().__init__(
             id="defender", name="Windows Defender",
             origin="external", bundled=False, verified=True,
-            license_note="Windows 系统组件，无需安装；需管理员权限且服务须处于启用状态",
-            command_template="MpCmdRun.exe -Scan -ScanType 2 -CpuThrottling 50",
-            report_format="defender-exitcode+eventlog",
+            license_note="Windows 系统组件，无需安装；需管理员权限且 WinDefend 服务须处于运行状态",
+            command_template="MpCmdRun.exe -Scan -ScanType 3 -File <path> -DisableRemediation -CpuThrottling 50",
+            report_format="defender-exitcode+stdout",
         )
         self.mpcmdrun = mpcmdrun or os.path.join(
             os.environ.get("ProgramFiles", "C:\\Program Files"),
             "Windows Defender", "MpCmdRun.exe")
 
-    def build_command(self, scope: str, report_path: str, cpu_limit: int = 50) -> List[str]:
-        scan_type = "2" if scope == "full" else "1"
-        return [self.mpcmdrun, "-Scan", "-ScanType", scan_type,
-                "-CpuThrottling", str(cpu_limit)]
+    def build_command(self, scope: str, report_path: str, cpu_limit: int = 50,
+                      custom_path: str = "") -> List[str]:
+        if scope == "full":
+            raise ValueError(
+                "Defender 全盘扫描会走系统默认处置策略；只报告不处置边界下"
+                "仅允许自定义扫描（scope=custom）")
+        target = custom_path or os.environ.get("SystemRoot", "C:\\Windows")
+        return [self.mpcmdrun, "-Scan", "-ScanType", "3", "-File", target,
+                "-DisableRemediation", "-CpuThrottling", str(cpu_limit)]
 
 
 class GuidedOnlyAdapter(EngineAdapter):
@@ -409,10 +428,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         reg = default_registry()
         for a in reg.values():
             try:
-                cmd = a.build_command("full", "reports/dry-run.log", 50)
+                # Defender 在「只报告不处置」边界下不开放全盘，用 custom 展示真实命令形态
+                scope = "custom" if a.id == "defender" else "full"
+                cmd = a.build_command(scope, "reports/dry-run.log", 50)
                 print("%-12s %s" % (a.id, " ".join(cmd)))
-            except NotImplementedError as e:
-                print("%-12s [仅引导] %s" % (a.id, e))
+            except (NotImplementedError, ValueError) as e:
+                print("%-12s [受限] %s" % (a.id, e))
         return 0
 
     if args.settings:

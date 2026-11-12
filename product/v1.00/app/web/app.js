@@ -49,6 +49,39 @@
     if (n && n.textContent !== text) n.textContent = text;
   }
 
+  /* 骨架屏：形状匹配的加载占位，感知等待短于 spinner（2026 通行做法） */
+  function skeleton(box, n) {
+    if (!box) return;
+    box.textContent = '';
+    for (let i = 0; i < (n || 4); i++) box.appendChild(el('div', { class: 'skel' }));
+  }
+
+  /* 侧栏折叠（localStorage 持久化，2026 专业工具标配） */
+  function toggleSidebar() {
+    const min = document.body.classList.toggle('sb-min');
+    try { localStorage.setItem('pf_sidebar', min ? '1' : ''); } catch (_) { /* 隐私模式忽略 */ }
+  }
+
+  function restoreSidebar() {
+    let v = '';
+    try { v = localStorage.getItem('pf_sidebar') || ''; } catch (_) { /* ignore */ }
+    if (v === '1') document.body.classList.add('sb-min');
+  }
+
+  /* 键盘：1-8 切换视图、[ 折叠侧栏；输入控件聚焦或弹窗打开时不劫持 */
+  const VIEW_ORDER = ['overview', 'processes', 'scenes', 'models',
+    'security', 'bootstrap', 'settings', 'logs'];
+  function onKeydown(e) {
+    const t = e.target;
+    if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    if (document.getElementById('dlg') && document.getElementById('dlg').open) return;
+    if (e.key === '[') { toggleSidebar(); return; }
+    const idx = Number(e.key);
+    if (idx >= 1 && idx <= VIEW_ORDER.length) {
+      switchView(VIEW_ORDER[idx - 1]);
+    }
+  }
+
   function fmt(n, digits) {
     if (n === null || n === undefined || Number.isNaN(n)) return '--';
     return Number(n).toFixed(digits === undefined ? 1 : digits);
@@ -319,6 +352,7 @@
 
   /* ---------------- 场景 ---------------- */
   async function loadScenes() {
+    skeleton($('scene-list'), 3);
     try {
       const d = await api('/api/scenes');
       sceneLoaded = true;
@@ -444,6 +478,7 @@
 
   /* ---------------- 安全态势 ---------------- */
   async function refreshSecurity() {
+    if (!securityLoaded) skeleton($('sec-audit'), 5);
     try {
       const [sec, audit] = await Promise.all([api('/api/security'), api('/api/audit?limit=40')]);
       renderSecurity(sec);
@@ -594,6 +629,7 @@
     const btn = $('bs-refresh');
     btn.disabled = true;
     setText('bs-state', force ? '正在重新自检…' : '正在读取…');
+    if (!bootstrapLoaded) skeleton($('bs-list'), 6);
     try {
       const d = await api(force ? '/api/bootstrap/refresh' : '/api/bootstrap/check',
         force ? { method: 'POST', body: {}, timeout: 120000 } : { timeout: 20000 });
@@ -783,6 +819,9 @@
     for (const b of document.querySelectorAll('.navbtn')) {
       b.addEventListener('click', () => switchView(b.dataset.view));
     }
+    const sbt = $('sb-toggle');
+    if (sbt) sbt.addEventListener('click', toggleSidebar);
+    document.addEventListener('keydown', onKeydown);
 
     $('proc-search').addEventListener('input', () => renderProcessTable(snapshot));
     $('proc-sort').addEventListener('change', () => renderProcessTable(snapshot));
@@ -902,7 +941,10 @@
   }
 
   async function boot() {
+    restoreSidebar();
     bind();
+    skeleton($('ov-top'), 6);
+    skeleton($('proc-body'), 10);
     try {
       const d = await api('/api/snapshot', { timeout: 8000 });
       renderSnapshot(d);

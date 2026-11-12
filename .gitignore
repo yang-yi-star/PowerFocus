@@ -70,3 +70,16 @@ product/**/build/pyi/
 archive/**/commands/
 v2-archive/**/commands/
 versions/**/commands/
+
+# ---- 2026-11-12 V0.10：KVRT 引擎二进制与扫描运行态（绝不入库） ----
+# KVRT EULA 5.4 禁止随第三方产品分发；这里只入库下载/验签/调用的源码，
+# 引擎 exe 由用户在使用时主动从官方源下载到本机应用目录。
+versions/**/engines/
+versions/**/engine.json
+versions/**/reports/KVRT_Data/
+versions/**/reports/scan-*.json
+versions/**/reports/scan-*.json.bak
+versions/**/reports/scan-*.log
+versions/**/reports/real-scan-console.log
+versions/**/scan_settings.json
+*.part

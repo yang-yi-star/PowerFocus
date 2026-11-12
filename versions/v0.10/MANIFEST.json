@@ -4,7 +4,7 @@
   "version_label": "v0.10",
   "build_date": "2026-11-12",
   "stage": "dev",
-  "note": "V0.10 最基础原型：应用内安全扫描能力（引擎识别 + 适配器 + 每日扫描报告）。stage=dev，未切换 current.json。",
+  "note": "V0.10：应用内安全扫描。KVRT 真实下载/验签/调用/官方报告链路已在本机跑通一次（2026-11-12 13:12，6943 对象，Found=0，clean）。stage=dev，未切 current.json。",
   "entry": "电脑算力调度中心_v0.10.ps1",
   "lineage": "v0.09",
   "components": [
@@ -17,7 +17,9 @@
     "lib/model-registry.ps1",
     "lib/rollback.ps1",
     "security_scan.py",
-    "prototype/index.html"
+    "prototype/index.html",
+    "kvrt_bundle.py",
+    "scan_settings.json"
   ],
   "configs": [
     "rules.json",
@@ -41,7 +43,7 @@
     "PowerShell 7+",
     "llama.cpp"
   ],
-  "prototype": "prototype/index.html（单文件自包含，双击可运行；扫描与报告均为模拟数据）",
+  "prototype": "prototype/index.html：自包含四页原型；内嵌 1 份真实扫描报告与真实引擎状态快照，其余为模拟数据，界面按「实测/模拟」区分",
   "security_scan": {
     "stage": "prototype",
     "simulated": true,
@@ -51,5 +53,39 @@
     "scheduler": "应用内定时器，不注册系统计划任务、不写系统目录",
     "reports": "原型内存模拟；真实落地写 versions/v0.10/reports/",
     "api_contract": "9 条 /api/security/* 占位，尚未在 server.py 实装"
+  },
+  "kvrt_real": {
+    "status": "real_chain_verified_2026-11-12",
+    "engine": "Kaspersky Virus Removal Tool 20.0.14.0",
+    "signer": "AO Kaspersky Lab",
+    "sha256": "7656E5DE49894EC8331B641150B08BAB3CB2102A25D64F566B79ADF314D6A20F",
+    "official_source": "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe",
+    "verification": "pure-python WinVerifyTrust (ctypes), zero external process",
+    "scan": {
+      "date": "2026-11-12 13:12:35",
+      "scope": "versions/v0.10/prototype",
+      "processed": 6943,
+      "detected": 0,
+      "found": 0,
+      "exit_code": 0,
+      "duration_sec": 366.0,
+      "report": "reports/scan-20261112-131235.json",
+      "official_report": "XOR 0xEF encoded .klr.enc1 XML"
+    },
+    "param_facts": [
+      "-d <path> must be two args",
+      "-customonly NOT recognized by KVRT2020 kernel -> help window hang",
+      "-allvolumes accepted",
+      "-custom <backslash path> accepted"
+    ],
+    "license": "KVRT EULA 5.4 - not bundled in installer; user-triggered download into app dir only",
+    "scheduler": "in-app run_scheduled_loop(), not a Windows scheduled task",
+    "not_yet": [
+      "server.py /api/security/* routes",
+      "scheduler hosted by app main process",
+      "full-disk daily scan timing",
+      "ClamAV bundle & GPLv2",
+      "Kaspersky OEM licensing"
+    ]
   }
 }

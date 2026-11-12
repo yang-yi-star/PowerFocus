@@ -197,13 +197,14 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div class="logo"></div>
     <div><h1>电脑算力调度中心 · V0.10</h1><span class="sub">IN-APP SECURITY SCAN</span></div>
   </div>
-  <span class="badge proto">◈ 原型模式</span>
-  <span class="badge live" id="hd-engine">内置引擎就绪</span>
+  <span class="badge proto">◈ 原型页面</span>
+  <span class="badge live" id="hd-engine">KVRT 真实引擎已就绪</span>
+  <span class="badge live">真实扫描 1 次</span>
   <div class="hdr-sp"></div>
   <div class="hdr-meta">
     <span>内核 <b>v0.10 (dev)</b></span>
     <span>自动扫描 <b id="hd-auto">每天 03:00</b></span>
-    <span>模拟报告 <b id="hd-count">0</b> 份</span>
+    <span>报告 <b id="hd-count">0</b> 份</span>
   </div>
 </header>
 
@@ -216,9 +217,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <button class="navbtn" data-view="settings"><span class="ico">⚙</span>自动扫描设置</button>
   <div class="navfoot">
     <b>原型边界</b><br>
-    不连接后端 · 不启动常驻进程<br>
+    真实链路已由 kvrt_bundle.py 跑通<br>
+    本页内嵌真实结果快照<br>
+    页面上的「立即扫描」仍是模拟<br>
     不注册系统计划任务<br>
-    不调用任何真实杀毒引擎<br>
     设置仅存浏览器本地
   </div>
 </nav>
@@ -227,8 +229,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <div class="banner">
     <div class="ico">⚠</div>
     <div>
-      <b>这是最基础的原型：所有扫描过程与报告均为模拟数据，没有调用任何真实杀毒引擎。</b>
-      <p>界面上的命令、识别结果与接口契约来自本机实测和官方公开文档，标注为「实测」或「契约」；凡标「演示」的都是占位数据。真实落地需要后端适配层 + 引擎授权，见引擎识别页底部说明。</p>
+      <b>真实链路已跑通一次：卡巴斯基 KVRT 引擎由应用下载、验签、调用，真实扫描 6,943 个对象并产出官方报告。</b>
+      <p>报告列表<b>第 1 份为真实结果</b>（标「实测」，来自 <span class="chip">reports\scan-20261112-131235.json</span>）；其余报告与页面上的「立即扫描」仍是模拟数据，标「演示」。真实调用由应用内 <span class="chip">kvrt_bundle.py</span> 执行，本页面为自包含只读快照，不联网、不启动进程。</p>
     </div>
   </div>
 
@@ -238,7 +240,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div class="kpis">
       <div class="kpi"><div class="k">已识别引擎</div><div class="v" id="kp-eng">--</div><div class="x" id="kp-eng-x">本机实测 + 支持清单</div></div>
       <div class="kpi"><div class="k">最近一次扫描</div><div class="v" id="kp-last" style="font-size:16px">--</div><div class="x" id="kp-last-x">--</div></div>
-      <div class="kpi"><div class="k">累计发现威胁</div><div class="v" id="kp-threat">--</div><div class="x">模拟报告统计</div></div>
+      <div class="kpi"><div class="k">累计发现威胁</div><div class="v" id="kp-threat">--</div><div class="x">含 1 份真实报告</div></div>
       <div class="kpi"><div class="k">自动扫描</div><div class="v" id="kp-auto" style="font-size:16px">--</div><div class="x" id="kp-next">--</div></div>
     </div>
 
@@ -317,7 +319,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div class="grid2">
       <div class="panel">
         <div class="head">报告列表<span class="sp"></span>
-          <span class="badge demo">全部为模拟</span>
+          <span class="badge live">含 1 份真实结果</span>
           <button class="btn sm" id="rp-refresh">刷新</button>
         </div>
         <div class="body"><div class="list" id="rp-list"></div></div>
@@ -332,6 +334,11 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <!-- ============ 引擎识别页 ============ -->
   <section class="view" data-view="engines">
     <div class="pagehead"><h2>引擎识别</h2><span class="desc">识别本机与不同电脑上已安装的杀毒软件、安全软件</span></div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="head">应用内真实引擎 · KVRT 下载与验签<span class="sp"></span>
+        <span class="badge live">2026-11-12 实测</span></div>
+      <div class="body"><div id="en-real"></div></div>
+    </div>
     <div class="grid2">
       <div class="panel">
         <div class="head">本机探测结果<span class="sp"></span>
@@ -428,6 +435,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
               <div class="desc">ClamAV（GPLv2）官方提供 Windows portable ZIP 与 clamscan 命令行，可随安装包分发、无需系统安装；需遵守 GPLv2 并单独维护病毒库更新。这是「安装包自带杀毒能力」在工程与许可上都能成立的路径。</div>
             </div>
             <div class="card">
+              <div class="row"><span class="name">应用内下载入口（已跑通）</span><span class="badge live">实测</span></div>
+              <div class="desc">用户点「下载」后，应用从卡巴斯基官方分发点取 KVRT.exe 到自己的 <span class="chip">engines\KVRT\</span> 目录，纯 Python 验签（WinVerifyTrust + 厂商标识 + SHA256）通过后登记为可用引擎；<b>不写系统目录、不注册服务、不随安装包分发</b>。EULA 5.4 禁止随第三方产品再分发，因此只做「用户主动下载 + 应用调用」。</div>
+            </div>
+            <div class="card">
               <div class="row"><span class="name">调用已装安全软件</span><span class="badge live">实测</span></div>
               <div class="desc">对有公开命令行的（Defender、卡巴斯基企业版）直接调用并解析输出；对没有公开接口的（多数国产管家类）降级为「打开主程序并引导扫描」，绝不伪造命令或谎报扫描结果。</div>
             </div>
@@ -462,13 +473,83 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
      tag: live=本机实测 / spec=官方接口契约 / demo=演示 / oem=需商业授权
      origin: builtin=随包 / external=外部已装 / oem=需 OEM SDK
   */
+  /* ============ 真实链路数据（2026-11-12 本机实证，非模拟） ============
+     来源：versions\v0.10\reports\scan-20261112-131235.json（校准版）
+           versions\v0.10\engines\KVRT\engine.json
+     本页自包含，以下为只读快照；真实数据由应用内 kvrt_bundle.py 生成落盘。
+  */
+  const REAL = {
+  "engine": {
+    "name": "Kaspersky Virus Removal Tool",
+    "vendor": "AO Kaspersky Lab",
+    "version": "20.0.14.0",
+    "size": 122445696,
+    "sha256": "7656E5DE49894EC8331B641150B08BAB3CB2102A25D64F566B79ADF314D6A20F",
+    "trust": "0x00000000",
+    "verified_at": "2026-11-12 12:57:29",
+    "path": "E:/PowerFocus/versions/v0.10/engines/KVRT/KVRT.exe",
+    "url": "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe",
+    "docs": "https://support.kaspersky.com/kvrt-for-windows/2026/269475"
+  },
+  "report": {
+    "id": "RPT-20261112-131235",
+    "date": "2026-11-12 13:12:35",
+    "engineName": "Kaspersky Virus Removal Tool 20.0.14.0",
+    "scope": "E:/PowerFocus/versions/v0.10/prototype",
+    "trigger": "手动真实扫描",
+    "durationSec": 366.0,
+    "filesScanned": 6943,
+    "threatCount": 0,
+    "status": "clean",
+    "exitCode": 0,
+    "simulated": false,
+    "authoritative": true,
+    "officialClean": true,
+    "stdoutStats": {
+      "processed": 6943,
+      "processing_errors": 0,
+      "detected": 0,
+      "password_protected": 0,
+      "corrupted": 0
+    },
+    "calibration": "2026-11-12 13:20 按 KVRT 官方 stdout 汇总块与 .klr.enc1 的 Scan Block 校准：原版把 \"Detected: 0\" 误计为 1 条威胁，实际 Processed=6943 / Found=0 / Detected=0，状态 clean。",
+    "command": [
+      "E:\\PowerFocus\\versions\\v0.10\\engines\\KVRT\\KVRT.exe",
+      "-accepteula",
+      "-silent",
+      "-d",
+      "E:\\PowerFocus\\versions\\v0.10\\reports\\KVRT_Data",
+      "-custom",
+      "E:\\PowerFocus\\versions\\v0.10\\prototype"
+    ],
+    "officialReports": [
+      {
+        "file": "report_2026.11.12_13.03.30.klr.enc1",
+        "processed": 0,
+        "found": 0,
+        "neutralized": 0,
+        "clean": true,
+        "time": "2026.11.12 13:03:30.098"
+      },
+      {
+        "file": "report_2026.11.12_13.06.30.klr.enc1",
+        "processed": 6943,
+        "found": 0,
+        "neutralized": 0,
+        "clean": true,
+        "time": "2026.11.12 13:12:35.042"
+      }
+    ]
+  }
+};
+
   const ENGINES = [
     {
-      id: 'builtin', name: '应用内置扫描引擎', vendor: 'PowerFocus / ClamAV',
-      origin: 'builtin', bundled: true, usable: true, tag: 'spec', status: '就绪（原型占位）',
-      cmd: 'clamscan.exe -r --database=<随包病毒库> --max-filesize=64M <路径>',
-      desc: '随安装包分发的开源引擎，客户电脑无需另装杀毒软件。ClamAV 为 GPLv2，官方提供 Windows portable ZIP；病毒库需随版本维护更新。原型阶段为接口占位，未真实打包引擎二进制。',
-      why: '唯一同时满足「随包自带」「无需系统安装」「许可允许再分发」的方案'
+      id: 'builtin', name: 'Kaspersky Virus Removal Tool（应用内引擎）', vendor: 'AO Kaspersky Lab',
+      origin: 'builtin', bundled: true, usable: true, tag: 'live', status: '已下载 · 已验签 · 真实扫描通过',
+      cmd: 'KVRT.exe -accepteula -silent -d <数据目录> -custom <路径>',
+      desc: '用户主动从卡巴斯基官方分发点下载到本应用自己的 engines\KVRT\ 目录（122,445,696 B，20.0.14.0），由应用纯 Python 调用 WinVerifyTrust 验签（AO Kaspersky Lab，0x00000000 Valid）后登记。2026-11-12 真实扫描 6,943 个对象，官方 stdout 与 .klr.enc1 报告均为 Found/Detected = 0。不写系统目录、不注册服务、不随安装包分发（EULA 5.4）。',
+      why: '本机实测：真实下载 + 真实验签 + 真实扫描 + 真实官方报告，全链路已在应用内跑通'
     },
     {
       id: 'kaspersky', name: '卡巴斯基（Kaspersky）', vendor: 'Kaspersky',
@@ -508,6 +589,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   ];
 
   const LOCAL_DETECTED = [
+    { name: 'KVRT（应用内引擎，非系统安装）', raw: 'AO Kaspersky Lab 有效签名 · 20.0.14.0 · 已真实扫描', state: '已注册', tag: 'live' },
     { name: '腾讯电脑管家系统防护', raw: 'productState = 266240', state: '已注册', tag: 'live' },
     { name: 'Windows Defender', raw: 'productState = 401664', state: '已停用', tag: 'live' },
     { name: '卡巴斯基', raw: '无任何安装痕迹', state: '未检测到', tag: 'demo' }
@@ -654,6 +736,34 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
   /* ============ 引擎识别页 ============ */
   function renderEngines() {
+    /* 应用内真实引擎：下载 / 验签 / 真实调用证据 */
+    const rb = $('en-real');
+    if (rb) {
+      rb.textContent = '';
+      const e = REAL.engine, r = REAL.report;
+      const pairs = [
+        ['产品', e.name], ['厂商', e.vendor], ['版本', e.version],
+        ['文件大小', e.size.toLocaleString() + ' 字节'],
+        ['本地路径', e.path],
+        ['官方来源', e.url],
+        ['数字签名', e.trust + ' · ' + e.vendor + '（' + e.verified_at + ' 验签）'],
+        ['SHA256', e.sha256],
+        ['真实扫描', r.date + ' · ' + r.filesScanned.toLocaleString() + ' 个对象 · Found/Detected = 0'],
+        ['官方报告', r.officialReports.map((x) => x.file).join('；')],
+        ['调用命令', r.command.join(' ')]
+      ];
+      const kv = el('div', { class: 'kv' });
+      for (const q of pairs) {
+        kv.appendChild(el('div', { class: 'k', text: q[0] }));
+        kv.appendChild(el('div', { class: 'v', text: q[1] }));
+      }
+      rb.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' }, [
+        badge('live', '真实链路已跑通'), badge('ok', '验签通过'), badge('ok', '扫描 clean')
+      ]));
+      rb.appendChild(kv);
+      rb.appendChild(el('div', { class: 'desc', style: 'margin-top:10px',
+        text: '链路：应用内一键下载到自身 engines 目录 → 纯 Python 调 WinVerifyTrust 验签 → 按官方文档 269475 构造参数真实调用 → 解析官方 .klr.enc1 报告 → 报告落盘 JSON。KVRT 不写系统目录、不注册服务；EULA 5.4 禁止随第三方安装包再分发，故不预置二进制。' }));
+    }
     const box = $('en-local'); box.textContent = '';
     for (const d of LOCAL_DETECTED) {
       box.appendChild(el('div', { class: 'card' }, [
@@ -699,6 +809,19 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
   /* ============ 报告 ============ */
   function seedReports() {
+    /* 真实报告：来自应用内 KVRT 真实扫描，非模拟，排在列表首位 */
+    const rr = REAL.report;
+    reports.push({
+      id: rr.id, date: rr.date, engineId: 'builtin', engineName: rr.engineName,
+      scope: rr.scope, scanType: 'custom', trigger: rr.trigger,
+      durationSec: rr.durationSec, filesScanned: rr.filesScanned,
+      threats: [], status: rr.status, simulated: false, cpuLimit: 0,
+      real: rr,
+      rawLog: '[真实] ' + rr.command.join(' ') + '\n' +
+              'Processed: ' + (rr.stdoutStats.processed || 0) + '\n' +
+              'Detected: ' + (rr.stdoutStats.detected || 0) + '\n' +
+              'finish with status ' + rr.exitCode
+    });
     const now = Date.now();
     const base = [
       { ago: 3600 * 5, engine: 'builtin', type: 'full', trigger: 'scheduled', files: 184203, threats: 0, sec: 942 },
@@ -728,7 +851,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         cpuLimit: 50, rawLog: '[模拟] 引擎=' + eng.id + ' 对象=' + b.files + ' 威胁=' + b.threats + ' 耗时=' + b.sec + 's'
       });
     }
-    reports.sort((a, b) => b.date.localeCompare(a.date));
+    reports.sort((a, b) => {
+      if (a.simulated !== b.simulated) return a.simulated ? 1 : -1;
+      return b.date.localeCompare(a.date);
+    });
   }
 
   function makeReport(engineId, type, trigger, cpu) {
@@ -764,7 +890,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
           el('div', { class: 's', text: r.scope + ' / ' + r.trigger + ' / 扫描 ' + r.filesScanned.toLocaleString() + ' 个对象 / ' + r.durationSec + 's' })
         ]),
         el('span', { class: 'stat ' + cls, text: stat }),
-        badge('demo', '模拟')
+        r.simulated ? badge('demo', '模拟') : badge('live', '实测')
       ]);
       item.addEventListener('click', () => { selectedReport = r.id; renderReports(); });
       list.appendChild(item);
@@ -778,20 +904,42 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     const r = reports.find((x) => x.id === selectedReport);
     if (!r) { box.appendChild(el('div', { class: 'empty', text: '从左侧选择一份报告' })); return; }
     const kv = el('div', { class: 'kv' });
-    const pairs = [
+    const pairs = r.simulated ? [
       ['报告编号', r.id], ['扫描时间', r.date], ['使用引擎', r.engineName],
       ['扫描范围', r.scope], ['触发方式', r.trigger], ['CPU 上限', r.cpuLimit + '%'],
       ['扫描对象', r.filesScanned.toLocaleString() + ' 个'], ['耗时', r.durationSec + ' 秒'],
       ['结论', r.status === 'clean' ? '未发现威胁' : r.threats.length + ' 项威胁（模拟）'],
       ['数据性质', '模拟数据 · 未调用真实引擎']
+    ] : [
+      ['报告编号', r.id], ['扫描时间', r.date], ['使用引擎', r.engineName],
+      ['扫描范围', r.scope], ['触发方式', r.trigger],
+      ['引擎版本', REAL.engine.version], ['签名者', REAL.engine.vendor],
+      ['验签结果', REAL.engine.trust + ' (Valid)'],
+      ['扫描对象', r.filesScanned.toLocaleString() + ' 个（官方 Processed）'],
+      ['检出威胁', String(r.real.threatCount) + '（官方 Detected / Found）'],
+      ['处置数', String(r.real.officialReports.reduce((a, x) => a + (x.neutralized || 0), 0))],
+      ['处理错误', String(r.real.stdoutStats.processing_errors || 0)],
+      ['耗时', r.durationSec + ' 秒'], ['退出码', String(r.real.exitCode)],
+      ['结论', r.status === 'clean' ? '未发现威胁（官方报告确认）' : '检出威胁'],
+      ['数据性质', '真实扫描 · 卡巴斯基 KVRT 官方报告']
     ];
     for (const p of pairs) { kv.appendChild(el('div', { class: 'k', text: p[0] })); kv.appendChild(el('div', { class: 'v', text: p[1] })); }
     box.appendChild(el('div', { class: 'row', style: 'margin-bottom:12px' }, [
-      badge('demo', '模拟'), badge(r.status === 'clean' ? 'ok' : 'danger', r.status === 'clean' ? '安全' : '需关注')
+      r.simulated ? badge('demo', '模拟') : badge('live', '实测 · 真实引擎'),
+      badge(r.status === 'clean' ? 'ok' : 'danger', r.status === 'clean' ? '安全' : '需关注')
     ]));
+    if (!r.simulated) {
+      box.appendChild(el('div', { class: 'card', style: 'margin-bottom:12px' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'name', text: '官方报告与调用证据' }), badge('live', '实测')]),
+        el('div', { class: 'cmd', text: '命令：' + r.real.command.join(' ') }),
+        el('div', { class: 'meta', text: 'SHA256：' + REAL.engine.sha256 }),
+        el('div', { class: 'meta', text: '官方报告：' + r.real.officialReports.map((x) => x.file + ' (Processed=' + x.processed + ', Found=' + x.found + ')').join('；') }),
+        el('div', { class: 'meta', text: '校准说明：' + (r.real.calibration || '—') })
+      ]));
+    }
     box.appendChild(kv);
     box.appendChild(el('div', { class: 'head', style: 'margin:14px -14px 10px;padding:10px 14px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)', text: '威胁明细' }));
-    if (!r.threats.length) box.appendChild(el('div', { class: 'empty', text: '本次扫描未发现威胁（模拟）' }));
+    if (!r.threats.length) box.appendChild(el('div', { class: 'empty', text: r.simulated ? '本次扫描未发现威胁（模拟）' : 'KVRT 官方报告 Found = 0，未检出威胁（真实结果）' }));
     for (const t of r.threats) {
       box.appendChild(el('div', { class: 'card' }, [
         el('div', { class: 'row' }, [el('span', { class: 'name', text: t.name }), badge('danger', '风险 ' + t.risk)]),
@@ -924,7 +1072,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     $('kp-eng-x').textContent = '本机识别 2 款 · 清单支持 ' + VENDORS.length + ' 类';
     if (reports.length) {
       $('kp-last').textContent = reports[0].date;
-      $('kp-last-x').textContent = reports[0].engineName + ' · ' + (reports[0].status === 'clean' ? '未发现威胁' : reports[0].threats.length + ' 项威胁（模拟）');
+      $('kp-last-x').textContent = reports[0].engineName + ' · ' + (reports[0].status === 'clean' ? '未发现威胁' : reports[0].threats.length + ' 项威胁') + (reports[0].simulated ? '（模拟）' : '（实测）');
     }
     const total = reports.reduce((s, r) => s + r.threats.length, 0);
     $('kp-threat').textContent = String(total);
@@ -948,7 +1096,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     const a = el('a', { href: URL.createObjectURL(blob), download: r.id + '.json' });
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    toast('已导出 ' + r.id + '.json（模拟数据）', 'ok');
+    toast('已导出 ' + r.id + '.json' + (r.simulated ? '（模拟数据）' : '（真实扫描结果）'), 'ok');
   });
   $('en-redetect').addEventListener('click', () => { renderEngines(); toast('已按本机实测结果重新识别'); });
   $('se-freq').addEventListener('change', renderSettings);
@@ -967,13 +1115,15 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
   /* ============ 启动 ============ */
   seedReports();
+  log('真实链路：KVRT 已下载并验签，' + REAL.report.date + ' 真实扫描 ' + REAL.report.filesScanned + ' 个对象，Found=0');
+  log('报告列表第 1 份为真实结果；页面「立即扫描」仍是模拟');
   selectedReport = reports[0].id;
   renderEngineOptions();
   renderCurrentEngine();
   renderEngines();
   renderReports();
   renderKPI();
-  log('原型已就绪。所有扫描与报告均为模拟数据。');
+  log('原型已就绪。报告列表第 1 份为真实结果，其余为模拟；页面「立即扫描」仍是模拟。');
   log('本机实测：卡巴斯基未安装；Defender 已停用；腾讯电脑管家系统防护已注册。');
   setInterval(() => { if (document.querySelector('.view[data-view="settings"]').classList.contains('active')) renderSettings(); }, 30000);
 })();

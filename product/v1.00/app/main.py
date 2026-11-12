@@ -114,6 +114,25 @@ def ensure_kernel():
     return False
 
 
+def log_bootstrap():
+    """
+    启动时在后台线程跑一次 V0.10 组件自检（只读），结果写进应用日志。
+    自检含 WMI / 注册表 / 可执行文件探测，放后台避免拖慢窗口出现。
+    """
+    try:
+        r = server.warm_bootstrap() or {}
+        s = r.get("summary") or {}
+        log("组件自检: available=%s startup_ok=%s 共 %s 项 / 齐全 %s 项 / 缺失 %s 项：%s"
+            % (r.get("available", True), r.get("startup_ok"), s.get("total"),
+               s.get("present"), s.get("missing"), r.get("startup_note") or ""))
+        for c in (r.get("components") or []):
+            if not c.get("present"):
+                log("组件待办: %s (%s) -> %s" % (c.get("id"), c.get("install_mode"),
+                                                 c.get("action") or ""))
+    except Exception as e:
+        log("组件自检异常（不影响启动）: %s: %s" % (type(e).__name__, e))
+
+
 def main():
     if not single_instance():
         log("已有实例在运行，退出")
@@ -121,6 +140,7 @@ def main():
     import webview
 
     server.start_background()
+    threading.Thread(target=log_bootstrap, daemon=True).start()
     port = find_port()
     threading.Thread(target=lambda: server.serve(port), daemon=True).start()
     if not wait_ready(port):

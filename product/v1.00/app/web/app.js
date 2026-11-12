@@ -133,6 +133,7 @@
     if (name === 'scenes' && !sceneLoaded) loadScenes();
     if (name === 'models') refreshModels();
     if (name === 'security') refreshSecurity();
+    if (name === 'bootstrap' && !bootstrapLoaded) loadBootstrap();
     if (name === 'settings' && !settingsLoaded) loadSettings();
     if (name === 'logs') renderLogs();
   }
@@ -518,6 +519,163 @@
     }
   }
 
+  /* ---------------- 组件自检（V0.10 bootstrapping） ---------------- */
+  let bootstrapLoaded = false;
+  let bootstrapData = null;
+
+  function bsBadgeFor(c) {
+    if (c.system_impact && c.system_impact.writes_system_drivers) return ['bs-sys', '系统级'];
+    if (c.present && c.ready) return ['bs-ok', '就绪'];
+    if (c.present) return ['bs-miss', '已装未就绪'];
+    return ['bs-miss', '缺失'];
+  }
+
+  function renderBootstrap(d) {
+    const box = $('bs-list');
+    const sum = $('bs-summary');
+    const state = $('bs-state');
+    box.textContent = '';
+    sum.textContent = '';
+
+    if (d.available === false) {
+      state.textContent = '模块不可用（应用其余功能不受影响）';
+      sum.appendChild(el('div', { class: 'k', text: '自检模块' }));
+      sum.appendChild(el('div', { class: 'v', text: String(d.error || '不可用') }));
+      box.appendChild(el('div', { class: 'empty',
+        text: '组件自检模块加载失败，应用其余功能不受影响。详情见日志视图。' }));
+      $('bs-install').disabled = true;
+      $('bs-wizard').disabled = true;
+      return;
+    }
+
+    bootstrapLoaded = true;
+    const s = d.summary || {};
+    state.textContent = '自检于 ' + String(d.checked_at || '--') + (d.cached ? '（缓存）' : '（实时）');
+    const kv = [
+      ['组件总数', String(s.total ?? '--')],
+      ['已就绪', String(s.present ?? '--')],
+      ['缺失', String(s.missing ?? '--')],
+      ['阻塞启动', String((d.summary || {}).blocking ?? 0)],
+    ];
+    for (const [k, v] of kv) {
+      sum.appendChild(el('div', { class: 'k', text: k }));
+      sum.appendChild(el('div', { class: 'v', text: v }));
+    }
+
+    const dp = d.data_paths || {};
+    setText('bs-paths', '数据目录：' + String(dp.data_root || '--') +
+      (dp.legacy_root ? '\n历史兼容目录：' + dp.legacy_root : ''));
+
+    for (const c of d.components || []) {
+      const [cls, label] = bsBadgeFor(c);
+      const lines = [String(c.detail || '')];
+      if (c.pinned_version) lines.push('锁定版本 ' + c.pinned_version);
+      if (c.license_note) lines.push(c.license_note);
+      if (!c.present && c.action) lines.push('补齐方式：' + c.action);
+      if (c.system_impact && c.system_impact.writes_system_drivers) {
+        lines.push('⚠ 系统级安装：写系统驱动/服务、需管理员、可能冲突或要求重启；' +
+          (c.system_impact.app_accepts_eula_on_behalf_of_user === false
+            ? '应用不代你接受任何协议，向导内一切选项由你亲自决定。' : ''));
+      }
+      box.appendChild(el('div', { class: 'check' },
+        el('span', { class: 'badge ' + cls, text: label }),
+        el('div', {},
+          el('div', { class: 't', text: c.name + '（' + c.id + '）' + (c.required ? ' · 必需' : ' · 可选') }),
+          el('div', { class: 'd', text: lines.filter(Boolean).join('\n') }))));
+    }
+
+    const missAcq = (d.components || []).some((x) => !x.present && x.acquirable);
+    $('bs-install').disabled = !missAcq;
+    const kf = (d.components || []).find((x) => x.id === 'kaspersky_free') || {};
+    $('bs-wizard').disabled = !(kf.present);
+  }
+
+  async function loadBootstrap(force) {
+    const btn = $('bs-refresh');
+    btn.disabled = true;
+    setText('bs-state', force ? '正在重新自检…' : '正在读取…');
+    try {
+      const d = await api(force ? '/api/bootstrap/refresh' : '/api/bootstrap/check',
+        force ? { method: 'POST', body: {}, timeout: 120000 } : { timeout: 20000 });
+      bootstrapData = d;
+      renderBootstrap(d);
+    } catch (e) {
+      setText('bs-state', '读取失败');
+      const box = $('bs-list');
+      box.textContent = '';
+      box.appendChild(el('div', { class: 'empty', text: '自检读取失败：' + e.message }));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function bsOut(obj) {
+    const box = $('bs-out');
+    box.hidden = false;
+    let txt;
+    try { txt = JSON.stringify(obj, null, 2); } catch (_) { txt = String(obj); }
+    if (txt.length > 4000) txt = txt.slice(0, 4000) + '\n…（截断）';
+    box.textContent = txt;
+  }
+
+  async function bsInstall() {
+    const comps = (bootstrapData && bootstrapData.components) || [];
+    const target = comps.find((x) => !x.present && x.acquirable);
+    if (!target) { toast('没有可在线补齐的缺失组件', 'err'); return; }
+    const sys = target.system_impact && target.system_impact.writes_system_drivers;
+    const ok = await confirmDialog('同意下载',
+      '将从官方源下载「' + target.name + '」并做签名校验。' +
+      (sys ? '\n\n注意：这是系统级杀毒软件安装器，后续安装需管理员权限并写入系统驱动与服务。' : '') +
+      '\n\n下载只落应用数据目录，不会自动安装；验签不过一律标记不可用。',
+      '同意下载', false);
+    if (!ok) return;
+    const token = (bootstrapData.policy || {}).consent_token || '';
+    if (!token) { toast('未取得同意令牌，已取消', 'err'); return; }
+    const btn = $('bs-install');
+    btn.disabled = true;
+    btn.textContent = '下载与验签中…';
+    try {
+      const out = await api('/api/bootstrap/install',
+        { method: 'POST', body: { component_id: target.id, consent: token }, timeout: 300000 });
+      bsOut(out);
+      toast(out.executed ? ('「' + target.name + '」处理完成') : ('未执行：' + (out.reason || '原因见输出区')),
+        out.executed ? 'ok' : 'err');
+      await loadBootstrap(true);
+    } catch (e) {
+      toast('下载失败：' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '同意并补齐缺失组件';
+    }
+  }
+
+  async function bsWizard() {
+    const comps = (bootstrapData && bootstrapData.components) || [];
+    const kf = comps.find((x) => x.id === 'kaspersky_free') || {};
+    if (!kf.present) { toast('请先下载官方安装器', 'err'); return; }
+    const ok = await confirmDialog('启动厂商安装向导',
+      '即将启动卡巴斯基官方交互式安装向导。这是系统级动作：需要管理员权限、写入系统驱动与服务，' +
+      '可能与已有安全软件冲突、要求重启。\n\n应用不代你接受 EULA / 隐私政策 / KSN，不静默安装；' +
+      '向导中的一切选项由你亲自决定。',
+      '启动向导', true);
+    if (!ok) return;
+    const token = (kf.system_impact || {}).second_consent_token || '';
+    if (!token) { toast('未取得系统安装同意令牌，已取消', 'err'); return; }
+    const btn = $('bs-wizard');
+    btn.disabled = true;
+    try {
+      const out = await api('/api/bootstrap/wizard',
+        { method: 'POST', body: { component_id: 'kaspersky_free', install_consent: token }, timeout: 60000 });
+      bsOut(out);
+      toast(out.launched ? '官方安装向导已启动，请在向导中完成安装' : ('未启动：' + (out.reason || '')),
+        out.launched ? 'ok' : 'err');
+    } catch (e) {
+      toast('启动失败：' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   /* ---------------- 设置 ---------------- */
   async function loadSettings() {
     try {
@@ -726,6 +884,10 @@
 
     $('sec-selfcheck').addEventListener('click', runSelfcheck);
     $('sec-refresh').addEventListener('click', refreshSecurity);
+
+    $('bs-refresh').addEventListener('click', () => loadBootstrap(true));
+    $('bs-install').addEventListener('click', bsInstall);
+    $('bs-wizard').addEventListener('click', bsWizard);
 
     $('set-save').addEventListener('click', saveSettings);
     $('set-test').addEventListener('click', testCloud);

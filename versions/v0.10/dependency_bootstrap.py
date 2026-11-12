@@ -79,10 +79,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-ROOT = Path(__file__).resolve().parent
-REPORT_DIR = ROOT / "reports"
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+CODE_DIR = Path(__file__).resolve().parent
+if str(CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(CODE_DIR))
+try:
+    import app_paths
+except ImportError:
+    sys.path.insert(0, str(CODE_DIR.parents[1]))
+    import app_paths
+
+DATA_ROOT = app_paths.data_root()
+REPORT_DIR = DATA_ROOT / "reports"
+ROOT = CODE_DIR                 # 兼容旧引用，语义为「代码目录」
 
 import kvrt_bundle  # noqa: E402  （必须先补 sys.path）
 
@@ -127,7 +135,7 @@ KASPERSKY_OFFICIAL_PAGE = "https://www.kaspersky.com.cn/downloads#update-product
 KASPERSKY_HELP = (
     "https://support.kaspersky.com/help/Kaspersky%20Free/Win21.24/zh-Hans/101565.htm")
 
-ENGINE_DIR = ROOT / "engines"
+ENGINE_DIR = DATA_ROOT / "engines"
 NODE_DIR = ENGINE_DIR / "Node"
 NODE_STATE = NODE_DIR / "artifact.json"
 KASPERSKY_DIR = ENGINE_DIR / "KasperskyFull"
@@ -218,9 +226,10 @@ def _check_kvrt() -> Dict[str, Any]:
 
 def _check_nodejs() -> Dict[str, Any]:
     """优先认应用自己装的 Node；PATH 里的只能算「外部工具链」，不能当成客户机已装。"""
-    if NODE_STATE.is_file():
+    node_state = app_paths.first_existing("engines/Node/artifact.json")
+    if node_state.is_file():
         try:
-            st = json.loads(NODE_STATE.read_text(encoding="utf-8"))
+            st = json.loads(node_state.read_text(encoding="utf-8"))
             exe = Path(str(st.get("exe") or ""))
             if exe.is_file():
                 r = subprocess.run([str(exe), "-v"], capture_output=True, timeout=20)
@@ -488,6 +497,7 @@ def check_all() -> Dict[str, Any]:
     return {
         "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "app_dir": str(ROOT),
+        "data_paths": app_paths.describe(),
         "summary": {
             "total": len(items),
             "present": len(items) - len(missing),
@@ -660,6 +670,19 @@ def acquire_zip(spec: AcquireSpec, target_dir: Path,
     out: Dict[str, Any] = {"kind": spec.kind, "version": spec.version,
                            "executed": False, "offline": offline}
     exe = target_dir / spec.exe_relpath
+    if not exe.is_file():
+        # 历史数据目录里的已装组件只读复用，避免改路径后把用户已下载的
+        # 41 MB Node 当成缺失而重下一遍；不搬迁、不删除。
+        try:
+            rel = target_dir.relative_to(DATA_ROOT) / spec.exe_relpath
+        except ValueError:
+            rel = Path(spec.exe_relpath)
+        legacy_exe = app_paths.legacy_root() / rel
+        if legacy_exe.is_file():
+            out["reason"] = "已安装，幂等跳过（历史数据目录只读复用）"
+            out["exe"] = str(legacy_exe)
+            out["ok"] = True
+            return out
     if exe.is_file():
         out["reason"] = "已安装，幂等跳过（不重复下载）"
         out["exe"] = str(exe)
@@ -835,9 +858,11 @@ def acquire_vendor_installer(spec: AcquireSpec, target_dir: Path,
     state_file = target_dir / "artifact.json"
 
     # 已有且仍有效的安装器：幂等跳过，不重复下载约 7 MB。
-    if state_file.is_file() and not offline:
+    # 状态文件可能在历史数据目录（路径改造前下载的），只读回退。
+    cached_state = app_paths.first_existing("engines/KasperskyFull/artifact.json")
+    if cached_state.is_file() and not offline:
         try:
-            st = json.loads(state_file.read_text(encoding="utf-8"))
+            st = json.loads(cached_state.read_text(encoding="utf-8"))
             cached = Path(str(st.get("installer") or ""))
             if cached.is_file():
                 v = verify_vendor_installer(cached, spec, str(st.get("version") or ""))
@@ -939,7 +964,7 @@ def launch_vendor_wizard(component_id: str, install_consent: str = "") -> Dict[s
         return record
     record["consent"] = "verified"
 
-    state_file = KASPERSKY_DIR / "artifact.json"
+    state_file = app_paths.first_existing("engines/KasperskyFull/artifact.json")
     if not state_file.is_file():
         record["reason"] = "尚未下载并验签官方安装器，请先执行 install()"
         return record

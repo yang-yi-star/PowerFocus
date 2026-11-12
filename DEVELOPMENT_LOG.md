@@ -1206,3 +1206,21 @@
 **反思（写进结论）**：之前每轮验证视角都是「在我这个对话环境里能不能跑通」——管理员、路径可写、工具链齐全、跑一次就结束。这 14 条不是 14 个独立 bug，是同一个盲区的 14 个切面；bootstrapping 是第一个暴露点。
 
 **验证**：`py_compile` 4 模块 PASS；`--check` 显示 7 项 6 齐 1 缺、`vendor_installer_missing=1`、`startup_ok=true`；`--list` / `--plan` 输出正确；版本失效降级实测（`21.24.8.522` 404 → 下一个可用；全部失效 → 官方页）；`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**（pytest 16 passed）。
+
+## 2026-11-13 07:20 · 修审计 S1 数据目录 + 自检接入 v1.00 主进程与前端
+
+**用户拍板**：「先开发应用，先修 1 和 3」——14 条盲区里的 S1（运行态数据写程序目录）与清单第 ③ 项（自检挂进主进程 + 前端面板）。
+
+**S1 数据目录（app_paths.py 新模块）**：统一数据根 `%LOCALAPPDATA%\PowerFocus\<version>`，支持 `POWERFOCUS_DATA_DIR` 覆盖（测试用）；**历史程序目录只读兼容**——`first_existing()` 先查新目录再回退旧目录，旧报告/引擎继续可用但不再写入。四模块全部改道：`kvrt_bundle`（ENGINE/STATE/REPORT/SETTINGS）、`engine_adapters`（REPORT_DIR）、`dependency_bootstrap`（engines/_offline/_downloads/审计）、v1.00 `server.py` 的 `config.json` 读写。**兼容性实测**：迁移后 KVRT（122 MB）、Node 运行时、真实扫描报告（kvrt_bundle 与 engine_adapters 双入口 list_reports）全部仍可识别；`data_root()` 默认不创建目录（首次写入才建）。
+
+**接主进程**：`main.py` 启动即起 `warm_bootstrap` 后台线程预热自检（不拖慢窗口出现；模块不可用只记错误，`startup_ok` 恒 true 不阻塞应用）；`server.py` 实装 5 条路由：`GET /api/bootstrap/check`（5 分钟缓存）、`POST /refresh`（强制重跑，线程池）、`GET /plan`、`POST /install`（前端传 consent，服务端绝不代填，且校验 component_id 必须在清单内）、`POST /wizard`（第二道系统安装令牌 + 审计）。
+
+**前端（真实请求，非静态快照）**：新增「组件自检」导航页——7 项组件实时渲染（就绪绿/缺失橙/**系统级红**）、summary 与数据目录展示、「同意并补齐缺失组件」「启动卡巴完整版官方安装向导」两个动作各过一道 `confirmDialog`；严格沿用项目「不 innerHTML、全 textContent」的 XSS 约束；同意令牌**从服务端响应里读**（`policy.consent_token` / `system_impact.second_consent_token`），前端不硬编码、服务端仍是唯一校验方。
+
+**打包**：`build.ps1` 与 spec 增加 `pathex` + `--hidden-import`（dependency_bootstrap / kvrt_bundle / engine_adapters / app_paths 等）——修复「exe 只打包 app/web，v0.10 模块根本不在包里」的缺口。
+
+**端到端真跑（HTTP 层，非 CLI）**：check 200（7 项 6 齐 1 缺，data_root=LOCALAPPDATA）；plan 200（pending=1, vendor=kaspersky_free）；install 无 consent → 拒绝；wizard 无令牌 → 拒绝；带 consent install → **幂等命中**：`app_paths.first_existing` 回退认了历史目录里已验签的官方安装器（Authenticode 0x00000000），不重复下载；静态页 200、token 注入成功、新 JS 已在服务（35,946 B，bsInstall/bsWizard 在位）。
+
+**回归**：`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**（pytest 16 passed）；`mem-guard.state.json` 运行态改动已还原不入库。
+
+**未完成（如实）**：exe 未重打包（打包配置改了但没跑 build）；`current.json` 仍 v0.09；官方向导成功分支刻意未执行；其余 13 条盲区未修。

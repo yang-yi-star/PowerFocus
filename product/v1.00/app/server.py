@@ -30,6 +30,23 @@ import uvicorn
 
 import security
 
+# 统一数据目录（审计 S1）：运行态配置不再写程序目录。
+try:
+    import app_paths
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    import app_paths
+
+
+def _config_path() -> Path:
+    """配置读取：新数据目录优先，程序目录里的历史 config.json 只读回退。"""
+    new = app_paths.data_root() / "config.json"
+    if new.exists():
+        return new
+    old = Path(__file__).resolve().parent / "config.json"
+    return old if old.exists() else new
+
+
 APP_VERSION = "1.00"
 PRODUCT_NAME = "电脑算力调度中心"
 
@@ -175,7 +192,7 @@ def llama_headers() -> dict:
 def system_prompt():
     """提示词来源：app\\config.json 的 system_prompt > 环境变量 POWERFOCUS_SYSTEM_PROMPT。"""
     try:
-        cfg_path = Path(__file__).resolve().parent / "config.json"
+        cfg_path = _config_path()
         if cfg_path.exists():
             cfg = json.loads(cfg_path.read_text(encoding="utf-8-sig"))
             if cfg.get("system_prompt"):
@@ -922,14 +939,14 @@ async def selfcheck():
 
 
 def _write_config(patch: dict) -> None:
-    cfg_path = Path(__file__).resolve().parent / "config.json"
     cur = {}
     try:
-        if cfg_path.exists():
-            cur = json.loads(cfg_path.read_text(encoding="utf-8-sig")) or {}
+        if _config_path().exists():
+            cur = json.loads(_config_path().read_text(encoding="utf-8-sig")) or {}
     except Exception:
         cur = {}
     cur.update(patch)
+    cfg_path = app_paths.write_path("config.json")
     cfg_path.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -1005,6 +1022,113 @@ async def cloud_test():
             "latency_ms": int((time.time() - t0) * 1000),
             "model_count": count,
             "detail": "" if r.status_code == 200 else r.text[:200]}
+
+
+# ---------------------------------------------------------------------------
+# V0.10 组件自检 / bootstrapping（应用进程内真跑，不依赖外部 AI 对话环境）
+# ---------------------------------------------------------------------------
+_BOOTSTRAP_CACHE: dict = {"ts": 0.0, "data": None, "error": ""}
+
+
+def _bootstrap():
+    """延迟导入：模块由 PyInstaller --hidden-import 收进 PYZ，源码运行则从 versions/v0.10 找。"""
+    try:
+        import dependency_bootstrap
+    except ImportError:
+        v010 = PF_ROOT / "versions" / "v0.10"
+        if str(v010) not in sys.path:
+            sys.path.insert(0, str(v010))
+        import dependency_bootstrap
+    return dependency_bootstrap
+
+
+def bootstrap_report(force: bool = False) -> dict:
+    """
+    返回启动自检报告。5 分钟缓存，避免每次打开页面都重跑 WMI / 注册表探测。
+    自检本身只读；模块不可用也不能阻塞应用启动。
+    """
+    now = time.time()
+    if not force and _BOOTSTRAP_CACHE["data"] is not None and now - _BOOTSTRAP_CACHE["ts"] < 300:
+        return dict(_BOOTSTRAP_CACHE["data"], cached=True)
+    try:
+        d = _bootstrap().startup_check()
+        _BOOTSTRAP_CACHE.update({"ts": now, "data": d, "error": ""})
+        return dict(d, cached=False)
+    except Exception as e:
+        _BOOTSTRAP_CACHE["error"] = "%s: %s" % (type(e).__name__, e)
+        return {"available": False, "error": _BOOTSTRAP_CACHE["error"],
+                "components": [], "startup_ok": True, "cached": False,
+                "startup_note": "组件自检模块不可用，应用其余功能不受影响"}
+
+
+def warm_bootstrap() -> dict:
+    """主进程启动时在后台线程预热一次，避免拖慢窗口出现；返回报告供写日志。"""
+    return bootstrap_report(force=True)
+
+
+@app.get("/api/bootstrap/check")
+async def bootstrap_check():
+    return bootstrap_report()
+
+
+@app.post("/api/bootstrap/refresh")
+async def bootstrap_refresh():
+    return await asyncio.to_thread(bootstrap_report, True)
+
+
+@app.get("/api/bootstrap/plan")
+async def bootstrap_plan():
+    try:
+        return await asyncio.to_thread(_bootstrap().plan)
+    except Exception as e:
+        raise HTTPException(503, "自检模块不可用：%s: %s" % (type(e).__name__, e))
+
+
+@app.post("/api/bootstrap/install")
+async def bootstrap_install(req: Request):
+    """
+    用户点「同意下载」后由前端传入 consent；服务端绝不自动补令牌。
+    真下载在线程池执行，不阻塞事件循环。
+    """
+    body = await _json_body(req)
+    if not isinstance(body, dict):
+        raise HTTPException(400, "请求体必须是 JSON 对象")
+    cid = str(body.get("component_id") or "").strip()
+    consent = str(body.get("consent") or "")
+    if not cid:
+        raise HTTPException(400, "缺少 component_id")
+    # 只允许清单里的 id，避免把任意字符串传进 install()
+    try:
+        known = [c.id for c in _bootstrap().COMPONENTS]
+    except Exception:
+        known = []
+    if known and cid not in known:
+        raise HTTPException(400, "未知组件：%s" % cid)
+    out = await asyncio.to_thread(_bootstrap().install, cid, consent, False, False)
+    security.audit("bootstrap_install", component=cid,
+                   executed=str(bool(out.get("executed"))),
+                   reason=str(out.get("reason") or "")[:160])
+    return out
+
+
+@app.post("/api/bootstrap/wizard")
+async def bootstrap_wizard(req: Request):
+    """
+    启动厂商交互式安装向导（系统级动作）。必须第二道令牌，且前端须先弹确认框。
+    应用不代接受 EULA / 隐私政策 / KSN，不传 /s。
+    """
+    body = await _json_body(req)
+    if not isinstance(body, dict):
+        raise HTTPException(400, "请求体必须是 JSON 对象")
+    cid = str(body.get("component_id") or "").strip()
+    token = str(body.get("install_consent") or "")
+    if not cid:
+        raise HTTPException(400, "缺少 component_id")
+    out = await asyncio.to_thread(_bootstrap().launch_vendor_wizard, cid, token)
+    security.audit("bootstrap_wizard", component=cid,
+                   launched=str(bool(out.get("launched"))),
+                   reason=str(out.get("reason") or "")[:160])
+    return out
 
 
 def start_background():

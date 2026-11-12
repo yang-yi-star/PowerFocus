@@ -6,6 +6,11 @@ param([switch]$Clean)
 $ErrorActionPreference = 'Stop'
 $Here = $PSScriptRoot
 $Root = Split-Path $Here -Parent
+# 2026-11-13：把 V0.10 自检/引擎模块与统一数据目录模块一起收进 exe，
+# 让应用进程自己就能跑组件自检，不依赖外部源码目录或对话环境。
+$Repo = Split-Path (Split-Path $Root -Parent) -Parent
+$V010 = Join-Path $Repo 'versions\v0.10'
+if (-not (Test-Path -LiteralPath $V010)) { throw "未找到 V0.10 模块目录：$V010" }
 $Py = 'E:\PowerFocus\.venv\Scripts\pyinstaller.exe'
 # 2026-11-12 修复：给 exe 内嵌项目图标（此前一直用 PyInstaller 默认图标）
 $Icon = Join-Path $Root 'app.ico'
@@ -21,6 +26,13 @@ $pyArgs = @(
     '--name', '电脑算力调度中心',
     "--icon=$Icon",
     "--add-data=$webPath;web",
+    '--paths', $Repo,
+    '--paths', $V010,
+    '--hidden-import', 'app_paths',
+    '--hidden-import', 'dependency_bootstrap',
+    '--hidden-import', 'kvrt_bundle',
+    '--hidden-import', 'engine_adapters',
+    '--hidden-import', 'security_scan',
     '--collect-all', 'uvicorn',
     '--collect-all', 'webview',
     '--collect-all', 'pythonnet',

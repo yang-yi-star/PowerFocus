@@ -85,13 +85,34 @@ OFFICIAL_DOCS = "https://support.kaspersky.com/kvrt-for-windows/2026/269475"
 SIGNER_MUST_CONTAIN = "Kaspersky"
 PRODUCT_MUST_CONTAIN = "Virus Removal Tool"
 
-ROOT = Path(__file__).resolve().parent
-ENGINE_DIR = ROOT / "engines" / "KVRT"
+# CODE_DIR 仅用于模块间 import（sys.path）；**不是数据目录**。
+CODE_DIR = Path(__file__).resolve().parent
+if str(CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(CODE_DIR))
+try:
+    import app_paths
+except ImportError:
+    # 源码独立运行时（CLI）补上仓库根；打包后 app_paths 已在 PYZ 里，不走这里。
+    sys.path.insert(0, str(CODE_DIR.parents[1]))
+    import app_paths
+
+DATA_ROOT = app_paths.data_root()          # %LOCALAPPDATA%\PowerFocus\v0.10（纯计算，不建目录）
+ENGINE_DIR = DATA_ROOT / "engines" / "KVRT"
 ENGINE_EXE = ENGINE_DIR / "KVRT.exe"
 STATE_FILE = ENGINE_DIR / "engine.json"
-REPORT_DIR = ROOT / "reports"
+REPORT_DIR = DATA_ROOT / "reports"
 DATA_DIR = REPORT_DIR / "KVRT_Data"
-SETTINGS_FILE = ROOT / "scan_settings.json"
+SETTINGS_FILE = DATA_ROOT / "scan_settings.json"
+ROOT = CODE_DIR                            # 兼容旧引用，语义已改为「代码目录」
+
+
+def engine_exe_path() -> Path:
+    """实际可用的引擎路径：新数据目录优先，历史目录只读回退（不搬迁、不删除）。"""
+    return app_paths.first_existing("engines/KVRT/KVRT.exe")
+
+
+def state_file_path() -> Path:
+    return app_paths.first_existing("engines/KVRT/engine.json")
 
 CREATE_NO_WINDOW = 0x08000000
 
@@ -317,17 +338,19 @@ def save_state(info: Dict[str, Any]) -> Path:
 
 def status() -> Dict[str, Any]:
     """引擎当前真实状态，供应用内下载入口与设置页读取。"""
-    if not ENGINE_EXE.is_file():
+    exe = engine_exe_path()
+    if not exe.is_file():
         return {"present": False, "ready": False, "path": str(ENGINE_EXE),
                 "official_url": KVRT_URL, "official_page": OFFICIAL_PAGE}
-    st = ENGINE_EXE.stat()
-    out = {"present": True, "path": str(ENGINE_EXE), "size": st.st_size,
+    st = exe.stat()
+    out = {"present": True, "path": str(exe), "size": st.st_size,
            "mtime": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
            "official_url": KVRT_URL, "official_page": OFFICIAL_PAGE,
            "official_docs": OFFICIAL_DOCS}
-    if STATE_FILE.is_file():
+    sf = state_file_path()
+    if sf.is_file():
         try:
-            cached = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            cached = json.loads(sf.read_text(encoding="utf-8"))
             # 文件被换过就作废旧验签
             if cached.get("size") == st.st_size and cached.get("sha256"):
                 out["signature"] = cached
@@ -399,7 +422,8 @@ def run_scan(req: ScanRequest) -> Dict[str, Any]:
         raise RuntimeError("KVRT 需要管理员权限；请以管理员身份启动本应用")
     Path(req.data_dir).mkdir(parents=True, exist_ok=True)
     args = build_scan_args(req)
-    cmd = [str(ENGINE_EXE)] + args
+    # 用 status() 给出的真实路径：可能是历史数据目录里的只读回退引擎。
+    cmd = [str(info["path"])] + args
     started = time.time()
     result: Dict[str, Any] = {"executed": True, "command": cmd,
                               "started": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -645,12 +669,15 @@ def write_report(scan: Dict[str, Any], parsed: Dict[str, Any],
 
 
 def list_reports() -> List[Dict[str, Any]]:
-    """列出应用内真实报告（按时间倒序）。"""
-    if not REPORT_DIR.is_dir():
+    """列出应用内真实报告（按时间倒序）；新数据目录与历史目录合并、按 id 去重。"""
+    candidates: List[Path] = []
+    for d in app_paths.existing_dirs("reports"):
+        candidates.extend(d.glob("scan-*.json"))
+    if not candidates:
         return []
     out = []
     seen = set()
-    for p in sorted(REPORT_DIR.glob("scan-*.json"), reverse=True):
+    for p in sorted(candidates, key=lambda x: x.name, reverse=True):
         # 校准留档 .json.bak 不入库；同名 id 只保留最新校准版
         if p.name.endswith(".bak") or "before-calibration" in p.name:
             continue
@@ -686,15 +713,17 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
 
 def load_settings() -> Dict[str, Any]:
     s = dict(DEFAULT_SETTINGS)
-    if SETTINGS_FILE.is_file():
+    cfg = app_paths.first_existing("scan_settings.json")
+    if cfg.is_file():
         try:
-            s.update(json.loads(SETTINGS_FILE.read_text(encoding="utf-8")))
+            s.update(json.loads(cfg.read_text(encoding="utf-8")))
         except (OSError, json.JSONDecodeError):
             pass
     return s
 
 
 def save_settings(s: Dict[str, Any]) -> Path:
+    app_paths.ensure(SETTINGS_FILE.parent)
     SETTINGS_FILE.write_text(json.dumps(s, ensure_ascii=False, indent=2), encoding="utf-8")
     return SETTINGS_FILE
 

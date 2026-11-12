@@ -47,6 +47,7 @@
   <button class="navbtn" data-view="models"><span class="ico">◎</span>模型与对话</button>
   <div class="group">系统</div>
   <button class="navbtn" data-view="security"><span class="ico">⛨</span>安全态势</button>
+  <button class="navbtn" data-view="bootstrap"><span class="ico">⌁</span>组件自检</button>
   <button class="navbtn" data-view="settings"><span class="ico">⚙</span>设置</button>
   <button class="navbtn" data-view="logs"><span class="ico">≡</span>日志</button>
   <div class="foot">
@@ -211,6 +212,33 @@
         <button class="btn sm" id="sec-refresh">刷新</button>
       </div>
       <div class="body"><div class="audit" id="sec-audit"><div class="empty">暂无事件</div></div></div>
+    </div>
+  </section>
+
+  <!-- ================= 组件自检（V0.10 bootstrapping） ================= -->
+  <section class="view" data-view="bootstrap">
+    <div class="panel">
+      <div class="head">启动依赖自检<span class="sp"></span>
+        <span class="hint" id="bs-state">正在读取…</span>
+        <button class="btn sm" id="bs-refresh">重新自检</button>
+      </div>
+      <div class="body">
+        <div class="kv" id="bs-summary"><div class="k">加载中</div><div class="v">--</div></div>
+        <div class="hint bs-gap" id="bs-paths"></div>
+      </div>
+    </div>
+    <div class="panel grow">
+      <div class="head">组件清单<span class="sp"></span>
+        <span class="hint">橙=待补齐 · 红=系统级安装 · 数据来自应用进程真实探测</span>
+      </div>
+      <div class="body">
+        <div class="checks" id="bs-list"><div class="empty">正在读取自检结果…</div></div>
+        <div class="bs-actions">
+          <button class="btn primary" id="bs-install" disabled>同意并补齐缺失组件</button>
+          <button class="btn danger" id="bs-wizard" disabled>启动卡巴完整版官方安装向导</button>
+        </div>
+        <div class="out bs-gap" id="bs-out" hidden></div>
+      </div>
     </div>
   </section>
 

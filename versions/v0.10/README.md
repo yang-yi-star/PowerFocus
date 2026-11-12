@@ -106,7 +106,7 @@ CLI：`--list` 引擎清单 / `--discover` WMI 原始识别+路径校验 / `--dr
 - 卡巴斯基区分两种：`KVRT` 是免安装绿色工具（下载到应用目录即用，默认路径）；`Kaspersky Free 完整版` 会写入系统驱动与服务、可能与已有防护冲突，因此只提供官方入口，不静默安装。
 - `Node.js` 目前**不是客户机运行时依赖**（前端是零依赖单文件 HTML），只作为开发/构建工具列在清单里，不逼客户安装。
 
-CLI：`--check`（默认自检）/ `--plan`（只列待办）/ `--list`（清单）/ `--install <id> --consent USER_APPROVED_DOWNLOAD`。审计写 `reports/bootstrap-*.json`，已由 `.gitignore` 排除。
+CLI：`--check`（默认自检）/ `--plan`（只列待办）/ `--list`（清单）/ `--install <id> --consent USER_APPROVED_DOWNLOAD`。审计写 `<数据目录>/reports/bootstrap-*.json`（2026-11-13 起数据目录为 `%LOCALAPPDATA%\PowerFocus\v0.10`，历史目录只读兼容），已由 `.gitignore` 排除。
 
 本机真跑（2026-11-13）：7 项中 6 项齐全、1 项缺（Kaspersky Free 完整版，仅引导）；`startup_ok=true`。四类边界均实测拦住：无同意拒绝下载、已齐全不重复下载 122 MB 引擎、Node 与完整版卡巴即使带同意也不自动安装。
 
@@ -140,11 +140,11 @@ python dependency_bootstrap.py --launch-wizard kaspersky_free --install-consent 
 
 ## 基础工程盲区审计（2026-11-13）
 
-按「装进 Program Files、标准用户、长期运行、开源给陌生人、能干净卸载」的视角复核，共识别 **14 条** 业界通行但项目没做的东西（严重 5 / 中等 6 / 轻微 3）。最要紧的三条：运行态数据写在程序目录（v0.10 全是 `ROOT/reports` `ROOT/engines`，而 v1.00 已用 `%LOCALAPPDATA%`，策略分裂；WACK 明令禁止写 Program Files）、无 LICENSE 与整套开源治理文件、卸载不干净且无注册表卸载项。详见 `E:\AI 调度中心\项目常识盲区审计_2026-11-13.md`。**本轮只完成审计，未修改这些问题的代码。**
+按「装进 Program Files、标准用户、长期运行、开源给陌生人、能干净卸载」的视角复核，共识别 **14 条** 业界通行但项目没做的东西（严重 5 / 中等 6 / 轻微 3）。最要紧的三条：运行态数据写在程序目录（v0.10 全是 `ROOT/reports` `ROOT/engines`，而 v1.00 已用 `%LOCALAPPDATA%`，策略分裂；WACK 明令禁止写 Program Files）、无 LICENSE 与整套开源治理文件、卸载不干净且无注册表卸载项。详见 `E:\AI 调度中心\项目常识盲区审计_2026-11-13.md`。**2026-11-13 已修第 1 条（S1）：新增 `app_paths.py` 统一数据目录到 `%LOCALAPPDATA%\PowerFocus`，历史目录只读兼容；其余 13 条仍未修。**
 
 ## 仍是原型/未完成的部分
 
-- 自检模块 `dependency_bootstrap.py` **已可独立真跑，但尚未挂进 v1.00 exe 的主进程**，桌面端点开还看不到自检结果；前端展示需要 `/api/bootstrap/*` 路由实装后才能真正联动（硬塞静态快照等于又变成模拟，不做）。
+- ~~自检模块尚未挂进 v1.00 主进程~~ **2026-11-13 已接入**：`main.py` 启动即后台预热自检；`server.py` 实装 `/api/bootstrap/check|refresh|plan|install|wizard`（install/wizard 需前端传用户同意令牌，服务端绝不代填）；前端新增「组件自检」页，真实请求渲染 7 项组件、系统级红色标记、双确认框；打包配置（build.ps1 / spec）已把 v0.10 模块与 `app_paths.py` 收进 exe。
 - 网页上的「立即扫描」按钮仍是**模拟进度条**，不会执行真实引擎；真实调用走 `kvrt_bundle.py`（或后续 `server.py` 路由）。
 - 9 条 `/api/security/*` 仍是接口契约占位，`server.py` 未实装。
 - 应用内调度器 `run_scheduled_loop()` 已实现但**未随应用主进程常驻启动**；需接入 v1.00 服务后才能真正「每天 03:00 自动扫」。

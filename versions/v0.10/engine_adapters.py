@@ -63,8 +63,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-ROOT = Path(__file__).resolve().parent
-REPORT_DIR = ROOT / "reports"
+CODE_DIR = Path(__file__).resolve().parent
+if str(CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(CODE_DIR))
+try:
+    import app_paths
+except ImportError:
+    sys.path.insert(0, str(CODE_DIR.parents[1]))
+    import app_paths
+
+DATA_ROOT = app_paths.data_root()
+REPORT_DIR = DATA_ROOT / "reports"
+ROOT = CODE_DIR                 # 兼容旧引用，语义为「代码目录」
 CREATE_NO_WINDOW = 0x08000000
 
 # 同目录模块：应用内真实 KVRT 链路（下载 / 验签 / 扫描 / 官方报告解析）
@@ -327,7 +337,7 @@ class KVRTAdapter(BaseAdapter):
             return info
         st = kvrt.status()
         sig = st.get("signature") or {}
-        info.executable = str(kvrt.ENGINE_EXE)
+        info.executable = str(kvrt.engine_exe_path())
         info.license_note += "；签名者 " + str(sig.get("company") or sig.get("signer_hint") or "")
         if st.get("ready"):
             info.available = True
@@ -344,10 +354,12 @@ class KVRTAdapter(BaseAdapter):
         r = kvrt.ScanRequest(scope=scope, custom_path=req.path,
                              process_level=0 if req.report_only else 1,
                              timeout_sec=req.timeout_sec)
-        return [str(kvrt.ENGINE_EXE)] + kvrt.build_scan_args(r)
+        return [str(kvrt.engine_exe_path())] + kvrt.build_scan_args(r)
 
     def parse(self, scan, req, report_path=""):
-        parsed = kvrt.parse_kvrt_output(str(REPORT_DIR / "KVRT_Data"), scan.get("stdout", ""))
+        # 官方 .klr.enc1 可能落在历史数据目录，取第一个真实存在的目录。
+        dirs = app_paths.existing_dirs("reports/KVRT_Data")
+        parsed = kvrt.parse_kvrt_output(str(dirs[0]), scan.get("stdout", ""))
         return parsed
 
     def run(self, req: ScanRequest, allow_unverified: bool = False) -> Dict[str, Any]:
@@ -802,11 +814,14 @@ def write_report(adapter: BaseAdapter, scan: Dict[str, Any],
 
 
 def list_reports() -> List[Dict[str, Any]]:
-    """列出全部真实报告（含 kvrt_bundle 产出的），按时间倒序。"""
-    if not REPORT_DIR.is_dir():
+    """列出全部真实报告（含 kvrt_bundle 产出的），按时间倒序；合并历史目录并按 id 去重。"""
+    candidates: List[Path] = []
+    for d in app_paths.existing_dirs("reports"):
+        candidates.extend(d.glob("scan-*.json"))
+    if not candidates:
         return []
     out, seen = [], set()
-    for p in sorted(REPORT_DIR.glob("scan-*.json"), reverse=True):
+    for p in sorted(candidates, key=lambda x: x.name, reverse=True):
         if p.name.endswith(".bak") or "before-calibration" in p.name:
             continue
         try:

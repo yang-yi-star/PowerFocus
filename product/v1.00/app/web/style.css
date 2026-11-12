@@ -336,3 +336,11 @@ dialog .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; paddin
 ::-webkit-scrollbar-thumb { background: #1b2b3a; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #26404f; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- 组件自检（V0.10 bootstrapping） ---- */
+.check .badge.bs-ok { color: #052e1c; background: var(--green); }
+.check .badge.bs-miss { color: #2b2200; background: var(--amber); }
+.check .badge.bs-sys { color: #2b0505; background: var(--red); }
+.bs-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.bs-gap { margin-top: 8px; white-space: pre-wrap; word-break: break-all; }
+#bs-out { margin-top: 12px; max-height: 220px; overflow: auto; }

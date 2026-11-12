@@ -237,17 +237,30 @@
         "exe unsigned, no UAC manifest; uninstall is not clean and writes no registry uninstall entries"
       ],
       "root_cause": "Verification was always done from the perspective of this admin conversation environment, never from the perspective of a standard user on a customer machine running for years with a public open-source repository.",
-      "status": "audit only, no code changed for these 14 items"
+      "status": "S1 (data directories) fixed 2026-11-13 via app_paths.py unified %LOCALAPPDATA%/PowerFocus with legacy read-only fallback; remaining 13 items audited only, no code yet"
+    },
+    "wired_into_app_2026_11_13": {
+      "data_layer": "app_paths.py: %LOCALAPPDATA%/PowerFocus/<version> for reports/engines/settings/audit; legacy program dir read-only fallback; v1.00 server config.json also moved there; POWERFOCUS_DATA_DIR overridable",
+      "main_process": "main.py starts warm_bootstrap thread at boot; missing optional components never block startup",
+      "api": ["/api/bootstrap/check", "/api/bootstrap/refresh", "/api/bootstrap/plan", "/api/bootstrap/install", "/api/bootstrap/wizard"],
+      "consent_model": "frontend passes consent tokens from the server response; server never fills them; wizard requires the second system-install token and a confirm dialog",
+      "frontend": "web/index.html new 'bootstrap' view; app.js renders live check results (textContent only, no innerHTML), system-level items flagged red, download and wizard behind confirmDialog",
+      "packaging": "build.ps1 and spec include versions/v0.10 modules + app_paths.py (pathex + hiddenimports)",
+      "verified": {
+        "http_e2e": "check 200 (7 comps, 6 present), plan 200 (kaspersky_free), install w/o consent rejected, wizard w/o token rejected, static page serves new view with token injected",
+        "install_with_consent": "idempotent: found verified legacy installer (Authenticode 0x00000000), no re-download; new-install path previously proven via CLI (7,048,280 B in 2.9 s)",
+        "regression": "run-tests.ps1 -SkipMcp PASS 7 / FAIL 0 (pytest 16 passed)",
+        "legacy_compat": "KVRT engine (122 MB), Node runtime and real scan reports still detected after the path migration"
+      }
     },
     "not_yet": [
-      "startup_check not wired into v1.00 exe main process",
-      "no /api/bootstrap/* routes and no frontend panel yet (static snapshot would be simulation)",
       "current.json still points to v0.09",
       "KVRT engine uses a latest direct link: version is not pinned, Authenticode only proves the signer",
       "GPG signature of Node SHASUMS256.txt is not verified",
       "download failure quarantine branch not yet exercised with a real corrupted sample",
       "vendor wizard success branch intentionally not executed (would install an AV on this machine)",
-      "14 audited engineering blind spots not yet fixed"
+      "13 audited engineering blind spots not yet fixed (S1 fixed 2026-11-13)",
+      "v1.00 exe not rebuilt since the packaging config gained the v0.10 bootstrap modules"
     ]
   }
 }

@@ -84,3 +84,6 @@ versions/**/reports/real-scan-console.log
 versions/**/reports/bootstrap-*.json
 versions/**/scan_settings.json
 *.part
+
+# PyInstaller 打包日志（本地构建留档，不入库）
+product/v1.00/build/pack-log-*.txt

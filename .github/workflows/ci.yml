@@ -1,0 +1,122 @@
+# PowerFocus CI（GitHub Actions）
+# ============================================================
+# 设计要点：
+#   * windows-latest：产品面向 Windows（LOCALAPPDATA / DPAPI / ctypes.wintypes），
+#     在 Linux 上跑没有意义。
+#   * 解释器一律用 actions/setup-python 提供的 `python`，禁止写死本机路径
+#     （D:\Python313、E:\PowerFocus\.venv 都是开发机私有，CI 里不存在）。
+#   * 不跑 tests/run-tests.ps1 全量：它依赖本机工具链（tools/env.ps1 的
+#     Get-DevPython / Test-InBox、rea 命令、模型 preset 里的本地模型文件），
+#     在干净 CI 环境必然红。这里复刻其中与代码正确性相关的安全子集：
+#     PS 语法解析、JSON 契约、py_compile、pytest。
+#   * 不写 .venv：CI 每次全新环境，直接装到 setup-python 的全局解释器。
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (py${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 项目 target-version = py313；低版本矩阵留待需要时再开
+        python-version: ["3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        # 项目无 requirements.txt（pyproject 只含工具链配置），按测试实际 import 装
+        run: python -m pip install --disable-pip-version-check pytest fastapi httpx uvicorn psutil
+
+      - name: Python syntax check (py_compile)
+        shell: pwsh
+        run: |
+          $targets = @(
+            'app_paths.py',
+            'mcp-server.py',
+            'app/server.py',
+            'product/v1.00/app/server.py',
+            'product/v1.00/app/security.py',
+            'product/v1.00/app/main.py'
+          )
+          $bad = @()
+          foreach ($rel in $targets) {
+            if (-not (Test-Path $rel)) { $bad += "缺少文件: $rel"; continue }
+            python -c "import py_compile,sys; py_compile.compile(sys.argv[1], doraise=True)" $rel
+            if ($LASTEXITCODE -ne 0) { $bad += "编译失败: $rel" }
+          }
+          if ($bad.Count -gt 0) { $bad | ForEach-Object { Write-Host "FAIL $_" }; exit 1 }
+          Write-Host "py_compile OK: $($targets.Count) 个文件"
+
+      - name: PowerShell syntax check
+        shell: pwsh
+        # 与 tests/run-tests.ps1 第 1 项一致的 Parser 静态解析（纯语法，不执行）
+        run: |
+          $files = @(Get-ChildItem -Recurse -Filter *.ps1 -File |
+                     Where-Object { $_.FullName -notmatch '\\(archive|__pycache__|\.git)\\' })
+          $bad = @()
+          foreach ($f in $files) {
+            $tok = $null; $err = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tok, [ref]$err)
+            if ($err.Count -gt 0) {
+              $msg = ($err | Select-Object -First 3 | ForEach-Object { "L$($_.Extent.StartLineNumber): $($_.Message)" }) -join ' | '
+              $bad += "$($f.FullName) -> $msg"
+            }
+          }
+          if ($bad.Count -gt 0) { $bad | ForEach-Object { Write-Host "FAIL $_" }; exit 1 }
+          Write-Host "PS parse OK: $($files.Count) 个 .ps1"
+
+      - name: JSON config contract
+        shell: pwsh
+        # versions\current.json 指针解析 + schema 校验（与 run-tests.ps1 第 2 项对齐）
+        run: |
+          $verDir = $null
+          $curFile = 'versions/current.json'
+          if (Test-Path $curFile) {
+            $curVer = (Get-Content $curFile -Raw -Encoding utf8 | ConvertFrom-Json).version
+            $cand = "versions/$curVer"
+            if (Test-Path $cand) { $verDir = $cand }
+          }
+          if (-not $verDir) {
+            $newest = Get-ChildItem 'versions' -Directory -Filter 'v*' -ErrorAction SilentlyContinue |
+                      Sort-Object Name -Descending | Select-Object -First 1
+            if ($newest) { $verDir = $newest.FullName }
+          }
+          if (-not $verDir) { Write-Host 'FAIL: 未找到内核版本目录'; exit 1 }
+          $spec = @{
+            "$verDir/model-profiles.json"  = 'powerfocus/model-profiles/v2'
+            "$verDir/rules.json"           = $null
+            "$verDir/scenes.json"          = $null
+            "$verDir/authorized_apps.json" = $null
+          }
+          $bad = @()
+          foreach ($p in $spec.Keys) {
+            $leaf = Split-Path $p -Leaf
+            if (-not (Test-Path -LiteralPath $p)) { $bad += "$leaf 缺少文件"; continue }
+            try { $obj = Get-Content $p -Raw -Encoding utf8 | ConvertFrom-Json }
+            catch { $bad += "$leaf 不是合法 JSON: $($_.Exception.Message)"; continue }
+            $want = $spec[$p]
+            if ($want -and $obj.schema -ne $want) { $bad += "$leaf schema=$($obj.schema) 期望 $want" }
+          }
+          if ($bad.Count -gt 0) { $bad | ForEach-Object { Write-Host "FAIL $_" }; exit 1 }
+          Write-Host "JSON 契约 OK: $($spec.Count) 个配置合法"
+
+      - name: Run pytest
+        run: python -m pytest tests/py -v

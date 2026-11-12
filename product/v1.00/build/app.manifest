@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  电脑算力调度中心 v1.00 · UAC manifest（审计修复：exe 未声明权限需求）
+  本应用设计为普通权限运行，不要求管理员：requestedExecutionLevel=asInvoker。
+  依据：PyInstaller 官方 CLI 的 manifest 选项（"Add manifest FILE or XML to the exe"，
+  https://pyinstaller.org/en/stable/usage.html），由 build.ps1 传入内嵌进 exe；
+  不使用 uac-admin 选项即不请求提权。manifest 结构依据微软 side-by-side assembly 规范
+  （requestedExecutionLevel 属于 trustInfo/asm.v3，https://learn.microsoft.com/windows/win32/sbscs/application-manifests）。
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity type="win32" name="PowerFocus.SchedulingCenter" version="1.0.0.0" processorArchitecture="*"/>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <!-- 公共控件 v6：pywebview 走 WinForms/pythonnet，缺此项窗口控件会退化为旧版样式 -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls"
+        version="6.0.0.0" processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df" language="*"/>
+    </dependentAssembly>
+  </dependency>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+</assembly>

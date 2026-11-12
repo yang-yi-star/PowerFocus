@@ -6,6 +6,7 @@
 # ============================================================
 import ctypes
 import json
+import logging
 import os
 import socket
 import subprocess
@@ -13,13 +14,29 @@ import sys
 import threading
 import time
 import traceback
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import server
 
+# ---------- 日志（审计修复：desktop.log 无限追加 → 大小轮转） ----------
+# 路径对齐 app_paths.py 的规则：%LOCALAPPDATA%\<产品>\<版本槽>\logs\。
+# v1.00 桌面端用版本槽 v1.00（app_paths.py 的 VERSION_SLOT=v0.10 是引擎槽，不混用）。
+# 依据：https://docs.python.org/3/library/logging.handlers.html#rotatingfilehandler
+#   "Rollover occurs whenever the current log file is nearly maxBytes in length"
+#   backupCount 保留 .1~.N 备份，超出上限的最旧备份被挤掉。
+_VERSION_SLOT = "v1.00"
+_LOG_MAX_BYTES = 2 * 1024 * 1024   # 单文件上限 2MB
+_LOG_BACKUPS = 5                   # desktop.log.1 ~ desktop.log.5，封顶约 12MB
+
+_logger = logging.getLogger("powerfocus.desktop")
+_logger.propagate = False
+_logger.setLevel(logging.INFO)
+
 
 def log_dir() -> Path:
-    base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "PowerFocus" / "logs"
+    base = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "PowerFocus"
+            / _VERSION_SLOT / "logs")
     try:
         base.mkdir(parents=True, exist_ok=True)
     except Exception:
@@ -29,8 +46,14 @@ def log_dir() -> Path:
 
 def log(msg: str):
     try:
-        with open(log_dir() / "desktop.log", "a", encoding="utf-8") as f:
-            f.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg))
+        if not _logger.handlers:
+            # delay=True：首次 emit 才打开文件，目录回退 TEMP 时也不留空壳。
+            _logger.addHandler(RotatingFileHandler(
+                log_dir() / "desktop.log", maxBytes=_LOG_MAX_BYTES,
+                backupCount=_LOG_BACKUPS, encoding="utf-8", delay=True))
+            _logger.handlers[0].setFormatter(
+                logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+        _logger.info(msg)
     except Exception:
         pass
 

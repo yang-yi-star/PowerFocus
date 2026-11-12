@@ -24,17 +24,20 @@
      创建目录只允许在真正写入时由调用方显式调用 ``ensure()``。
   2. 写一律走新目录；读优先新目录，回退历史目录（源码版本目录）。
      **不自动搬迁、不删除任何用户文件**，符合项目一贯约定。
-  3. ``POWERFOCUS_DATA_DIR`` 环境变量可覆盖，便于测试与便携部署。
-  4. 打包后 ``legacy_root()`` 指向 ``_MEIPASS/versions/v0.10``，天然不存在，
-     回退逻辑自动失效，不会误读临时目录。
+  3. ``POWERFOCUS_DATA_DIR``（数据根）与 ``POWERFOCUS_ROOT``（历史根）环境
+     变量可覆盖，便于测试与便携部署。
+  4. 打包后从 ``sys.executable`` 向上找 ``versions/<slot>`` 作为历史根；
+     找不到时回退失效（路径不存在），不会误读 _MEI 临时目录。
 """
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import List
 
 ENV_OVERRIDE = "POWERFOCUS_DATA_DIR"
+ENV_ROOT_OVERRIDE = "POWERFOCUS_ROOT"
 APP_NAME = "PowerFocus"
 VERSION_SLOT = "v0.10"
 
@@ -53,7 +56,25 @@ def data_root() -> Path:
 
 
 def legacy_root() -> Path:
-    """历史数据目录：源码版本目录（只读回退用，绝不写入）。"""
+    """
+    历史数据目录（只读回退用，绝不写入）。
+
+    源码运行：REPO_ROOT/versions/v0.10（模块文件就在源码树里）。
+    frozen 打包：``__file__`` 指向 PyInstaller 解包临时目录（_MEIxxxx），
+    从那里向上找 versions 永远找不到 —— 改从 sys.executable（真实 exe
+    位置）向上逐级找含 versions/<slot> 的祖先，命中则把该源码树作为
+    历史根；找不到才回落 REPO_ROOT（保持旧行为：路径不存在、回退自然失效）。
+    POWERFOCUS_ROOT 环境变量优先级最高，供 exe 不在源码树内时显式指定。
+    """
+    env = (os.environ.get(ENV_ROOT_OVERRIDE) or "").strip()
+    if env:
+        return Path(env) / "versions" / VERSION_SLOT
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        for anc in [exe_dir, *exe_dir.parents]:
+            cand = anc / "versions" / VERSION_SLOT
+            if cand.is_dir():
+                return cand
     return REPO_ROOT / "versions" / VERSION_SLOT
 
 

@@ -14,9 +14,14 @@ if (-not (Test-Path -LiteralPath $V010)) { throw "未找到 V0.10 模块目录�
 $Py = 'E:\PowerFocus\.venv\Scripts\pyinstaller.exe'
 # 2026-11-12 修复：给 exe 内嵌项目图标（此前一直用 PyInstaller 默认图标）
 $Icon = Join-Path $Root 'app.ico'
+# 2026-11-13（审计修复）：exe 显式内嵌 asInvoker UAC manifest（设计为普通权限运行，不要求管理员）。
+# 依据：PyInstaller CLI 选项 --manifest（https://pyinstaller.org/en/stable/usage.html
+# 「Add manifest FILE or XML to the exe」）；不使用 --uac-admin 即不请求提权。
+$Manifest = Join-Path $Here 'app.manifest'
 
 if (-not (Test-Path $Py)) { throw "未找到 pyinstaller：$Py" }
 if (-not (Test-Path $Icon)) { throw "未找到图标：$Icon（由根目录 电脑算力调度中心.ico 复制而来）" }
+if (-not (Test-Path $Manifest)) { throw "未找到 manifest：$Manifest（应为 build\app.manifest）" }
 
 $webPath = Join-Path $Root 'app\web'
 $pyArgs = @(
@@ -25,6 +30,7 @@ $pyArgs = @(
     '--onefile', '--windowed',
     '--name', '电脑算力调度中心',
     "--icon=$Icon",
+    '--manifest', $Manifest,
     "--add-data=$webPath;web",
     '--paths', $Repo,
     '--paths', $V010,

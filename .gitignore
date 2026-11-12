@@ -81,5 +81,6 @@ versions/**/reports/scan-*.json
 versions/**/reports/scan-*.json.bak
 versions/**/reports/scan-*.log
 versions/**/reports/real-scan-console.log
+versions/**/reports/bootstrap-*.json
 versions/**/scan_settings.json
 *.part

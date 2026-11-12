@@ -95,8 +95,24 @@ CLI：`--list` 引擎清单 / `--discover` WMI 原始识别+路径校验 / `--dr
 
 `prototype/index.html` 内嵌 `ENGINE_MATRIX` 与 `PROBE_FACTS` 只读实测快照：引擎页新增「多引擎可调用性矩阵」与「真实探测证据与处置边界」两块面板；设置页按 `available` 禁用不可选引擎并显示 `reason_code`，`activeEngine()` 改为以矩阵为准。同时修正了旧版界面上会删文件的 `avp.com SCAN /RA:` 与已不开放的 `-ScanType 2` 展示。
 
+## 启动依赖自检（2026-11-13 新增 · `dependency_bootstrap.py`）
+
+产品模型：应用**启动时自己检查**它要用的组件是否齐全 —— 卡巴斯基、Node 以及后续任何新增组件都是同一张声明式清单里的一项；缺什么先列给用户，用户同意后由**应用自己的进程**从官方源下载、验签、落到应用目录。产品「提供安装能力」，既不是「随安装包预置第三方软件」，也不是「让外部工具替应用装」。
+
+- `COMPONENTS` 是声明式清单，新增组件只加一行，不改自检/下载/审计逻辑。当前 7 项，按 `runtime / capability / devtool / detected` 分类。
+- `startup_check()` 供主进程启动时调用，默认**只读**：不下载、不安装、不写系统目录/注册表/服务/计划任务，也不写文件。缺可选能力不阻塞启动。
+- `install(id, consent)` 必须收到 UI 在用户点击同意后传入的 `USER_APPROVED_DOWNLOAD` 令牌；空值或随手写的布尔值一律拒绝。只有 `download_to_app` 模式的组件能被补齐，`guided` 项连下载都不做，只给官方入口。
+- 复用既有 `kvrt_bundle.status / download / verify / save_state` 与 `engine_adapters.probe_all`，**不另造下载/验签/识别接口**。下载件未通过官方签名链与厂商标识校验时只改名留档、绝不启用。
+- 卡巴斯基区分两种：`KVRT` 是免安装绿色工具（下载到应用目录即用，默认路径）；`Kaspersky Free 完整版` 会写入系统驱动与服务、可能与已有防护冲突，因此只提供官方入口，不静默安装。
+- `Node.js` 目前**不是客户机运行时依赖**（前端是零依赖单文件 HTML），只作为开发/构建工具列在清单里，不逼客户安装。
+
+CLI：`--check`（默认自检）/ `--plan`（只列待办）/ `--list`（清单）/ `--install <id> --consent USER_APPROVED_DOWNLOAD`。审计写 `reports/bootstrap-*.json`，已由 `.gitignore` 排除。
+
+本机真跑（2026-11-13）：7 项中 6 项齐全、1 项缺（Kaspersky Free 完整版，仅引导）；`startup_ok=true`。四类边界均实测拦住：无同意拒绝下载、已齐全不重复下载 122 MB 引擎、Node 与完整版卡巴即使带同意也不自动安装。
+
 ## 仍是原型/未完成的部分
 
+- 自检模块 `dependency_bootstrap.py` **已可独立真跑，但尚未挂进 v1.00 exe 的主进程**，桌面端点开还看不到自检结果；前端展示需要 `/api/bootstrap/*` 路由实装后才能真正联动（硬塞静态快照等于又变成模拟，不做）。
 - 网页上的「立即扫描」按钮仍是**模拟进度条**，不会执行真实引擎；真实调用走 `kvrt_bundle.py`（或后续 `server.py` 路由）。
 - 9 条 `/api/security/*` 仍是接口契约占位，`server.py` 未实装。
 - 应用内调度器 `run_scheduled_loop()` 已实现但**未随应用主进程常驻启动**；需接入 v1.00 服务后才能真正「每天 03:00 自动扫」。

@@ -1154,3 +1154,21 @@
 **未完成（如实）**：server.py 9 条 /api/security/* HTTP 路由未实装（本轮是应用内 Python 调用链，不依赖 HTTP）；run_scheduled_loop 未随主进程常驻、多引擎调度未接入每日定时器；整机全盘真扫未执行；KES/ESET/多机适配器未逐台实测；ClamAV 随包与 GPLv2、卡巴 OEM 未做；current.json 仍 v0.09、v1.00 exe 未重打包；网页「立即扫描」仍是模拟（界面已明示）。
 
 **文档**：E:\AI 调度中心\V0.10_多引擎适配器_2026-11-12.md。
+
+---
+
+## 2026-11-13 05:50 · V0.10 启动依赖自检（产品模型纠正）
+
+**用户纠正**：「我们是提供卡巴斯基的安装」= 产品**提供安装/补齐能力**，不是随包预置第三方软件，也不是让对话里的 AI 去装。应用「开头」自己检测它要用的组件是否齐全（卡巴斯基、Node 等一系列都在同一张清单），缺的列给用户，**用户同意后由应用自己的进程**从官方源下载、验签、落到应用目录。上一轮把话题带成「怎么把引擎塞进包 + 授权/开源合规」，没抓住「根本不塞进包」这个关键，也没抓住「它」指的是应用本身。这个模型一次绕开 KVRT 专有权属、离线包体积、开源仓库带二进制三个死结。
+
+**落地**：新增 `versions\v0.10\dependency_bootstrap.py` —— `COMPONENTS` 声明式 7 项（`runtime/capability/devtool/detected` × `bundled/download_to_app/guided/detect_only`）；`startup_check()` 只读且不写任何文件；`plan()` 只列待办；`install()` 必须严格收到 `USER_APPROVED_DOWNLOAD` 令牌，空值/布尔/随手值一律拒绝；复用 `kvrt_bundle.status/download/verify/save_state` 与 `engine_adapters.probe_all`，**不另造下载/验签/识别接口**。下载件验签不过只改名 `.exe.unverified-*` 留档，不删除、不启用。审计落 `reports/bootstrap-*.json`。
+
+**两类卡巴分开**：KVRT 免安装绿色工具（下载到 `engines/KVRT/`，当前默认，不写系统、不与已有防护冲突）；Kaspersky Free 完整版会写入系统驱动与服务、与最初「不在客户机系统层面另装杀软」相悖，因此只给官方入口、不静默安装。Node.js 目前不是客户机运行时依赖（前端零依赖单文件 HTML），列为 devtool+guided，不逼客户安装。
+
+**真跑**：本机探测发现 Node/npm/git/python 路径全在 `C:\Users\...\.workbuddy\binaries\` → 属对话环境工具链，不能当客户机已装，正好印证自检必要性。`py_compile` 4 模块 PASS；`--check` 只读幂等（连跑两次一致），7 项中 6 齐 1 缺（kaspersky_free），`startup_ok=true` / `blocking=0`；四类边界实测全拦住：无同意拒绝下载、已齐全不重复下载 122 MB、Node 带同意也拒绝自动安装、完整版卡巴带同意也拒绝。`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**。
+
+**修真实漏洞**：`.gitignore` 原先逐条按文件名忽略，漏了新审计 `bootstrap-*.json` → 补 `versions/**/reports/bootstrap-*.json`（未改成整目录忽略，保留原有意图）。
+
+**刻意没接前端**：静态快照等于又变模拟，与「真跑」相悖；要真联动必须先挂主进程 + `/api/bootstrap/*` 路由。**未完成（如实）**：模块未挂进 v1.00 exe 主进程、无路由无面板、`current.json` 仍 v0.09、v1.00 exe 未重打包、下载失败留档分支未经真实失败样本验证。待用户确认「提供安装」指 KVRT 还是完整版。
+
+**文档**：E:\AI 调度中心\V0.10_启动依赖自检_2026-11-13.md；README 加章、MANIFEST 加 `startup_bootstrap` 段。

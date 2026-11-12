@@ -121,5 +121,53 @@
       "E:/AI 调度中心/.screenshots/v010-multi-matrix.png",
       "E:/AI 调度中心/.screenshots/v010-multi-settings.png"
     ]
+  },
+  "startup_bootstrap": {
+    "module": "dependency_bootstrap.py",
+    "added_at": "2026-11-13",
+    "model": "At startup the application checks its own component list (Kaspersky, Node, etc.). Missing items are listed first; only after explicit user consent does the application itself download, verify and place them inside its own directory. The product provides an install capability, it does not bundle third-party binaries or rely on an external agent to install them.",
+    "component_count": 7,
+    "categories": ["runtime", "capability", "devtool", "detected"],
+    "install_modes": ["bundled", "download_to_app", "guided", "detect_only"],
+    "consent_token": "USER_APPROVED_DOWNLOAD",
+    "reuses": [
+      "kvrt_bundle.status",
+      "kvrt_bundle.download",
+      "kvrt_bundle.verify",
+      "kvrt_bundle.save_state",
+      "engine_adapters.probe_all"
+    ],
+    "hard_boundaries": [
+      "startup_check is read-only: no download, no install, no writes at all",
+      "install refuses any request without the exact consent token",
+      "download_to_app writes only into versions/v0.10/engines; guided items only expose an official URL",
+      "unverified downloads are renamed and archived, never enabled",
+      "no third-party binary is bundled or committed",
+      "missing optional capabilities never block startup"
+    ],
+    "kaspersky_distinction": {
+      "kvrt": "portable free tool, downloaded into app directory, default path",
+      "kaspersky_free": "full antivirus writing system drivers and services; official URL only, never installed silently"
+    },
+    "node_note": "Node.js is a dev/build tool here, not a client runtime dependency, because the frontend is a dependency-free single HTML file",
+    "local_check_2026_11_13": {
+      "total": 7,
+      "present": 6,
+      "missing": 1,
+      "missing_id": "kaspersky_free",
+      "blocking": 0,
+      "startup_ok": true,
+      "boundaries_verified": [
+        "install without consent rejected",
+        "already-ready engine not re-downloaded",
+        "nodejs install rejected even with consent",
+        "kaspersky_free install rejected even with consent"
+      ]
+    },
+    "not_yet": [
+      "startup_check not wired into v1.00 exe main process",
+      "no /api/bootstrap/* routes and no frontend panel yet (static snapshot would be simulation)",
+      "current.json still points to v0.09"
+    ]
   }
 }

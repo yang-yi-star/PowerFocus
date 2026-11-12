@@ -1,0 +1,897 @@
+{
+  "schema": "powerfocus/model-profiles/v2",
+  "generated": "2026-11-04 22:52:02",
+  "source": "calibrate-models.ps1 实测校准（llama-server timings）",
+  "hardware": {
+    "cpu": "AMD Ryzen 9 8940HX 16C/32T",
+    "ram_gb": 31.22,
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU 8GB",
+    "gpu_total_mb": 8151,
+    "fingerprint": "8940hx-32g-5060-8g"
+  },
+  "global_rules": [
+    "cache_type_v=q8_0 必须搭配 fa=on，否则 llama-server 启动失败（quantized V cache requires flash_attn）",
+    "默认 -t 16 -tb 8；-tb 4 会明显拖慢 prompt 处理",
+    "-ngl 与 -fa 改变后必须重启 llama-server；重启会中断推理服务",
+    "任何加速前必须先用 Save-ModelRollback 记录原命令行，失败按原值还原",
+    "未在 models 中命中身份的模型，禁止套用任何 profile（参数与层数/显存强相关）"
+  ],
+  "models": {
+    "qwen3.8-27b-q4km": {
+      "identity": {
+        "architecture": "qwen35",
+        "layers": 65,
+        "file_type": "MOSTLY_Q6_K",
+        "label_hint": "Q4_K_M（文件名标签；GGUF general.file_type 实际为 15/MOSTLY_Q6_K，UD 混合量化，不参与身份硬匹配）",
+        "size_gb": 15.33,
+        "path_hint": "E:\\Model_Zone\\Qwen3.8-27B-UD-Q4_K_M\\Qwen3.8-27B-UD-Q4_K_M.gguf",
+        "note": "qwen35 混合架构，65 层中仅 16 层有完整注意力"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "temp": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "presence_penalty": 1.5,
+        "min_p": 0,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen3.8-27B"
+      },
+      "rules": [
+        "8K 档 GPU 层数甜点 23~24；超过 24 性能回落，不建议追高",
+        "64K 档 GPU 层数 19~20；再高显存余量不足"
+      ],
+      "selection": [
+        {
+          "when": "ctx >= 32768 and gpu_free_mb >= 300",
+          "use": "long_64k_max"
+        },
+        {
+          "when": "ctx >= 32768",
+          "use": "long_64k_safe"
+        },
+        {
+          "when": "gpu_free_mb >= 800",
+          "use": "safe_8k"
+        },
+        {
+          "when": "gpu_free_mb >= 450",
+          "use": "speed_8k"
+        },
+        {
+          "when": "default",
+          "use": "safe_8k"
+        }
+      ],
+      "measured_at": "2026-11-04 09:25",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先",
+          "args": {
+            "ngl": 23,
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 128,
+            "tps": 3.78,
+            "run1_tps": 3.73,
+            "run2_tps": 3.84,
+            "gpu_free_mb": 383,
+            "sys_ram_free_gb": 3.28,
+            "load_sec": 6.6
+          },
+          "notes": "默认速度档；显存余量约 383MB，适合无其他 GPU 重负载时"
+        },
+        "safe_8k": {
+          "label": "8K 安全优先",
+          "args": {
+            "ngl": 22,
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 3.72,
+            "run1_tps": 3.72,
+            "run2_tps": 3.71,
+            "gpu_free_mb": 770,
+            "sys_ram_free_gb": 1.73,
+            "load_sec": 6.6
+          },
+          "notes": "显存余量最大；有浏览器/游戏/其他 GPU 应用时优先"
+        },
+        "dense_8k": {
+          "label": "8K 高密度（KV V 量化）",
+          "args": {
+            "ngl": 24,
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "q8_0",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 128,
+            "tps": 3.68,
+            "run1_tps": 3.66,
+            "run2_tps": 3.69,
+            "gpu_free_mb": 238,
+            "sys_ram_free_gb": 3.38,
+            "load_sec": 8.7
+          },
+          "notes": "系统内存余量最大；显存余量仅 238MB，不建议与其他 GPU 应用同时"
+        },
+        "long_64k_safe": {
+          "label": "64K 长上下文安全",
+          "args": {
+            "ngl": 19,
+            "fa": "on",
+            "ctx": 65536,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "q8_0",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 3.46,
+            "run1_tps": 3.45,
+            "run2_tps": 3.48,
+            "gpu_free_mb": 414,
+            "sys_ram_free_gb": 1.88,
+            "load_sec": 8.5
+          },
+          "notes": "64K 默认；显存余量约 414MB"
+        },
+        "long_64k_max": {
+          "label": "64K 长上下文最高",
+          "args": {
+            "ngl": 20,
+            "fa": "on",
+            "ctx": 65536,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "q8_0",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 128,
+            "tps": 3.52,
+            "run1_tps": 3.54,
+            "run2_tps": 3.49,
+            "gpu_free_mb": 210,
+            "sys_ram_free_gb": 1.57,
+            "load_sec": 6.5
+          },
+          "notes": "仅在显存空闲充足时使用；210MB 余量偏紧"
+        },
+        "baseline_original": {
+          "label": "原生产配置（对照）",
+          "args": {
+            "ngl": 20,
+            "fa": "off",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 2.8,
+            "run1_tps": 2.48,
+            "run2_tps": 3.11,
+            "gpu_free_mb": 675,
+            "sys_ram_free_gb": 1.54,
+            "load_sec": 6.6
+          },
+          "notes": "E1 对照基线；实际提升以同机同 prompt 复测为准"
+        }
+      }
+    },
+    "qwen2.5-0.5b-instruct-q4km": {
+      "identity": {
+        "architecture": "qwen2",
+        "layers": 24,
+        "file_type": "UNKNOWN",
+        "label_hint": "Q4_K_M（文件名标签；解析头提前命中 arch+layers，未读到 general.file_type）",
+        "size_gb": 0.46,
+        "path_hint": "D:\\Model_Zone\\qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "note": "极小参数模型，适合轻量批处理与输出校验"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "temp": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "presence_penalty": 1.5,
+        "min_p": 0,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen2.5-0.5B"
+      },
+      "rules": [
+        "整模型可全量上卡；99 层档显存余量约 6.6GB"
+      ],
+      "selection": [
+        {
+          "when": "gpu_free_mb >= 1200",
+          "use": "speed_8k"
+        },
+        {
+          "when": "default",
+          "use": "safe_8k"
+        }
+      ],
+      "status": "calibrated",
+      "calibration": "pending",
+      "registered_at": "2026-11-04 13:52",
+      "measured_at": "2026-11-04 23:27",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Qwen2.5-0.5B",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 99
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 344.85,
+            "vram_used_mb": 1546,
+            "gpu_free_mb": 6642,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "整模型可全量上卡；99 层档显存余量约 6.6GB"
+        },
+        "safe_8k": {
+          "label": "8K 安全优先（显存留余量）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 16
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 209.05,
+            "vram_used_mb": 1432,
+            "gpu_free_mb": 6756,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "有浏览器/其他 GPU 负载时使用"
+        }
+      }
+    },
+    "qwen3-14b-q4km": {
+      "identity": {
+        "architecture": "qwen3",
+        "layers": 40,
+        "file_type": "UNKNOWN",
+        "label_hint": "Q4_K_M（文件名标签）",
+        "size_gb": 8.38,
+        "path_hint": "D:\\Models\\gguf\\Qwen3-14B-Q4_K_M.gguf",
+        "note": "8.38GB 逼近 8GB 显存上限，GPU 层数必须实测；同目录 heita-14b-lora 为适配器，兼容性未验证"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "temp": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "presence_penalty": 1.5,
+        "min_p": 0,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen3-14B"
+      },
+      "rules": [
+        "ngl=30 实测 2.14 t/s（显存溢出回退内存），禁止使用；8K 档甜点上限 ngl=26"
+      ],
+      "selection": [
+        {
+          "when": "gpu_free_mb >= 1200",
+          "use": "speed_8k"
+        },
+        {
+          "when": "default",
+          "use": "safe_8k"
+        }
+      ],
+      "status": "calibrated",
+      "calibration": "pending",
+      "registered_at": "2026-11-04 13:52",
+      "measured_at": "2026-11-04 23:27",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Qwen3-14B",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 26
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 10.37,
+            "vram_used_mb": 7477,
+            "gpu_free_mb": 711,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "ngl=30 实测 2.14 t/s（显存溢出回退内存），禁止使用；8K 档甜点上限 ngl=26"
+        },
+        "safe_8k": {
+          "label": "8K 安全优先（显存留余量）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 22
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 9.02,
+            "vram_used_mb": 6717,
+            "gpu_free_mb": 1471,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "有浏览器/其他 GPU 负载时使用"
+        }
+      }
+    },
+    "heita-q4km": {
+      "identity": {
+        "architecture": "qwen2",
+        "layers": 36,
+        "file_type": "UNKNOWN",
+        "label_hint": "Q4_K_M（文件名标签）",
+        "size_gb": 1.8,
+        "path_hint": "D:\\heita_models\\heita-q4_k_m.gguf",
+        "note": "黑塔角色模型（qwen2 底模微调）"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "temp": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "presence_penalty": 1.5,
+        "min_p": 0,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Heita"
+      },
+      "rules": [
+        "整模型可全量上卡；99 层档显存余量约 4.9GB"
+      ],
+      "selection": [
+        {
+          "when": "gpu_free_mb >= 1200",
+          "use": "speed_8k"
+        },
+        {
+          "when": "default",
+          "use": "safe_8k"
+        }
+      ],
+      "status": "calibrated",
+      "calibration": "pending",
+      "registered_at": "2026-11-04 13:52",
+      "measured_at": "2026-11-04 23:27",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Heita",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 99
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 98.0,
+            "vram_used_mb": 3206,
+            "gpu_free_mb": 4982,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "整模型可全量上卡；99 层档显存余量约 4.9GB"
+        },
+        "safe_8k": {
+          "label": "8K 安全优先（显存留余量）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 24
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 42.04,
+            "vram_used_mb": 2566,
+            "gpu_free_mb": 5622,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "有浏览器/其他 GPU 负载时使用"
+        }
+      }
+    },
+    "qwen3-4b-instruct-q4km": {
+      "identity": {
+        "architecture": "qwen3",
+        "layers": 36,
+        "file_type": "UNKNOWN",
+        "label_hint": "Q4_K_M（文件名标签）",
+        "size_gb": 2.33,
+        "path_hint": "D:\\heita_models\\qwen3-4b-instruct-q4_k_m.gguf",
+        "note": "轻量指令模型，可整模型驻留显存"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "temp": 0.7,
+        "top_k": 20,
+        "top_p": 0.8,
+        "presence_penalty": 1.5,
+        "min_p": 0,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen3-4B"
+      },
+      "rules": [
+        "整模型可全量上卡；99 层档显存余量约 3.7GB"
+      ],
+      "selection": [
+        {
+          "when": "gpu_free_mb >= 1200",
+          "use": "speed_8k"
+        },
+        {
+          "when": "default",
+          "use": "safe_8k"
+        }
+      ],
+      "status": "calibrated",
+      "calibration": "pending",
+      "registered_at": "2026-11-04 13:52",
+      "measured_at": "2026-11-04 23:27",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Qwen3-4B",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 99
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 78.8,
+            "vram_used_mb": 4395,
+            "gpu_free_mb": 3793,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "整模型可全量上卡；99 层档显存余量约 3.7GB"
+        },
+        "safe_8k": {
+          "label": "8K 安全优先（显存留余量）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 24
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 29.64,
+            "vram_used_mb": 3336,
+            "gpu_free_mb": 4852,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "有浏览器/其他 GPU 负载时使用"
+        }
+      }
+    },
+    "qwen3-8b-q4km": {
+      "identity": {
+        "architecture": "qwen3",
+        "size_gb": 4.68,
+        "path_hint": "D:\\计算机知识库中心\\90-Projects-Code\\.assistant\\models\\qwen3-8b-q4_k_m.gguf",
+        "note": "全盘扫描 2026-11-04 补录"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen3-8B"
+      },
+      "status": "calibrated",
+      "measured_at": "2026-11-05 00:11",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Qwen3-8B",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 99
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 27.73,
+            "vram_used_mb": 7556,
+            "gpu_free_mb": 632,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "全量上卡 99 层比 30 层略快（27.73 vs 27.40），显存余量仅 632MB，建议无其他 GPU 负载时使用"
+        }
+      },
+      "selection": [
+        {
+          "when": "default",
+          "use": "speed_8k"
+        }
+      ],
+      "rules": [
+        "全量上卡 99 层比 30 层略快（27.73 vs 27.40），显存余量仅 632MB，建议无其他 GPU 负载时使用"
+      ]
+    },
+    "qwen2.5-7b-q4km": {
+      "identity": {
+        "architecture": "qwen2",
+        "size_gb": 4.36,
+        "path_hint": "D:\\openhua\\老D\\tianet\\models\\qwen2.5-7b-q4_k_m.gguf",
+        "note": "全盘扫描 2026-11-04 补录"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Qwen2.5-7B"
+      },
+      "status": "calibrated",
+      "measured_at": "2026-11-05 00:11",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Qwen2.5-7B",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 99
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 53.27,
+            "vram_used_mb": 6636,
+            "gpu_free_mb": 1552,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "全量上卡最快；24 层档显存余 2.1GB，速度损失 37%"
+        }
+      },
+      "selection": [
+        {
+          "when": "default",
+          "use": "speed_8k"
+        }
+      ],
+      "rules": [
+        "全量上卡最快；24 层档显存余 2.1GB，速度损失 37%"
+      ]
+    },
+    "heita-fp16": {
+      "identity": {
+        "architecture": "qwen2",
+        "size_gb": 5.75,
+        "path_hint": "D:\\heita_work\\heita-fp16.gguf",
+        "note": "全盘扫描 2026-11-04 补录"
+      },
+      "common": {
+        "threads": 16,
+        "threads_batch": 8,
+        "host": "127.0.0.1",
+        "port": 8080,
+        "parallel": 1,
+        "alias": "Heita-F16"
+      },
+      "status": "calibrated",
+      "measured_at": "2026-11-05 00:11",
+      "engine": "llama.cpp router mode (port 8080, --models-max 1)",
+      "preset_section": "Heita-F16",
+      "profiles": {
+        "speed_8k": {
+          "label": "8K 速度优先（实测最优 ngl）",
+          "args": {
+            "fa": "on",
+            "ctx": 8192,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "f16",
+            "threads": 16,
+            "threads_batch": 8,
+            "ngl": 24
+          },
+          "measured": {
+            "gen_tokens": 64,
+            "tps": 16.98,
+            "vram_used_mb": 6498,
+            "gpu_free_mb": 1690,
+            "engine": "llama.cpp router --models-max 1"
+          },
+          "notes": "F16 版权重太大，99 层溢出到内存只剩 11.7 t/s；甜点 24 层"
+        }
+      },
+      "selection": [
+        {
+          "when": "default",
+          "use": "speed_8k"
+        }
+      ],
+      "rules": [
+        "F16 版权重太大，99 层溢出到内存只剩 11.7 t/s；甜点 24 层"
+      ]
+    }
+  },
+  "asset_inventory": {
+    "schema_note": "全盘资产清单（2026-11-04 14:05 扫描 C/D/E 三个分区）。此区不参与 llama.cpp profile 匹配，仅作调度中心模型资产台账。runtime 字段标注实际可用推理引擎。",
+    "scan_stats": {
+      "files_found": 56,
+      "min_size_mb": 50,
+      "drives": [
+        "C:",
+        "D:",
+        "E:"
+      ]
+    },
+    "entries": [
+      {
+        "name": "qwen-image-Q4_K_M",
+        "path": "D:\\AI\\models\\qwen-image\\qwen-image-Q4_K_M.gguf",
+        "size_gb": 12.17,
+        "kind": "text2image_dit",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\diffusion_models\\qwen-image-Q4_K_M.gguf",
+        "gguf_identity": "无 block_count（DiT 架构），llama.cpp 不可跑"
+      },
+      {
+        "name": "flux1-dev-Q6_K",
+        "path": "D:\\AI\\models\\flux-dev-gguf\\flux1-dev-Q6_K.gguf",
+        "size_gb": 9.18,
+        "kind": "text2image_dit",
+        "runtime": "ComfyUI",
+        "gguf_identity": "无 block_count，llama.cpp 不可跑"
+      },
+      {
+        "name": "flux1-schnell-Q4_K_S",
+        "path": "D:\\AI\\downloads\\flux1-schnell-Q4_K_S.gguf",
+        "size_gb": 1.91,
+        "kind": "text2image_dit",
+        "runtime": "ComfyUI",
+        "gguf_identity": "无 block_count，llama.cpp 不可跑"
+      },
+      {
+        "name": "minimax_h3_fl2va_pruned-Q2_K",
+        "path": "D:\\AI-Models\\MiniMax-H3\\minimax_h3_fl2va_pruned-Q2_K.gguf",
+        "size_gb": 6.26,
+        "kind": "video_gen_unet",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\unet\\minimax_h3_fl2va_pruned-Q2_K.gguf",
+        "gguf_identity": "图生视频扩散模型"
+      },
+      {
+        "name": "minimax_h3_ref2va_pruned-Q2_K",
+        "path": "D:\\AI-Models\\MiniMax-H3\\minimax_h3_ref2va_pruned-Q2_K.gguf",
+        "size_gb": 6.22,
+        "kind": "video_gen_unet",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\unet\\minimax_h3_ref2va_pruned-Q2_K.gguf",
+        "gguf_identity": "参考图生视频扩散模型"
+      },
+      {
+        "name": "sd_xl_base_1.0",
+        "path": "D:\\AI\\models\\sd_xl_base_1.0.safetensors",
+        "size_gb": 6.46,
+        "kind": "text2image_unet",
+        "runtime": "ComfyUI / A1111"
+      },
+      {
+        "name": "sdxl_lightning_4step_lora",
+        "path": "D:\\AI\\models\\sdxl_lightning_4step_lora.safetensors",
+        "size_gb": 0.37,
+        "kind": "lora",
+        "runtime": "ComfyUI / A1111",
+        "base": "sd_xl_base_1.0"
+      },
+      {
+        "name": "lora_herta_ilxl",
+        "path": "D:\\AI\\models\\lora_herta_ilxl.safetensors",
+        "size_gb": 0.21,
+        "kind": "lora",
+        "runtime": "ComfyUI / A1111",
+        "note": "黑塔角色 LoRA（IllustriousXL 底）"
+      },
+      {
+        "name": "lora_madam_herta",
+        "path": "D:\\AI\\models\\lora_madam_herta.safetensors",
+        "size_gb": 0.21,
+        "kind": "lora",
+        "runtime": "ComfyUI / A1111",
+        "note": "黑塔角色 LoRA"
+      },
+      {
+        "name": "lora_herta_sdxl",
+        "path": "D:\\AI\\models\\lora_herta_sdxl.safetensors",
+        "size_gb": 0.11,
+        "kind": "lora",
+        "runtime": "ComfyUI / A1111",
+        "note": "黑塔角色 LoRA（SDXL 底）"
+      },
+      {
+        "name": "qwen-image_text_encoder",
+        "path": "D:\\AI\\models\\qwen-image\\text_encoder\\",
+        "size_gb": 26.32,
+        "shards": 4,
+        "kind": "text_encoder",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\text_encoders\\qwen25_7b_vl.safetensors (15.45GB 单文件版)"
+      },
+      {
+        "name": "qwen-image_vae",
+        "path": "D:\\AI\\models\\qwen-image\\vae\\diffusion_pytorch_model.safetensors",
+        "size_gb": 0.24,
+        "kind": "vae",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\vae\\qwen_image_vae.safetensors"
+      },
+      {
+        "name": "flux-schnell_components",
+        "path": "D:\\AI\\models\\flux-schnell\\",
+        "size_gb": 9.26,
+        "kind": "text2image_components",
+        "runtime": "ComfyUI",
+        "detail": "clip text_encoder 0.23GB + t5 text_encoder_2 双分片 8.87GB + vae 0.16GB"
+      },
+      {
+        "name": "minimax_h3_text_encoder_nvfp4",
+        "path": "D:\\AI-Models\\MiniMax-H3\\text_encoders\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "size_gb": 14.61,
+        "kind": "text_encoder",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\text_encoders\\同名"
+      },
+      {
+        "name": "minimax_h3_text_encoder_heretic",
+        "path": "D:\\AI-Models\\MiniMax-H3\\text_encoders\\heretic\\qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+        "size_gb": 2.12,
+        "kind": "text_encoder",
+        "runtime": "ComfyUI",
+        "note": "heretic 消融版"
+      },
+      {
+        "name": "minimax_h3_video_vae_fp16",
+        "path": "D:\\AI-Models\\MiniMax-H3\\vae\\minimax_h3_video_vae_fp16.safetensors",
+        "size_gb": 4.85,
+        "kind": "vae",
+        "runtime": "ComfyUI"
+      },
+      {
+        "name": "minimax_h3_audio_vae_fp32",
+        "path": "D:\\AI-Models\\MiniMax-H3\\vae\\minimax_h3_audio_vae_fp32.safetensors",
+        "size_gb": 0.56,
+        "kind": "vae",
+        "runtime": "ComfyUI"
+      },
+      {
+        "name": "qwen3vl_32b_minimax_h3-Q2_K_M",
+        "path": "D:\\AI-Models\\MiniMax-H3\\qwen3vl_32b_minimax_h3-Q2_K_M.gguf",
+        "size_gb": 12.2,
+        "kind": "text_encoder_gguf",
+        "runtime": "ComfyUI",
+        "mirror": "D:\\AI\\tools\\ComfyUI\\models\\text_encoders\\同名",
+        "gguf_identity": "MiniMax H3 配套视觉文本编码器，非对话模型"
+      },
+      {
+        "name": "Qwen3-14B_fp16_original",
+        "path": "D:\\Models\\Qwen3-14B\\",
+        "size_gb": 27.5,
+        "shards": 8,
+        "kind": "llm_safetensors_fp16",
+        "runtime": "transformers / vLLM（不可 llama.cpp 直接跑）",
+        "note": "Qwen3-14B-Q4_K_M.gguf 的原始 FP16 权重源"
+      },
+      {
+        "name": "heita-14b-lora-ck100-f16",
+        "path": "D:\\Models\\gguf\\heita-14b-lora-ck100-f16.gguf",
+        "size_gb": 0.02,
+        "kind": "lora_gguf",
+        "runtime": "llama-server --lora（挂载于 Qwen3-14B-Q4_K_M）",
+        "note": "黑塔 14B LoRA 适配器，ck100"
+      },
+      {
+        "name": "CosyVoice2-0.5B",
+        "path": "D:\\AI\\tts\\CosyVoice2-0.5B\\",
+        "size_gb": 2.6,
+        "kind": "tts",
+        "runtime": "CosyVoice 自研推理栈",
+        "detail": "model.safetensors 0.92GB + speech_tokenizer onnx x2 0.92GB + flow.decoder 0.27GB 等"
+      },
+      {
+        "name": "GPT-SoVITS_pretrained",
+        "path": "D:\\AI\\tts\\GPT-SoVITS\\GPT_SoVITS\\pretrained_models\\",
+        "size_gb": 1.5,
+        "kind": "tts_components",
+        "runtime": "GPT-SoVITS",
+        "detail": "chinese-roberta-wwm-ext-large 0.61GB + chinese-hubert-base 0.18GB + G2PWModel 0.59GB + langdetect 0.12GB"
+      }
+    ],
+    "excluded_from_scan": [
+      "C:\\Users\\Administrator.医院\\.lmstudio\\models（空目录，LM Studio 未下载任何模型）",
+      "Ollama blobs（.ollama\\models\\blobs 无 100MB 以上文件，Ollama 无有效模型）"
+    ],
+    "duplicate_map": "D:\\AI\\tools\\ComfyUI\\models 为 D:\\AI\\models 与 D:\\AI-Models\\MiniMax-H3 的镜像副本（ComfyUI 标准目录结构），登记以源目录为准，镜像仅记录不重复计数"
+  }
+}

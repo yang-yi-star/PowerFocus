@@ -1,6 +1,6 @@
 #Requires -Version 7.0
 # ============================================================
-# 电脑算力调度中心 v3 —— 全机资源调度中枢（v2 基础上升级，独立目录）
+# 电脑算力调度中心 v0.06 —— 全机资源调度中枢（首个正式版本，v2 基础上升级）
 # 修复项（相对 v1）:
 #   1. Stop-Focus 还原目标进程原始优先级（v1 永久遗留 High）
 #   2. 降级进程记录原始优先级，恢复写回原值（v1 一律设回 Normal）
@@ -20,6 +20,10 @@
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# ===== 版本标识（v0.05 = 首个正式版本，2026-11-05）=====
+$script:PF_Version      = '0.06'
+$script:PF_VersionLabel = 'v0.06'
+$script:PF_BuildDate    = '2026-11-05'
 # ===== Gate 0 · 螺丝一：v3 单实例锁（目录级独占句柄，进程退出由系统自动释放）=====
 # 说明：FileShare.None 的独占句柄比 PID 文件可靠——不存在 TOCTOU 竞态，也不怕残留死文件。
 # 测试需绕过时设 $env:PF_V3_NO_LOCK=1（仅供只读测试，勿用于正常启动）。
@@ -54,7 +58,18 @@ public static extern bool EmptyWorkingSet(System.IntPtr hProcess);
 public static extern int NtQueryInformationProcess(System.IntPtr hProcess, int infoClass, ref int info, int length, ref int returnLength);
 [System.Runtime.InteropServices.DllImport("ntdll.dll")]
 public static extern int NtSetInformationProcess(System.IntPtr hProcess, int infoClass, ref int info, int length);
+[System.Runtime.InteropServices.DllImport("ntdll.dll")]
+public static extern int NtSuspendProcess(System.IntPtr hProcess);
+[System.Runtime.InteropServices.DllImport("ntdll.dll")]
+public static extern int NtResumeProcess(System.IntPtr hProcess);
+[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)]
+public static extern System.IntPtr OpenProcess(uint access, bool inherit, int pid);
+[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError=true)]
+public static extern bool CloseHandle(System.IntPtr h);
 '@
+
+# 不可终止的系统关键进程（杀之会导致蓝屏/重启，任何情况下都拒绝）
+$script:UnkillableProcesses = @('System','Registry','Idle','Memory Compression','smss','csrss','wininit','services','lsass','winlogon','fontdrvhost','WUDFHost','dwm','MsMpEng')
 
 # ---------- 全局状态 ----------
 $script:TargetPid              = $null
@@ -194,7 +209,7 @@ if (Test-Path -LiteralPath (Join-Path $script:LogDir "rules-engine.ps1")) {
     try {
         if (Get-Command Start-RulesEngine -ErrorAction SilentlyContinue) {
             Start-RulesEngine
-            Write-Log "INFO" "规则引擎已随 v2 自动启动"
+            Write-Log "INFO" "规则引擎已随 v0.05 自动启动"
         }
     } catch { Write-Log "WARN" "规则引擎自动启动失败: $_" }
 } else {
@@ -584,7 +599,7 @@ function Get-ProcList {
 
 function Show-ProcPicker {
     $win = New-Object System.Windows.Window
-    $win.Title = "选择目标进程 - 电脑算力调度中心 v2"
+    $win.Title = "选择目标进程 - 电脑算力调度中心 v0.06"
     $win.Width = 600; $win.Height = 500
     $win.WindowStartupLocation = [System.Windows.WindowStartupLocation]::CenterScreen
     $win.ResizeMode = [System.Windows.ResizeMode]::CanResize
@@ -1103,6 +1118,35 @@ if (Test-Path -LiteralPath $script:GeekBridgePath) {
     Write-Log "WARN" "未找到 Geek 桥接模块: $($script:GeekBridgePath)"
 }
 
+# ---------- v3：本地模型路由（tools\model-router.ps1 的薄封装，不复制启动逻辑） ----------
+function Invoke-RouterScript {
+    param([hashtable]$Params)
+    $routerScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'tools\model-router.ps1'
+    if (-not (Test-Path -LiteralPath $routerScript)) { return [pscustomobject]@{ ok = $false; text = "ERROR: 缺少 $routerScript" } }
+    $pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue).Source
+    if (-not $pwshExe) { $pwshExe = 'pwsh.exe' }
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $routerScript)
+    foreach ($k in $Params.Keys) { $argList += @("-$k", [string]$Params[$k]) }
+    try {
+        $out = & $pwshExe @argList 2>&1 | Out-String
+        return [pscustomobject]@{ ok = ($LASTEXITCODE -eq 0); text = $out.Trim() }
+    } catch {
+        return [pscustomobject]@{ ok = $false; text = "ERROR: router 脚本执行异常: $_" }
+    }
+}
+
+function Get-PresetModelPath {
+    # 从 models-preset.ini 取某个 section 的 model 路径（section 名即 OpenAI 模型 id）
+    param([string]$PresetFile, [string]$SectionName)
+    $cur = ''
+    foreach ($line in Get-Content -LiteralPath $PresetFile -Encoding utf8) {
+        $t = $line.Trim()
+        if ($t -match '^\[(.+)\]$') { $cur = $Matches[1].Trim(); continue }
+        if ($cur -and ($cur -eq $SectionName) -and $t -match '^model\s*=\s*(.+)$') { return $Matches[1].Trim() }
+    }
+    return $null
+}
+
 function Invoke-CommandObject {
     param($Cmd)
     $action = [string]$Cmd.action
@@ -1182,6 +1226,132 @@ function Invoke-CommandObject {
                 Write-Log "INFO" "set_priority: $($t.Name) -> $cls"
                 return "OK: $($t.Name) 优先级已设为 $cls"
             } catch { return "ERROR: 设置失败（可能权限不足）: $_" }
+        }
+        # ---------- v0.06：进程强制控制（破坏性操作，必须带 token） ----------
+        'kill_process' {
+            $t = Resolve-TargetFromCommand $Cmd
+            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if ($t.PID -eq $PID) { return "ERROR: 拒绝终止调度中心自身" }
+            if ($t.Name -in $script:UnkillableProcesses) {
+                Write-Log "WARN" "kill_process 拒绝: $($t.Name) 属系统关键进程"
+                return "ERROR: $($t.Name) 是系统关键进程（杀之会蓝屏/重启），已拒绝"
+            }
+            if ([string]$Cmd.token -ne (Get-AuthToken)) {
+                Write-Log "WARN" "kill_process token 校验失败"
+                return "ERROR: token 校验失败，拒绝终止进程"
+            }
+            try {
+                Stop-Process -Id $t.PID -Force -ErrorAction Stop
+                Write-Log "INFO" "kill_process: 强制终止 $($t.Name)($($t.PID))"
+                return "OK: 已强制终止 $($t.Name) (PID $($t.PID))"
+            } catch { return "ERROR: 终止失败（可能受 PPL 保护或权限不足）: $_" }
+        }
+        'suspend_process' {
+            $t = Resolve-TargetFromCommand $Cmd
+            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if ($t.PID -eq $PID) { return "ERROR: 拒绝挂起调度中心自身" }
+            if ($t.Name -in $script:UnkillableProcesses) {
+                return "ERROR: $($t.Name) 是系统关键进程，已拒绝挂起"
+            }
+            if ([string]$Cmd.token -ne (Get-AuthToken)) { return "ERROR: token 校验失败，拒绝挂起进程" }
+            $h = [PowerFocus.Native]::OpenProcess(0x0800, $false, $t.PID)
+            if ($h -eq [IntPtr]::Zero) { return "ERROR: 打开进程失败（权限不足或受保护）err=$([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())" }
+            $rc = [PowerFocus.Native]::NtSuspendProcess($h)
+            [PowerFocus.Native]::CloseHandle($h) | Out-Null
+            if ($rc -ne 0) { return "ERROR: 挂起失败 rc=$rc" }
+            Write-Log "INFO" "suspend_process: $($t.Name)($($t.PID)) 已冻结"
+            return "OK: $($t.Name) (PID $($t.PID)) 已挂起（进程冻结，不响应任何操作；用 resume_process 恢复）"
+        }
+        'resume_process' {
+            $t = Resolve-TargetFromCommand $Cmd
+            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if ([string]$Cmd.token -ne (Get-AuthToken)) { return "ERROR: token 校验失败，拒绝恢复进程" }
+            $h = [PowerFocus.Native]::OpenProcess(0x0800, $false, $t.PID)
+            if ($h -eq [IntPtr]::Zero) { return "ERROR: 打开进程失败（权限不足或受保护）" }
+            $rc = [PowerFocus.Native]::NtResumeProcess($h)
+            [PowerFocus.Native]::CloseHandle($h) | Out-Null
+            if ($rc -ne 0) { return "ERROR: 恢复失败 rc=$rc" }
+            Write-Log "INFO" "resume_process: $($t.Name)($($t.PID)) 已恢复"
+            return "OK: $($t.Name) (PID $($t.PID)) 已恢复运行"
+        }
+        'stress_process' {
+            $t = Resolve-TargetFromCommand $Cmd
+            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if ($t.PID -eq $PID) { return "ERROR: 拒绝压制调度中心自身" }
+            if ($t.Name -in $script:UnkillableProcesses) { return "ERROR: $($t.Name) 是系统关键进程，已拒绝压制" }
+            if ([string]$Cmd.token -ne (Get-AuthToken)) { return "ERROR: token 校验失败，拒绝压制进程" }
+            $mode = if ([string]$Cmd.mode -eq 'crash') { 'crash' } else { 'freeze' }
+            $p = Get-Process -Id $t.PID -ErrorAction SilentlyContinue
+            if (-not $p) { return "ERROR: 目标进程已不存在" }
+            $ws0 = $p.WorkingSet64
+            try { $p.PriorityClass = 'Idle' } catch {}
+            $h = [PowerFocus.Native]::OpenProcess(0x0100 -bor 0x0400 -bor 0x0800, $false, $t.PID)
+            if ($h -eq [IntPtr]::Zero) { return "ERROR: 打开进程失败（权限不足或受保护）" }
+            $trimOk = 0
+            for ($i = 0; $i -lt 8; $i++) {
+                if ([PowerFocus.Native]::EmptyWorkingSet($h)) { $trimOk++ }
+                Start-Sleep -Milliseconds 150
+            }
+            if ($mode -eq 'crash') {
+                [PowerFocus.Native]::NtSuspendProcess($h) | Out-Null
+            }
+            [PowerFocus.Native]::CloseHandle($h) | Out-Null
+            Start-Sleep -Milliseconds 500
+            $p2 = Get-Process -Id $t.PID -ErrorAction SilentlyContinue
+            if (-not $p2) {
+                Write-Log "INFO" "stress_process: $($t.Name)($($t.PID)) 在压制过程中已退出"
+                return "OK: $($t.Name) (PID $($t.PID)) 在压制过程中已经崩掉/退出"
+            }
+            $ws1 = $p2.WorkingSet64
+            $resp = $p2.Responding
+            Write-Log "INFO" "stress_process[$mode]: $($t.Name)($($t.PID)) WS $([math]::Round($ws0/1MB,1))MB->$([math]::Round($ws1/1MB,1))MB Responding=$resp"
+            $tail = if ($mode -eq 'crash') { '进程已被冻结且工作集压到最低（表现为完全无响应/假死）' } else { "工作集 $([math]::Round($ws0/1MB,1))MB -> $([math]::Round($ws1/1MB,1))MB，优先级压到 Idle" }
+            return "OK: $($t.Name) (PID $($t.PID)) 已压制（EmptyWorkingSet $trimOk/8 次，Responding=$resp）：$tail"
+        }
+        # ---------- v0.06：智能内存管理（MemGuard 接入命令总线） ----------
+        'mem_guard' {
+            $mgScript = Join-Path $PSScriptRoot 'lib\mem-guard.ps1'
+            if (-not (Test-Path -LiteralPath $mgScript)) { return "ERROR: 找不到 lib\mem-guard.ps1，版本资产不完整" }
+            $mgState = Join-Path $PSScriptRoot 'mem-guard.state.json'
+            $op = [string]$Cmd.op
+            if (-not $op) { $op = 'status' }
+            # 只认本版本目录的守护进程，绝不误杀其他版本
+            $mgProcs = @(Get-CimInstance Win32_Process -Filter "Name='pwsh.exe'" -ErrorAction SilentlyContinue |
+                         Where-Object { $_.CommandLine -and $_.CommandLine -match 'mem-guard\.ps1' -and $_.CommandLine -match ([regex]::Escape($PSScriptRoot)) })
+            switch ($op) {
+                'status' {
+                    $guard = if ($mgProcs.Count -gt 0) { "守护中（PID $(($mgProcs | ForEach-Object { $_.ProcessId }) -join ',')）" } else { '未运行' }
+                    if (-not (Test-Path -LiteralPath $mgState)) { return "OK: MemGuard $guard；尚无状态快照，用 op=once 生成" }
+                    try { $s = Get-Content -LiteralPath $mgState -Raw -Encoding utf8 | ConvertFrom-Json } catch { return "ERROR: 状态文件解析失败: $_" }
+                    return "OK: MemGuard $guard | 模型=$($s.modelRunning)(PID $(($s.modelPids) -join ',')) 内存=$($s.memPercent)% 可用=$($s.availMB)MB 级别=$($s.level) 已压制=$($s.trimmed) 释放=$($s.freedMB)MB"
+                }
+                'once' {
+                    $pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue).Source
+                    if (-not $pwshExe) { $pwshExe = 'pwsh.exe' }
+                    $out = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File $mgScript -Once -Json 2>&1 | Out-String
+                    try { $s = $out | ConvertFrom-Json } catch { return "ERROR: mem-guard 输出解析失败: $out" }
+                    Write-Log "INFO" "mem_guard once: model=$($s.modelRunning) mem=$($s.memPercent)% trimmed=$($s.trimmed) freed=$($s.freedMB)MB"
+                    return "OK: 单轮执行完成 | 模型=$($s.modelRunning) 内存=$($s.memPercent)% 级别=$($s.level) 已压制=$($s.trimmed) 释放=$($s.freedMB)MB 保护=$($s.protectedCount)"
+                }
+                'start' {
+                    if ($mgProcs.Count -gt 0) { return "OK: MemGuard 已在运行（PID $(($mgProcs | ForEach-Object { $_.ProcessId }) -join ',')），不重复启动" }
+                    $pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue).Source
+                    if (-not $pwshExe) { $pwshExe = 'pwsh.exe' }
+                    $argLine = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$mgScript`" -IntervalMs 1000 -CacheMs 5000"
+                    $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "`"$pwshExe`" $argLine" }
+                    if ($r.ReturnValue -ne 0) { return "ERROR: 启动失败 ReturnValue=$($r.ReturnValue)" }
+                    Write-Log "INFO" "mem_guard start: PID=$($r.ProcessId)"
+                    return "OK: MemGuard 守护已启动（PID $($r.ProcessId)）"
+                }
+                'stop' {
+                    if ($mgProcs.Count -eq 0) { return "OK: MemGuard 本就未运行" }
+                    $ids = @($mgProcs | ForEach-Object { [int]$_.ProcessId })
+                    foreach ($id in $ids) { try { Stop-Process -Id $id -Force -ErrorAction Stop } catch {} }
+                    Write-Log "INFO" "mem_guard stop: $($ids -join ',')"
+                    return "OK: 已停止 MemGuard 守护（PID $($ids -join ',')）"
+                }
+                default { return "ERROR: op 只支持 status / once / start / stop" }
+            }
         }
         'set_power_plan' {
             $plan = [string]$Cmd.plan
@@ -1300,6 +1470,100 @@ function Invoke-CommandObject {
                 $s += "`n未命中档案：按规则禁止套用任何 profile"
             }
             return $s
+        }
+        # ---------- v3：模型路由启停 / 按注册表档位加速 ----------
+        'start_router' {
+            $p = @{ Action = 'start' }
+            if ($Cmd.model) { $p['Model'] = [string]$Cmd.model }
+            if ($Cmd.port) { $p['Port'] = [int]$Cmd.port }
+            $p['TimeoutSec'] = if ($Cmd.timeout_sec) { [int]$Cmd.timeout_sec } else { 60 }
+            return (Invoke-RouterScript -Params $p).text
+        }
+        'stop_router' {
+            return (Invoke-RouterScript -Params @{ Action = 'stop' }).text
+        }
+        'router_status' {
+            $p = @{ Action = 'status' }
+            if ($Cmd.port) { $p['Port'] = [int]$Cmd.port }
+            return (Invoke-RouterScript -Params $p).text
+        }
+        'boost_model' {
+            # 硬约束：模型必须命中 model-profiles.json 的 identity，否则拒绝套用任何参数。
+            # 默认 dry-run；apply=true 才真正重启服务，失败按 rollback.json 的命令行还原。
+            $modelArg = [string]$Cmd.model
+            if (-not $modelArg) { return "ERROR: 缺少 model（gguf 路径或 models-preset.ini 中的模型名）" }
+
+            $presetFile = Join-Path $script:LogDir 'models-preset.ini'
+            $modelPath = $modelArg
+            if ($modelArg -notmatch '\.gguf$') {
+                if (-not (Test-Path -LiteralPath $presetFile)) { return "ERROR: models-preset.ini 不存在" }
+                $modelPath = Get-PresetModelPath -PresetFile $presetFile -SectionName $modelArg
+                if (-not $modelPath) {
+                    $names = @(Get-Content -LiteralPath $presetFile -Encoding utf8 |
+                               Where-Object { $_ -match '^\[' } |
+                               ForEach-Object { $_.Trim().Trim('[', ']') })
+                    return "ERROR: preset 中不存在模型 '$modelArg'。可用: $($names -join ', ')"
+                }
+            }
+            if (-not (Test-Path -LiteralPath $modelPath)) { return "ERROR: 模型文件不存在: $modelPath" }
+
+            $res = Resolve-ModelProfile -ProfilesPath $script:ModelProfileFile -ModelPath $modelPath
+            if (-not $res) { return "ERROR: 模型未命中档案（identity 不匹配），按硬约束禁止套用任何档位: $modelPath" }
+
+            $profileName = [string]$Cmd.profile
+            $profObj = $null
+            if ($profileName) {
+                $names = @($res.entry.profiles.PSObject.Properties.Name)
+                if ($names -notcontains $profileName) { return "ERROR: 档位 '$profileName' 不存在。可用: $($names -join ', ')" }
+                $profObj = $res.entry.profiles.$profileName
+            } else {
+                $freeMb = 0
+                try {
+                    $sm = & nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>$null | Select-Object -First 1
+                    if ("$sm" -match '(\d+)') { $freeMb = [int]$Matches[1] }
+                } catch {}
+                $ctx = 8192
+                if ($Cmd.ctx) { $ctx = [int]$Cmd.ctx }
+                $sel = Select-ModelProfile -ModelEntry $res.entry -GpuFreeMb $freeMb -Ctx $ctx
+                if (-not $sel) { return "ERROR: 没有匹配当前显存/上下文的档位（gpu_free=${freeMb}MB ctx=$ctx）" }
+                $profileName = $sel.name
+                $profObj = $sel.profile
+            }
+
+            $a = $profObj.args
+            $aliasName = if ($res.entry.common.alias) { [string]$res.entry.common.alias } else { [string]$res.key }
+            $ctxUsed = if ($Cmd.ctx) { [int]$Cmd.ctx } else { [int]$a.ctx }
+            $nglUsed = if ($Cmd.ngl) { [int]$Cmd.ngl } else { [int]$a.ngl }
+            $plan = @(
+                "模型: $modelPath",
+                "档案: $($res.key) / 档位: $profileName [$($profObj.label)]",
+                "参数: ngl=$nglUsed fa=$($a.fa) ctx=$ctxUsed kv=$($a.cache_type_k)/$($a.cache_type_v) threads=$($a.threads)",
+                "实测: tps=$($profObj.measured.tps) 显存余=$($profObj.measured.gpu_free_mb)MB"
+            )
+
+            if ($Cmd.apply -ne $true) {
+                return "DRY-RUN（未改动任何进程；加 apply=true 才执行）`n" + ($plan -join "`n")
+            }
+
+            $rb = Save-ModelRollback -Reason "boost_model:$($res.key)/$profileName"
+            $p = @{
+                Action = 'boost'; ModelFile = $modelPath; Port = 8080; TimeoutSec = 90
+                Ngl = $nglUsed; Ctx = $ctxUsed; Alias = $aliasName
+            }
+            if ($a.fa) { $p['FlashAttn'] = [string]$a.fa }
+            if ($a.cache_type_k) { $p['CacheTypeK'] = [string]$a.cache_type_k }
+            if ($a.cache_type_v) { $p['CacheTypeV'] = [string]$a.cache_type_v }
+            if ($a.threads) { $p['Threads'] = [int]$a.threads }
+            if ($a.threads_batch) { $p['ThreadsBatch'] = [int]$a.threads_batch }
+
+            $r = Invoke-RouterScript -Params $p
+            if ($r.ok) { return "OK: boost 完成`n" + ($plan -join "`n") + "`n" + $r.text }
+
+            if ($rb -and $rb.commandline) {
+                $rr = Invoke-RouterScript -Params @{ Action = 'restore'; CommandLine = [string]$rb.commandline; TimeoutSec = 90 }
+                return "ERROR: boost 失败，已按回滚记录尝试重启原服务`nboost 输出: $($r.text)`n回滚输出: $($rr.text)"
+            }
+            return "ERROR: boost 失败（原无 8080 服务可回滚）`n$($r.text)"
         }
         # ---------- 阶段四：规则引擎 / EcoQoS / 亲和性 ----------
         'start_rules' {
@@ -1561,7 +1825,7 @@ Initialize-SecurityArtifacts
 
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon = [System.Drawing.SystemIcons]::Shield
-$tray.Text = "电脑算力调度中心 v3"
+$tray.Text = "电脑算力调度中心 v0.06"
 $tray.Visible = $true
 $script:TrayIcon = $tray
 
@@ -1669,7 +1933,7 @@ $miExit.Add_Click({
     try { Stop-CommandBus } catch {}
     try { $tray.Visible = $false; $tray.Dispose() } catch {}
     Write-Lifecycle "MENU_EXIT" "user clicked exit"
-    Write-Log "INFO" "电脑算力调度中心 v3 已退出"
+    Write-Log "INFO" "电脑算力调度中心 v0.06 已退出"
     [System.Windows.Forms.Application]::Exit()
 })
 
@@ -1686,7 +1950,7 @@ $menu.Items.Add($miExit) | Out-Null
 $tray.ContextMenuStrip = $menu
 
 Update-AutoMenuText
-Write-Log "INFO" "电脑算力调度中心 v3 已启动（命令总线: $script:CmdBusEnabled）"
+Write-Log "INFO" "电脑算力调度中心 v0.06 已启动（命令总线: $script:CmdBusEnabled）"
 Write-Lifecycle "SCRIPT_READY" "tray started"
 Start-CommandBus
 Write-Heartbeat

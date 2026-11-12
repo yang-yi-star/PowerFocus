@@ -1,0 +1,756 @@
+/* ============================================================
+   电脑算力调度中心 · 前端逻辑（无依赖、无内联脚本）
+   约束：
+     - 只通过 /api/* 与后端交互，所有请求自动带 X-PF-Token
+     - 不使用 innerHTML 拼接服务端数据，全部 textContent，天然免疫 XSS
+     - 页面隐藏时暂停轮询，减少空转
+   ============================================================ */
+'use strict';
+
+(function () {
+  const TOKEN = (document.querySelector('meta[name="pf-token"]') || {}).content || '';
+  const $ = (id) => document.getElementById(id);
+
+  let reqCount = 0;
+  let snapshot = null;
+  let selected = null;          // {pid, name}
+  let activeView = 'overview';
+  let chatHistory = [];
+  let clientLog = [];
+  let sceneLoaded = false;
+  let settingsLoaded = false;
+  let securityLoaded = false;
+  let dialogResolve = null;
+  let pollTimer = null;
+  let pollErrors = 0;
+
+  /* ---------------- 基础工具 ---------------- */
+  function el(tag, attrs, ...kids) {
+    const node = document.createElement(tag);
+    if (attrs) {
+      for (const k of Object.keys(attrs)) {
+        const v = attrs[k];
+        if (v === null || v === undefined || v === false) continue;
+        if (k === 'class') node.className = v;
+        else if (k === 'text') node.textContent = v;
+        else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+        else node.setAttribute(k, v);
+      }
+    }
+    for (const kid of kids) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      node.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+    }
+    return node;
+  }
+
+  function setText(id, text) {
+    const n = $(id);
+    if (n && n.textContent !== text) n.textContent = text;
+  }
+
+  function fmt(n, digits) {
+    if (n === null || n === undefined || Number.isNaN(n)) return '--';
+    return Number(n).toFixed(digits === undefined ? 1 : digits);
+  }
+
+  function toast(msg, kind) {
+    const box = $('toasts');
+    const node = el('div', { class: 'toast ' + (kind || '') , text: msg });
+    box.appendChild(node);
+    setTimeout(() => node.remove(), 4200);
+    logLine('[' + (kind === 'err' ? '错误' : '事件') + '] ' + msg);
+  }
+
+  function logLine(text) {
+    clientLog.push({ t: new Date().toLocaleTimeString('zh-CN', { hour12: false }), text });
+    if (clientLog.length > 200) clientLog.splice(0, clientLog.length - 200);
+    if (activeView === 'logs') renderLogs();
+  }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), opts.timeout || 30000);
+    const init = {
+      method: opts.method || 'GET',
+      signal: ctl.signal,
+      cache: 'no-store',
+      headers: { 'X-PF-Token': TOKEN }
+    };
+    if (opts.body !== undefined && opts.body !== null) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(opts.body);
+    }
+    try {
+      const res = await fetch(path, init);
+      reqCount += 1;
+      setText('foot-req', reqCount + ' 次请求');
+      if (!res.ok) {
+        let msg = 'HTTP ' + res.status;
+        try {
+          const j = await res.json();
+          msg = (j && (j.detail || j.message)) || msg;
+        } catch (e) { /* 非 JSON 响应 */ }
+        const err = new Error(msg);
+        err.status = res.status;
+        throw err;
+      }
+      const ct = res.headers.get('content-type') || '';
+      return ct.indexOf('application/json') >= 0 ? res.json() : res.text();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ---------------- 确认对话框 ---------------- */
+  function confirmDialog(title, text, okLabel, danger) {
+    return new Promise((resolve) => {
+      dialogResolve = resolve;
+      $('dlg-title').textContent = title;
+      $('dlg-body').textContent = text;
+      $('dlg-ok').textContent = okLabel || '确认';
+      $('dlg-ok').className = danger ? 'btn danger' : 'btn primary';
+      $('dlg').showModal();
+    });
+  }
+
+  function closeDialog(value) {
+    const dlg = $('dlg');
+    if (dlg.open) dlg.close();
+    if (dialogResolve) { dialogResolve(value); dialogResolve = null; }
+  }
+
+  /* ---------------- 视图切换 ---------------- */
+  function switchView(name) {
+    activeView = name;
+    for (const b of document.querySelectorAll('.navbtn')) {
+      b.classList.toggle('active', b.dataset.view === name);
+    }
+    for (const v of document.querySelectorAll('.view')) {
+      v.classList.toggle('active', v.dataset.view === name);
+    }
+    if (name === 'scenes' && !sceneLoaded) loadScenes();
+    if (name === 'models') refreshModels();
+    if (name === 'security') refreshSecurity();
+    if (name === 'settings' && !settingsLoaded) loadSettings();
+    if (name === 'logs') renderLogs();
+  }
+
+  /* ---------------- 快照渲染 ---------------- */
+  function renderSnapshot(d) {
+    snapshot = d;
+    const cpu = Number(d.cpu || 0);
+    const mem = Number(d.mem_percent || 0);
+
+    $('cpu-num').textContent = fmt(cpu) + '%';
+    $('cpu-bar').style.width = Math.min(cpu, 100) + '%';
+    $('mem-num').textContent = fmt(mem) + '%';
+    $('mem-bar').style.width = Math.min(mem, 100) + '%';
+
+    $('kpi-cpu').textContent = fmt(cpu);
+    $('kpi-cpu').appendChild(el('small', { text: '%' }));
+    $('kpi-cpu-x').textContent = '采样 ' + (d.time || '--');
+    $('kpi-mem').textContent = fmt(mem);
+    $('kpi-mem').appendChild(el('small', { text: '%' }));
+    $('kpi-mem-x').textContent = Math.round(d.mem_used_mb / 1024) + ' / ' +
+      Math.round(d.mem_total_mb / 1024) + ' GB';
+    $('kpi-procs').textContent = String(d.process_count || 0);
+    $('kpi-procs-x').textContent = (d.model_loaded ? d.model_loaded.length : 0) + ' 个本地模型已载入';
+
+    const fg = (d.processes || []).find((p) => p.pid === d.foreground_pid);
+    $('kpi-fg').textContent = fg ? fg.name : '--';
+    setText('foot-fg', fg ? fg.name : '--');
+    setText('foot-kernel', d.kernel_version || '--');
+    setText('foot-port', String(location.port || '--'));
+
+    $('dot-kernel').className = 'dot ' + (d.kernel_alive ? 'on' : 'off');
+    setText('pill-kernel', d.kernel_alive ? '内核在线' : '内核离线');
+    $('dot-cloud').className = 'dot ' + (d.model_loaded && d.model_loaded.length ? 'on' : 'warn');
+    setText('pill-cloud', d.model_loaded && d.model_loaded.length ? '本地模型 ' + d.model_loaded.length : '云端模式');
+
+    renderTop(d);
+    renderFocus(d);
+    renderProcessTable(d);
+  }
+
+  function renderTop(d) {
+    const list = (d.processes || []).slice()
+      .sort((a, b) => (b.cpu - a.cpu) || (b.mem_mb - a.mem_mb))
+      .slice(0, 8);
+    const box = $('ov-top');
+    box.textContent = '';
+    if (!list.length) { box.appendChild(el('div', { class: 'empty', text: '暂无进程数据' })); return; }
+    for (const p of list) {
+      const bar = el('i');
+      bar.style.width = Math.min(100, (p.cpu || 0)) + '%';
+      box.appendChild(el('div', {
+        class: 'topitem',
+        title: '点击查看 ' + p.name,
+        onclick: () => { selected = { pid: p.pid, name: p.name }; switchView('processes'); renderProcessTable(snapshot); }
+      },
+        el('div', { class: 'nm' }, el('div', { text: p.name }), el('div', { class: 'bar' }, bar)),
+        el('div', { class: 'tag' + (p.cpu > 20 ? ' hi' : ''), text: fmt(p.cpu) + '%' }),
+        el('div', { class: 'tag', text: fmt(p.mem_mb, 0) + ' MB' })
+      ));
+    }
+  }
+
+  function renderFocus(d) {
+    const fg = (d.processes || []).find((p) => p.pid === d.foreground_pid);
+    const kv = $('ov-focus');
+    kv.textContent = '';
+    const rows = [
+      ['前台应用', fg ? fg.name + '  (PID ' + fg.pid + ')' : '--'],
+      ['进程总数', String(d.process_count || 0)],
+      ['内核状态', d.kernel_alive ? '在线 · ' + (d.kernel_version || '') : '离线'],
+      ['本地模型', (d.model_loaded || []).map((m) => m.id || m.key || m).join(', ') || '未载入'],
+      ['采样时刻', d.time || '--']
+    ];
+    for (const row of rows) {
+      kv.appendChild(el('div', { class: 'k', text: row[0] }));
+      kv.appendChild(el('div', { class: 'v', text: row[1] }));
+    }
+  }
+
+  /* ---------------- 进程表（增量更新，避免每秒重建 400 行） ---------------- */
+  const rowMap = new Map();
+  let lastOrder = '';
+
+  function renderProcessTable(d) {
+    if (!d) return;
+    const q = ($('proc-search').value || '').trim().toLowerCase();
+    const sort = $('proc-sort').value;
+    let list = (d.processes || []).filter((p) =>
+      !q || String(p.pid) === q || (p.name || '').toLowerCase().indexOf(q) >= 0);
+    if (sort === 'cpu') list.sort((a, b) => (b.cpu - a.cpu) || (b.mem_mb - a.mem_mb));
+    else if (sort === 'mem') list.sort((a, b) => (b.mem_mb - a.mem_mb) || (b.cpu - a.cpu));
+    else if (sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name) || a.pid - b.pid);
+    else list.sort((a, b) => a.pid - b.pid);
+
+    setText('proc-count', list.length + ' / ' + (d.process_count || 0) + ' 个进程');
+
+    const body = $('proc-body');
+    const order = list.map((p) => p.pid).join(',');
+    const alive = new Set();
+
+    for (const p of list) {
+      alive.add(p.pid);
+      let row = rowMap.get(p.pid);
+      if (!row) {
+        row = el('div', { class: 'row' });
+        row.appendChild(el('span', { class: 'pid' }));
+        row.appendChild(el('span', { class: 'nm' }));
+        row.appendChild(el('span', { class: 'cpu' }));
+        row.appendChild(el('span', { class: 'mem' }));
+        row.appendChild(el('span', { class: 'status' }));
+        row.appendChild(el('span', { class: 'tag' }));
+        row.addEventListener('click', () => selectProcess(p.pid, p.name));
+        rowMap.set(p.pid, row);
+      }
+      row.children[0].textContent = String(p.pid);
+      let nm = p.name;
+      if (p.children > 0) nm += '  (+' + p.children + ')';
+      if (p.pid === d.foreground_pid) nm += '  [前台]';
+      row.children[1].textContent = nm;
+      row.children[2].textContent = fmt(p.cpu);
+      row.children[3].textContent = fmt(p.mem_mb, 0);
+      row.children[4].textContent = p.priority || '';
+      const tag = row.children[5];
+      const isCrit = p.critical === true;
+      tag.textContent = isCrit ? '系统' : (p.cpu > 25 ? '占用高' : '');
+      tag.className = 'tag' + (isCrit ? ' rt' : (p.cpu > 25 ? ' hi' : (p.cpu < 0.5 ? ' low' : '')));
+      row.classList.toggle('sel', !!selected && selected.pid === p.pid);
+    }
+
+    for (const [pid, row] of rowMap) {
+      if (!alive.has(pid)) { row.remove(); rowMap.delete(pid); }
+    }
+
+    if (order !== lastOrder) {
+      lastOrder = order;
+      if (!list.length) {
+        body.textContent = '';
+        body.appendChild(el('div', { class: 'empty', text: '没有匹配的进程' }));
+      } else {
+        const empty = body.querySelector('.empty');
+        if (empty) empty.remove();
+        for (const p of list) body.appendChild(rowMap.get(p.pid));
+      }
+    } else if (!list.length && !body.querySelector('.empty')) {
+      body.textContent = '';
+      body.appendChild(el('div', { class: 'empty', text: '没有匹配的进程' }));
+    }
+  }
+
+  function selectProcess(pid, name) {
+    selected = { pid, name };
+    if (snapshot) renderProcessTable(snapshot);
+    $('proc-who').textContent = name + ' (PID ' + pid + ')';
+  }
+
+  /* ---------------- 指令执行 ---------------- */
+  async function runCommand(action, extra, confirmText) {
+    if (confirmText) {
+      const ok = await confirmDialog('确认执行', confirmText, '执行', action === 'kill_process');
+      if (!ok) return null;
+    }
+    const body = Object.assign({ action: action }, extra || {});
+    if (action === 'kill_process' || action === 'stress_process') body.confirm = true;
+    const r = await api('/api/command', { method: 'POST', body: body, timeout: 90000 });
+    if (!r || r.ok === false) {
+      throw new Error((r && r.text) || '内核没有返回结果（可能已离线）');
+    }
+    logLine('执行 ' + action + (extra && extra.process_name ? ' → ' + extra.process_name : ''));
+    return r;
+  }
+
+  async function guard(promise, okMsg) {
+    try {
+      const r = await promise;
+      if (okMsg) toast(okMsg + (r && r.text ? '：' + String(r.text).slice(0, 120) : ''), 'ok');
+      return r;
+    } catch (e) {
+      toast(e.message || String(e), 'err');
+      return null;
+    }
+  }
+
+  /* ---------------- 场景 ---------------- */
+  async function loadScenes() {
+    try {
+      const d = await api('/api/scenes');
+      sceneLoaded = true;
+      const box = $('scene-list');
+      box.textContent = '';
+      const items = d.scenes || [];
+      if (!items.length) { box.appendChild(el('div', { class: 'empty', text: 'scenes.json 中没有场景' })); return; }
+      for (const s of items) {
+        box.appendChild(el('div', { class: 'scene' },
+          el('div', { class: 'nm', text: s.name }),
+          el('div', { class: 'desc', text: s.desc || '按预设组合调整电源与进程优先级' }),
+          el('button', {
+            class: 'btn primary sm', text: '套用场景',
+            onclick: () => guard(runCommand('apply_scene', { scene: s.name },
+              '将套用场景「' + s.name + '」：会切换电源方案并调整相关进程优先级。'), '场景已套用')
+          })
+        ));
+      }
+    } catch (e) {
+      toast('读取场景失败：' + e.message, 'err');
+    }
+  }
+
+  /* ---------------- 模型 ---------------- */
+  async function refreshModels() {
+    try {
+      const [r, m] = await Promise.all([api('/api/router', { timeout: 25000 }), api('/api/models')]);
+      renderRouter(r);
+      const sel = $('router-model');
+      const cur = sel.value;
+      const items = (m.models || []).filter((x) => !(x.alias || '').match(/embed|rerank/i));
+      sel.textContent = '';
+      for (const it of items) {
+        sel.appendChild(el('option', { value: it.key, text: it.alias || it.key }));
+      }
+      if (!items.length) sel.appendChild(el('option', { value: '', text: '未发现模型配置' }));
+      else if (cur) sel.value = cur;
+    } catch (e) {
+      toast('读取模型状态失败：' + e.message, 'err');
+    }
+  }
+
+  function renderRouter(r) {
+    const kv = $('router-kv');
+    kv.textContent = '';
+    const text = (r && (r.text || (r.data && JSON.stringify(r.data)))) || '';
+    const running = /running|true|已运行|运行中|state: ?run/i.test(text) && !/not running|stopped/i.test(text);
+    $('dot-router').className = 'dot ' + (running ? 'on' : 'warn');
+    setText('pill-router', running ? '路由运行中' : '路由未启动');
+    const rows = [
+      ['状态', running ? '运行中' : '未启动'],
+      ['服务地址', 'http://127.0.0.1:8080'],
+      ['详情', text ? text.slice(0, 260) : '未返回状态']
+    ];
+    for (const row of rows) {
+      kv.appendChild(el('div', { class: 'k', text: row[0] }));
+      kv.appendChild(el('div', { class: 'v', text: row[1] }));
+    }
+  }
+
+  /* ---------------- 对话 ---------------- */
+  function chatAppend(role, text) {
+    const node = el('div', { class: 'msg ' + role, text: text });
+    $('chat-list').appendChild(node);
+    $('chat-list').scrollTop = $('chat-list').scrollHeight;
+    return node;
+  }
+
+  async function sendChat() {
+    const input = $('chat-input');
+    const text = (input.value || '').trim();
+    if (!text) return;
+    input.value = '';
+    chatAppend('user', text);
+    chatHistory.push({ role: 'user', content: text });
+    const target = $('chat-target').value;
+    const bubble = chatAppend('bot', '');
+    let acc = '';
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-PF-Token': TOKEN },
+        body: JSON.stringify({ target: target, messages: chatHistory })
+      });
+      reqCount += 1;
+      if (!res.ok) {
+        let msg = 'HTTP ' + res.status;
+        try { const j = await res.json(); msg = j.detail || msg; } catch (e) { /* ignore */ }
+        throw new Error(msg);
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder('utf-8');
+      let buf = '';
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        buf += dec.decode(chunk.value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          for (const line of block.split('\n')) {
+            if (line.indexOf('data:') !== 0) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const j = JSON.parse(payload);
+              if (j.error) { bubble.classList.add('err'); bubble.textContent = String(j.error).slice(0, 400); return; }
+              const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+              if (delta) { acc += delta; bubble.textContent = acc; }
+            } catch (e) { /* 跳过非 JSON 分片 */ }
+          }
+          $('chat-list').scrollTop = $('chat-list').scrollHeight;
+        }
+      }
+      if (!acc) { bubble.classList.add('sys'); bubble.textContent = '（模型没有返回内容）'; }
+      else chatHistory.push({ role: 'assistant', content: acc });
+    } catch (e) {
+      bubble.classList.add('err');
+      bubble.textContent = e.message || String(e);
+    }
+  }
+
+  /* ---------------- 安全态势 ---------------- */
+  async function refreshSecurity() {
+    try {
+      const [sec, audit] = await Promise.all([api('/api/security'), api('/api/audit?limit=40')]);
+      renderSecurity(sec);
+      renderAudit(audit.items || []);
+      securityLoaded = true;
+    } catch (e) {
+      toast('读取安全态势失败：' + e.message, 'err');
+    }
+  }
+
+  function renderSecurity(s) {
+    const kv = $('sec-kv');
+    kv.textContent = '';
+    const rows = [
+      ['监听', s.bind.host + ':' + s.bind.port + (s.bind.loopback_only ? '（仅回环）' : '（对外暴露！）')],
+      ['Host 白名单', (s.host_guard.allowed || []).join(', ')],
+      ['令牌指纹', s.token.fingerprint || '未就绪'],
+      ['令牌文件', s.token.path],
+      ['接口地图', s.docs.disabled ? '已关闭（/docs /openapi.json 均 404）' : '未关闭（风险）'],
+      ['请求限流', s.limits.requests_per_min + ' 次/分钟 · 认证失败 ' + s.limits.auth_fail_threshold + ' 次熔断'],
+      ['请求体上限', String(s.limits.body_bytes) + ' 字节'],
+      ['安全响应头', (s.headers || []).join(', ')],
+      ['云端密钥', s.cloud_key.encrypted ? 'DPAPI 加密存储' : (s.cloud_key.source === 'env' ? '环境变量明文' : '未配置')],
+      ['审计日志', s.audit_log]
+    ];
+    for (const row of rows) {
+      kv.appendChild(el('div', { class: 'k', text: row[0] }));
+      kv.appendChild(el('div', { class: 'v', text: row[1] }));
+    }
+    setText('sec-fp', '令牌 ' + (s.token.fingerprint || '--'));
+  }
+
+  function renderAudit(items) {
+    const box = $('sec-audit');
+    box.textContent = '';
+    if (!items.length) { box.appendChild(el('div', { class: 'empty', text: '最近没有安全事件' })); return; }
+    for (const it of items) {
+      const meta = Object.keys(it).filter((k) => k !== 'ts' && k !== 'event')
+        .map((k) => k + '=' + it[k]).join('  ');
+      box.appendChild(el('div', { class: 'item' },
+        el('span', { class: 'dt', text: it.ts || '' }),
+        el('span', { class: 'ev', text: it.event || '' }),
+        el('span', { class: 'meta', text: meta })));
+    }
+  }
+
+  async function runSelfcheck() {
+    const btn = $('sec-selfcheck');
+    btn.disabled = true;
+    btn.textContent = '自检中…';
+    const box = $('sec-checks');
+    box.textContent = '';
+    box.appendChild(el('div', { class: 'empty', text: '正在发起真实攻击请求…' }));
+    try {
+      const r = await api('/api/selfcheck', { method: 'POST', body: {}, timeout: 60000 });
+      box.textContent = '';
+      for (const c of r.checks || []) {
+        box.appendChild(el('div', { class: 'check' },
+          el('span', { class: 'badge ' + (c.pass ? 'ok' : 'bad'), text: c.pass ? 'PASS' : 'FAIL' }),
+          el('div', {},
+            el('div', { class: 't', text: c.name }),
+            el('div', { class: 'd', text: '期望 ' + c.expect + ' · 实际 ' + c.actual }))));
+      }
+      toast(r.ok ? '自检全部通过' : '自检发现未拦截项', r.ok ? 'ok' : 'err');
+      refreshSecurity();
+    } catch (e) {
+      box.textContent = '';
+      box.appendChild(el('div', { class: 'empty', text: '自检失败：' + e.message }));
+      toast('自检失败：' + e.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '立即自检';
+    }
+  }
+
+  /* ---------------- 设置 ---------------- */
+  async function loadSettings() {
+    try {
+      const s = await api('/api/settings');
+      settingsLoaded = true;
+      $('set-base').value = s.cloud.base_url || '';
+      $('set-model').value = s.cloud.model || '';
+      $('set-key').value = '';
+      $('set-key').placeholder = s.cloud.has_key
+        ? '已保存（' + (s.cloud.source === 'vault' ? 'DPAPI 加密' : '环境变量明文') + '），留空则不修改'
+        : '尚未配置';
+      $('set-prompt').value = s.system_prompt || '';
+      const kv = $('set-info');
+      kv.textContent = '';
+      const rows = [
+        ['令牌指纹', s.token_fingerprint || '--'],
+        ['内核目录', s.kernel_dir],
+        ['程序目录', s.app_dir],
+        ['密钥来源', s.cloud.source === 'vault' ? 'DPAPI 加密库' : (s.cloud.source === 'env' ? '环境变量（明文）' : '未配置')]
+      ];
+      for (const row of rows) {
+        kv.appendChild(el('div', { class: 'k', text: row[0] }));
+        kv.appendChild(el('div', { class: 'v', text: row[1] }));
+      }
+    } catch (e) {
+      toast('读取设置失败：' + e.message, 'err');
+    }
+  }
+
+  async function saveSettings() {
+    const body = {
+      base_url: $('set-base').value.trim(),
+      model: $('set-model').value.trim(),
+      system_prompt: $('set-prompt').value
+    };
+    const key = $('set-key').value.trim();
+    if (key) body.api_key = key;
+    const out = $('set-out');
+    try {
+      const r = await api('/api/settings', { method: 'POST', body: body });
+      out.hidden = false;
+      out.textContent = '已保存：' + (r.changed || []).join(', ') + '；云端可用：' + (r.cloud_ready ? '是' : '否');
+      toast('设置已保存', 'ok');
+      $('set-key').value = '';
+      loadSettings();
+    } catch (e) {
+      out.hidden = false;
+      out.textContent = '保存失败：' + e.message;
+      toast('保存失败：' + e.message, 'err');
+    }
+  }
+
+  async function testCloud() {
+    const out = $('set-out');
+    out.hidden = false;
+    out.textContent = '正在测试云端连接…';
+    try {
+      const r = await api('/api/cloud/test', { method: 'POST', body: {}, timeout: 40000 });
+      out.textContent = (r.ok ? '连接成功' : '连接失败') + ' · HTTP ' + r.status +
+        ' · ' + r.latency_ms + ' ms' + (r.model_count ? ' · ' + r.model_count + ' 个模型' : '') +
+        (r.detail ? '\n' + r.detail : '');
+    } catch (e) {
+      out.textContent = '测试失败：' + e.message;
+    }
+  }
+
+  async function clearKey() {
+    const ok = await confirmDialog('清除云端密钥', '删除本机加密保存的 API Key，之后将回落到环境变量配置。', '清除', true);
+    if (!ok) return;
+    try {
+      await api('/api/settings', { method: 'POST', body: { clear_key: true } });
+      toast('已清除本机密钥', 'ok');
+      loadSettings();
+    } catch (e) {
+      toast('清除失败：' + e.message, 'err');
+    }
+  }
+
+  /* ---------------- 日志 ---------------- */
+  function renderLogs() {
+    const box = $('log-list');
+    const lines = clientLog.map((l) => l.t + '  ' + l.text);
+    box.textContent = lines.length ? lines.join('\n') : '（本会话暂无事件）';
+  }
+
+  /* ---------------- 轮询 ---------------- */
+  function schedulePoll() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      if (document.visibilityState === 'hidden') return;
+      if (pollErrors >= 5) return;
+      try {
+        const d = await api('/api/snapshot', { timeout: 8000 });
+        pollErrors = 0;
+        renderSnapshot(d);
+      } catch (e) {
+        pollErrors += 1;
+        if (pollErrors === 1) toast('快照读取失败：' + e.message + '（已暂停自动刷新）', 'err');
+      }
+    }, 1000);
+  }
+
+  /* ---------------- 绑定 ---------------- */
+  function bind() {
+    for (const b of document.querySelectorAll('.navbtn')) {
+      b.addEventListener('click', () => switchView(b.dataset.view));
+    }
+
+    $('proc-search').addEventListener('input', () => renderProcessTable(snapshot));
+    $('proc-sort').addEventListener('change', () => renderProcessTable(snapshot));
+    for (const h of document.querySelectorAll('.proc-head span[data-sort]')) {
+      h.addEventListener('click', () => { $('proc-sort').value = h.dataset.sort; renderProcessTable(snapshot); });
+    }
+
+    for (const b of document.querySelectorAll('.ops [data-cmd]')) {
+      b.addEventListener('click', () => {
+        if (!selected) { toast('请先在列表里选择进程', 'err'); return; }
+        const action = b.dataset.cmd;
+        const extra = { process_name: selected.name };
+        const needsConfirm = action === 'suspend' || action === 'revoke';
+        const map = { focus_high: 'focus', focus_mid: 'focus', focus_low: 'focus','unfocus': 'unfocus', grant: 'authorize', revoke: 'revoke', reclaim: 'trim_memory', suspend: 'suspend_process', resume: 'resume_process' };
+        const real = map[action] || action;
+        if (action === 'focus_high') extra.mode = 'godmode';
+        if (action === 'focus_mid') extra.mode = 'aggressive';
+        if (action === 'focus_low') extra.mode = 'gentle';
+        if (action === 'unfocus') delete extra.process_name;
+        if (action === 'reclaim') delete extra.process_name;
+        guard(runCommand(real, action === 'revoke' ? { process_name: selected.name, level: 'normal' } : extra,
+          needsConfirm ? '将对 ' + selected.name + ' 执行「' + b.textContent + '」，是否继续？' : null),
+          b.textContent);
+      });
+    }
+
+    $('proc-body').addEventListener('click', (ev) => {
+      const row = ev.target.closest('.row');
+      if (!row) return;
+      const pid = Number(row.children[0].textContent);
+      const p = (snapshot && snapshot.processes || []).find((x) => x.pid === pid);
+      if (p) selectProcess(p.pid, p.name);
+    });
+
+    $('proc-body').addEventListener('dblclick', async (ev) => {
+      const row = ev.target.closest('.row');
+      if (!row || !selected) return;
+      const ok = await confirmDialog('终止进程', '将强制结束 ' + selected.name + ' (PID ' + selected.pid + ')。系统关键进程可能被内核拒绝。', '终止', true);
+      if (!ok) return;
+      guard(runCommand('kill_process', { process_name: selected.name }, null), '终止指令已发送');
+    });
+
+    $('cmd-run').addEventListener('click', async () => {
+      const text = ($('cmd-input').value || '').trim();
+      const out = $('cmd-out');
+      out.hidden = false;
+      if (!text) { out.textContent = '请输入指令'; return; }
+      try {
+        const r = await api('/api/parse', { method: 'POST', body: { text: text } });
+        if (!r.hit) { out.textContent = '未识别：' + (r.hint || '换个说法，例如「聚焦 Chrome」'); return; }
+        out.textContent = '识别为：' + (r.command._explain || JSON.stringify(r.command));
+        const ok = await confirmDialog('执行指令', r.command._explain || JSON.stringify(r.command), '执行', false);
+        if (!ok) return;
+        const cmd = Object.assign({}, r.command);
+        delete cmd._explain;
+        const res = await api('/api/command', { method: 'POST', body: cmd, timeout: 90000 });
+        out.textContent = '结果：' + (res.text || (res.ok ? '成功' : '失败'));
+        logLine('指令：' + text + ' → ' + (res.text || ''));
+      } catch (e) {
+        out.textContent = '执行失败：' + e.message;
+      }
+    });
+    $('cmd-input').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('cmd-run').click(); });
+
+    $('cmd-fast').addEventListener('click', () => guard(runCommand('set_power_plan', { plan: 'high' }, '切换到高性能电源方案？'), '已切换高性能'));
+    $('cmd-bal').addEventListener('click', () => guard(runCommand('set_power_plan', { plan: 'balanced' }), '已切换平衡'));
+    $('cmd-trim').addEventListener('click', () => guard(runCommand('trim_memory', {}), '内存整理完成'));
+    $('cmd-unfocus').addEventListener('click', () => guard(runCommand('unfocus', {}), '已解除聚焦'));
+
+    $('router-start').addEventListener('click', async () => {
+      const model = $('router-model').value;
+      const ok = await confirmDialog('启动本地模型路由', '将载入模型「' + (model || '默认') + '」并占用显存，是否继续？', '启动', false);
+      if (!ok) return;
+      try {
+        const r = await runCommand('start_router', { model: model, _timeout: 180 });
+        toast('路由启动：' + String(r.text || '').slice(0, 120), 'ok');
+        refreshModels();
+      } catch (e) { toast('启动失败：' + e.message, 'err'); }
+    });
+    $('router-stop').addEventListener('click', async () => {
+      const ok = await confirmDialog('停止模型路由', '将停止本地模型服务，正在进行的本地对话会中断。', '停止', true);
+      if (!ok) return;
+      try { await runCommand('stop_router', {}, null); toast('已停止路由', 'ok'); refreshModels(); }
+      catch (e) { toast('停止失败：' + e.message, 'err'); }
+    });
+    $('boost-run').addEventListener('click', async () => {
+      const mode = $('boost-mode').value;
+      const out = $('boost-out');
+      out.hidden = false;
+      out.textContent = '计算中…';
+      try {
+        const r = await api('/api/boost', { method: 'POST', body: { mode: mode, model: $('boost-target').value.trim() }, timeout: 90000 });
+        out.textContent = r.text || (r.ok ? '完成' : '失败');
+      } catch (e) { out.textContent = '失败：' + e.message; }
+    });
+
+    $('chat-send').addEventListener('click', sendChat);
+    $('chat-input').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') sendChat(); });
+
+    $('sec-selfcheck').addEventListener('click', runSelfcheck);
+    $('sec-refresh').addEventListener('click', refreshSecurity);
+
+    $('set-save').addEventListener('click', saveSettings);
+    $('set-test').addEventListener('click', testCloud);
+    $('set-clear').addEventListener('click', clearKey);
+
+    $('log-refresh').addEventListener('click', renderLogs);
+    $('log-clear').addEventListener('click', () => { clientLog = []; renderLogs(); });
+
+    $('dlg-ok').addEventListener('click', () => closeDialog(true));
+    $('dlg-cancel').addEventListener('click', () => closeDialog(false));
+    $('dlg').addEventListener('cancel', (ev) => { ev.preventDefault(); closeDialog(false); });
+  }
+
+  async function boot() {
+    bind();
+    try {
+      const d = await api('/api/snapshot', { timeout: 8000 });
+      renderSnapshot(d);
+    } catch (e) {
+      toast('启动失败：' + e.message, 'err');
+    }
+    schedulePoll();
+    logLine('控制台就绪');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();

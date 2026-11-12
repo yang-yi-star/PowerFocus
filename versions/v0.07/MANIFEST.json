@@ -1,0 +1,42 @@
+{
+  "name": "电脑算力调度中心",
+  "version": "0.07",
+  "version_label": "v0.07",
+  "build_date": "2026-11-05",
+  "stage": "stable",
+  "note": "启动时自动拉起 MemGuard 守护（防重复、只认本版本目录）；实测 2026-11-05 03:29 自动拉起 PID 50396",
+  "entry": "电脑算力调度中心_v0.07.ps1",
+  "lineage": "v0.06",
+  "components": [
+    "电脑算力调度中心_v0.07.ps1",
+    "rules-engine.ps1",
+    "lib/app-purger.ps1",
+    "lib/clean-recyclebin.ps1",
+    "lib/geek-bridge.ps1",
+    "lib/mem-guard.ps1",
+    "lib/model-registry.ps1",
+    "lib/rollback.ps1"
+  ],
+  "configs": [
+    "rules.json",
+    "scenes.json",
+    "models-preset.ini",
+    "model-profiles.json",
+    "authorized_apps.json"
+  ],
+  "runtime_isolated": [
+    "logs/",
+    "commands/in|out|done",
+    "mem-guard.state.json",
+    "rules_state.json",
+    "v3_heartbeat.json",
+    ".v3.lock",
+    ".auth_token",
+    "router.pid"
+  ],
+  "portable": true,
+  "depends_on": [
+    "PowerShell 7+",
+    "llama.cpp"
+  ]
+}

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="pf-token" content="__PF_TOKEN_VALUE__">
+<title>电脑算力调度中心</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>电脑算力调度中心</h1>
+      <span class="sub">POWERFOCUS CONSOLE</span>
+    </div>
+  </div>
+
+  <div class="gauges">
+    <div class="gauge">
+      <div class="top"><span class="name">CPU</span><span class="num" id="cpu-num">--<small>%</small></span></div>
+      <div class="track cpu"><i id="cpu-bar"></i></div>
+    </div>
+    <div class="gauge">
+      <div class="top"><span class="name">内存</span><span class="num" id="mem-num">--<small>%</small></span></div>
+      <div class="track mem"><i id="mem-bar"></i></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="pills">
+    <div class="pill"><span class="dot" id="dot-kernel"></span><span id="pill-kernel">内核</span></div>
+    <div class="pill"><span class="dot" id="dot-cloud"></span><span id="pill-cloud">云端</span></div>
+    <div class="pill"><span class="dot" id="dot-router"></span><span id="pill-router">模型路由</span></div>
+  </div>
+</header>
+
+<nav>
+  <div class="group">运行</div>
+  <button class="navbtn active" data-view="overview"><span class="ico">◈</span>总览</button>
+  <button class="navbtn" data-view="processes"><span class="ico">▤</span>进程</button>
+  <button class="navbtn" data-view="scenes"><span class="ico">✦</span>场景</button>
+  <button class="navbtn" data-view="models"><span class="ico">◎</span>模型与对话</button>
+  <div class="group">系统</div>
+  <button class="navbtn" data-view="security"><span class="ico">⛨</span>安全态势</button>
+  <button class="navbtn" data-view="settings"><span class="ico">⚙</span>设置</button>
+  <button class="navbtn" data-view="logs"><span class="ico">≡</span>日志</button>
+  <div class="foot">
+    <b>本机服务</b><br>
+    仅监听回环地址<br>
+    接口需令牌访问
+  </div>
+</nav>
+
+<main>
+  <!-- ================= 总览 ================= -->
+  <section class="view active" data-view="overview">
+    <div class="kpis">
+      <div class="kpi"><div class="k">CPU 占用</div><div class="v" id="kpi-cpu">--<small>%</small></div><div class="extra" id="kpi-cpu-x">--</div></div>
+      <div class="kpi alt"><div class="k">内存占用</div><div class="v" id="kpi-mem">--<small>%</small></div><div class="extra" id="kpi-mem-x">--</div></div>
+      <div class="kpi"><div class="k">进程总数</div><div class="v" id="kpi-procs">--</div><div class="extra" id="kpi-procs-x">--</div></div>
+      <div class="kpi alt"><div class="k">前台应用</div><div class="v" id="kpi-fg">--</div><div class="extra">当前聚焦目标</div></div>
+    </div>
+
+    <div class="split">
+      <div class="panel">
+        <div class="head">资源占用 TOP 8<span class="sp"></span><span class="hint">点击进程可跳转详情</span></div>
+        <div class="body"><div class="toplist" id="ov-top"><div class="empty">正在读取快照…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="head">当前调度<span class="sp"></span></div>
+        <div class="body">
+          <div class="kv" id="ov-focus">
+            <div class="k">等待快照</div><div class="v">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="head">指令 / 快捷操作<span class="sp"></span></div>
+      <div class="body">
+        <div class="cmdbar">
+          <input id="cmd-input" placeholder="自然语言指令，例如：给我申请一点算力 / 清理一下内存">
+          <button class="btn primary" id="cmd-run">解析</button>
+          <button class="btn" id="cmd-fast">高性能</button>
+          <button class="btn" id="cmd-bal">平衡</button>
+          <button class="btn" id="cmd-trim">清理内存</button>
+          <button class="btn" id="cmd-unfocus">解除聚焦</button>
+        </div>
+        <div class="out" id="cmd-out" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 进程 ================= -->
+  <section class="view" data-view="processes">
+    <div class="panel grow">
+      <div class="head">
+        进程列表
+        <input id="proc-search" class="w220" placeholder="搜索名称或 PID">
+        <select id="proc-sort" class="w130">
+          <option value="cpu">按 CPU 降序</option>
+          <option value="mem">按内存降序</option>
+          <option value="name">按名称</option>
+          <option value="pid">按 PID</option>
+        </select>
+        <span class="sp"></span>
+        <span class="hint" id="proc-count">--</span>
+      </div>
+      <div class="proc-head">
+        <span data-sort="pid">PID</span>
+        <span data-sort="name">进程名</span>
+        <span data-sort="cpu">CPU%</span>
+        <span data-sort="mem">内存(MB)</span>
+        <span>状态</span>
+        <span></span>
+      </div>
+      <div class="proc-body" id="proc-body"><div class="empty">正在读取快照…</div></div>
+      <div class="ops">
+        <span class="who">当前选择：<b id="proc-who">无</b></span>
+        <button class="btn sm" data-cmd="focus_high">聚焦·高</button>
+        <button class="btn sm" data-cmd="focus_mid">聚焦·中</button>
+        <button class="btn sm" data-cmd="focus_low">聚焦·低</button>
+        <button class="btn sm" data-cmd="unfocus">解除聚焦</button>
+        <button class="btn sm" data-cmd="grant">授权</button>
+        <button class="btn sm" data-cmd="revoke">收回授权</button>
+        <button class="btn sm" data-cmd="reclaim">回收内存</button>
+        <button class="btn sm" data-cmd="suspend">冻结</button>
+        <button class="btn sm" data-cmd="resume">恢复</button>
+        <button class="btn sm danger" data-kill="1">终止进程</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 场景 ================= -->
+  <section class="view" data-view="scenes">
+    <div class="panel">
+      <div class="head">调度场景<span class="sp"></span><span class="hint">一键套用电源与优先级组合</span></div>
+      <div class="body"><div class="cards" id="scene-list"><div class="empty">正在读取场景…</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="head">场景说明</div>
+      <div class="body hint">
+        场景是从 <span class="mono">scenes.json</span> 读取的预设组合：切换电源方案、批量调整进程优先级、清理后台占用。
+        执行前会二次确认，避免误伤前台应用。
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 模型与对话 ================= -->
+  <section class="view" data-view="models">
+    <div class="split">
+      <div class="panel">
+        <div class="head">本地模型路由<span class="sp"></span></div>
+        <div class="body">
+          <div class="kv" id="router-kv"><div class="k">状态</div><div class="v">--</div></div>
+          <div class="cmdbar mt12">
+            <select id="router-model" class="flex1"><option value="">载入模型列表…</option></select>
+            <button class="btn primary" id="router-start">启动</button>
+            <button class="btn danger" id="router-stop">停止</button>
+          </div>
+          <div class="cmdbar mt8">
+            <select id="boost-mode" class="w120">
+              <option value="dry_run">试算（只出方案）</option>
+              <option value="apply">执行（实际调参）</option>
+            </select>
+            <input id="boost-target" class="flex1" placeholder="目标模型名（可空）">
+            <button class="btn" id="boost-run">加速方案</button>
+          </div>
+          <div class="out" id="boost-out" hidden></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="head">对话<span class="sp"></span>
+          <select id="chat-target" class="w130">
+            <option value="cloud">云端模型</option>
+            <option value="local">本地模型</option>
+          </select>
+        </div>
+        <div class="chat-list" id="chat-list"></div>
+        <div class="compose">
+          <input id="chat-input" placeholder="输入消息，Enter 发送">
+          <button class="btn primary" id="chat-send">发送</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 安全态势 ================= -->
+  <section class="view" data-view="security">
+    <div class="panel">
+      <div class="head">防护基线<span class="sp"></span><span class="hint" id="sec-fp">--</span></div>
+      <div class="body"><div class="kv" id="sec-kv"><div class="k">加载中</div><div class="v">--</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="head">主动攻击自检<span class="sp"></span>
+        <button class="btn primary sm" id="sec-selfcheck">立即自检</button>
+      </div>
+      <div class="body">
+        <div class="checks" id="sec-checks"><div class="empty">点击「立即自检」用真实请求验证拦截效果</div></div>
+      </div>
+    </div>
+    <div class="panel grow">
+      <div class="head">安全审计（最近事件）<span class="sp"></span>
+        <button class="btn sm" id="sec-refresh">刷新</button>
+      </div>
+      <div class="body"><div class="audit" id="sec-audit"><div class="empty">暂无事件</div></div></div>
+    </div>
+  </section>
+
+  <!-- ================= 设置 ================= -->
+  <section class="view" data-view="settings">
+    <div class="panel">
+      <div class="head">云端模型凭据<span class="sp"></span><span class="hint">密钥经 Windows DPAPI 加密后落盘</span></div>
+      <div class="body">
+        <div class="form">
+          <label for="set-base">API 地址</label>
+          <input id="set-base" placeholder="https://api.example.com/v1">
+          <label for="set-model">模型名</label>
+          <input id="set-model" placeholder="例如 agnes-3.0-flash">
+          <label for="set-key">API Key</label>
+          <input id="set-key" type="password" placeholder="留空则不修改">
+          <label for="set-prompt">系统提示词</label>
+          <textarea id="set-prompt" rows="4" placeholder="留空则使用默认"></textarea>
+          <div class="actions">
+            <button class="btn primary" id="set-save">保存</button>
+            <button class="btn" id="set-test">测试连接</button>
+            <button class="btn danger" id="set-clear">清除密钥</button>
+          </div>
+        </div>
+        <div class="out" id="set-out" hidden></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="head">运行信息</div>
+      <div class="body"><div class="kv" id="set-info"><div class="k">加载中</div><div class="v">--</div></div></div>
+    </div>
+  </section>
+
+  <!-- ================= 日志 ================= -->
+  <section class="view" data-view="logs">
+    <div class="panel grow">
+      <div class="head">运行日志<span class="sp"></span>
+        <button class="btn sm" id="log-refresh">刷新</button>
+        <button class="btn sm" id="log-clear">清空</button>
+      </div>
+      <div class="body"><div class="out fill" id="log-list"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>内核 <b id="foot-kernel">--</b></span>
+  <span>端口 <b id="foot-port">--</b></span>
+  <span>前台 <b id="foot-fg">--</b></span>
+  <span class="sp"></span>
+  <span id="foot-req">0 次请求</span>
+  <span>仅回环监听 · 令牌鉴权 · Host 校验</span>
+</footer>
+
+<dialog id="dlg">
+  <div class="dlg-head" id="dlg-title">确认操作</div>
+  <div class="dlg-body" id="dlg-body"></div>
+  <div class="dlg-actions">
+    <button class="btn" id="dlg-cancel">取消</button>
+    <button class="btn primary" id="dlg-ok">确认</button>
+  </div>
+</dialog>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/static/app.js" defer></script>
+</body>
+</html>

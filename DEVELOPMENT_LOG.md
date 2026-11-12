@@ -718,3 +718,316 @@
 
 ### 四、判断（供决策）
 收益：省掉“加载一次工具开关”。风险：编辑器起不来，且极可能被压缩包自动复原而白做。建议不执行；工具已备好，由用户当场决定。
+
+---
+
+## 2026-11-05 02:20 · A+B 落地：模型路由 + v3 动作 + 控制台（含实测）
+
+### 一、开发环境（可复现）
+- 新建 `E:\PowerFocus\.venv`（Python 3.13.0，`.gitignore` 已忽略）；装 fastapi 0.162.0 / uvicorn 0.54.0 / pytest 9.2.0 / httpx / ruff。
+- 新增 `pyproject.toml`：pytest 指向 `tests/py`；ruff 只查 `F`+`E9`（未定义名、未使用导入、语法），不强制重排既有风格。
+- 清理既有 `mcp-server.py` 中未使用的 `re` / `uuid` 导入（ruff 首次检查即发现）。
+
+### 二、A1 模型路由 `tools\model-router.ps1`
+- 动作：`start / stop / status / logs / boost / restore`；参数源唯一：`v3\models-preset.ini`。
+- **关键实测结论**：agent 终端用 `Start-Process` 拉起的 llama-server 会随命令结束被 job 清理（连无重定向也一样）。改为 `Invoke-CimMethod Win32_Process Create` 启动，进程归属 WMI 提供者，可长期驻留；日志改由 llama-server 自带 `--log-file` 落盘。
+- 单实例与安全闸：PID 文件 + 命令行指纹双校验；**判定指纹 = 命令行里的 `--log-file` 指向本脚本的 `logs\router.log`**（主 preset 与 boost 单模型两种启动方式都带，全机唯一），绝不会误杀用户自己的 llama-server。
+- 端口被他人占用直接报错退出，不抢占；健康检查失败会杀掉刚拉起的 PID 并清理 PID 文件，不留脏进程。
+- `start -Model <name>` 会从完整 preset 派生 `out\router-preset-<name>.ini`，只加载该模型（低显存验证用，不动主配置）。
+
+### 三、A2 v3 命令总线新动作
+- `start_router` / `stop_router` / `router_status`：薄封装 `model-router.ps1`，不复制启动逻辑。
+- `boost_model`：`model` 支持 gguf 路径或 preset 模型名 → `Resolve-ModelProfile` 命中档案 → 指定 `profile` 或按显存/ctx 自动选档。
+  - **默认 dry-run**（`apply` 缺省即不执行），只输出模型/档案/档位/参数/实测 tps。
+  - `apply=true` 才走 `Save-ModelRollback` → 停旧服务 → 按档位启动 → 健康检查；失败自动用 rollback 记录的原始命令行 `restore` 重启。
+  - 未命中档案直接拒绝，不套用任何参数（沿用 `DEVELOPING.md` 硬约束）。
+
+### 四、A3 MCP
+- `POWERFOCUS_BUS=v3` 时总线目标切到 `v3\commands`（默认仍是 v2，保持兼容）。
+- 新增原生工具 5 个：`router_start` / `router_stop` / `router_status` / `list_model_profiles` / `boost_model`；总线超时文案按目标 v2/v3 区分，超时会清理 in 文件。
+
+### 五、B 本地控制台
+- `app\server.py`（FastAPI，`127.0.0.1:18080`，避开 8080 的推理端口）：
+  - `/api/chat` 流式代理到 llama-server `/v1/chat/completions`；
+  - `/api/command` 只放行白名单 action（与 v3 switch 真实动作名对齐，含 `request_power`/`release_power`）；
+  - `/api/router` 只读调 `model-router.ps1 -Action status -Json`；`/api/models` 汇总注册表 + preset + 已加载；`/api/boost` 走 `boost_model`。
+- `app\web\index.html`：左对话右调试，原生 JS 无构建；流式渲染 `data:` 增量。
+
+### 六、测试与自检扩展
+- `tests\py\test_console.py`：白名单必须与 v3 switch 动作一一对应（本次就抓出 `power_request` → 实际是 `request_power`）；总线超时必须清理 in 文件；未知 action 返回 400。
+- `tests\run-tests.ps1`：Python 编译改为 `mcp-server.py` + `app\server.py`；新增 pytest 段与「路由契约」段（preset 每节必须有 model + n-gpu-layers、`[*]` 必须有 threads/c/parallel、模型文件必须存在、前端必须引用 4 个接口）。
+- `tools\dev-check.ps1`：关键文件 +4（路由器/控制台服务/页面/pyproject），端口 +18080，新增 v3 心跳与 `.venv`/ruff 检查。
+
+### 七、实测记录（2026-11-05 02:05–02:20）
+- `router start -Model Qwen2.5-0.5B`：health ok，`/v1/models` 回 `Qwen2.5-0.5B`；非流式与流式对话均正常。
+- 重复 start：返回「已在运行（PID …）」，不重复拉起；`stop` 后无 llama-server 残留。
+- v3 总线：`start_router` / `router_status` / `boost_model`(dry-run) / `boost_model`(apply) / `stop_router` 全部通过；apply 成功重启单模型服务。
+- 控制台：`/api/health`、`/api/router`、`/api/models`、`/api/status`、`/api/command`、`/api/boost`、`/api/chat`(SSE) 全部 200；v3 未运行时 `/api/status` 12s 返回离线提示且不残留 in 文件。
+- 显存：0.5B 路由实例加载后 ~560MB；停止后立刻释放。
+- `run-tests`：**8 PASS / 0 FAIL**；`dev-check`：**30 PASS / 4 WARN / 0 FAIL**（WARN 为 8686 未监听、v2 心跳停在 11-04、v3 锁正在运行、工作区 42 个未提交）。
+
+### 八、遗留与风险
+- **27B 档位未实测**：验证时段 GPU 已被其他应用占用（约 7.1GB，空闲仅 753MB），8GB 卡上无法安全加载 27B；`boost_model apply` 前应先看 `router_status.gpu_free_mb`，`models-preset.ini` 里 27B 的 `load-on-startup = true` 在低余量时应去掉。
+- `router_status` 的 `models` 在 JSON 里单元素时是字符串而非数组（PowerShell 序列化行为），前端按数组处理已兼容，但外部消费者需注意。
+- 本次未提交 git；变更清单见 `git status`。
+
+---
+
+## 九、V3 接管入口 + 常驻方式修正（2026-11-05 02:27）
+
+### 做了什么
+
+1. **入口切到 v3**：`E:\PowerFocus\电脑算力调度中心.ps1` 原先把 `v2\电脑算力调度中心_v2.ps1` 写死，现在转发 `v3\电脑算力调度中心_v3.ps1`。桌面快捷方式与计划任务 `PowerFocusAutoV2` 都指向入口，因此整条启动链自动跟随，不需要改任务。
+   - 备份：`archive\电脑算力调度中心.ps1.bak-before-v3-cutover-20261105-022702`
+2. **v2 归档保留**，不再由入口启动。计划任务名保持 `PowerFocusAutoV2`（改名会丢掉已有触发器和登录自启注册）。
+
+### 为什么
+
+- v3 = v2 全部能力 + `lib\model-registry.ps1`（8 个模型的档位档案、实测 tps/显存余量）+ `lib\rollback.ps1`（改优先级前存档、可还原）。v2 是 1684 行，v3 是 1862 行，差异 256 处，v3 是超集。
+- **v2 和 v3 的实例锁是各自独立的**（`.v2.lock` / `.v3.lock`），两个可以同时运行，同时改进程优先级、同时轮询各自命令总线 → 必打架。所以只能有一个入口活着，入口只拉 v3。
+
+### 顺手查清的一个「v3 自己会死」误报
+
+现象：02:06:59 启动的 v3（PID 56896）在 02:10:50 心跳断掉，日志无异常、无 `APPLICATION_RUN_RETURNED`、无 `POWERSHELL_EXITING`。
+
+结论：**不是脚本 bug**。v3 已经移植了 v2 的 `Application.ThreadException`、`AppDomain.UnhandledException`、`PowerShell.Exiting` 三重捕获（1824–1851 行），优雅退出一定会留痕。没有痕 = 进程被外部结束，最可能是从终端 fork 启动、终端一退被连带带走。
+
+### 验证（实测）
+
+| 项 | 结果 |
+|---|---|
+| 用计划任务启动 | `Start-ScheduledTask PowerFocusAutoV2` → PID 51600，`D:\PowerShell7\pwsh.exe ... -File "E:\PowerFocus\电脑算力调度中心.ps1"` |
+| 存活 | **302.8 秒 / tick 150**，心跳 02:32:19 仍在写（上次同脚本从终端启动死于 231 秒） |
+| 命令总线 | 投放 `{"action":"status"}` → 2 秒内移入 done → `OK: 状态已写入 out\status.json` |
+| 入口转发 | 进程命令行为入口路径，心跳 pid 与之一致 |
+
+### 遗留
+
+- v2 目录保留作对照，计划任务仍叫 `PowerFocusAutoV2`（名不副实的命名债，但改名成本高于收益）。
+- `D:\PowerShell7\pwsh.exe`（计划任务用）与 `C:\Users\...\WindowsApps\pwsh.exe`（桌面快捷方式用）是两份 pwsh，目前都能跑，版本未核对。
+- 桌面快捷方式未改，仍指向入口脚本，切 v3 后无需改。
+
+---
+
+## 十、v0.05 定版（2026-11-05 02:36）
+
+### 定位
+`v3` 从今日起只是**目录名**，版本号正式定为 **v0.05**（首个正式版本）。这不是两个东西——唯一活体仍是 `E:\PowerFocus\v3\电脑算力调度中心_v3.ps1`。
+
+### 做了什么
+
+| 动作 | 对象 | 结果 |
+|---|---|---|
+| 停旧实例 | PID 51600 | 已终止 |
+| 留档 | `archive\电脑算力调度中心_v3.ps1.bak-before-v005-20261105-023532` | 91,766 字节 / 1,862 行 |
+| 版本常量 | 脚本第 23–26 行 | `PF_Version='0.05'` / `PF_VersionLabel='v0.05'` / `PF_BuildDate='2026-11-05'` |
+| 显示层改写 | 头部注释、托盘文字、启动/退出日志、目标进程窗口标题、规则引擎日志 | 6 处精确替换，`v0.05` 落在 8 行 |
+| 语法验证 | `[Parser]::ParseFile` | **11,827 Token，0 错误** |
+| v2 归档 | `E:\PowerFocus\v2` → `E:\PowerFocus\v2-archive` | 仅改名未删；先做占用检测再动 |
+| 入口注释 | `E:\PowerFocus\电脑算力调度中心.ps1` | 指向 `_v3.ps1`，注明「内部版本号 v0.05」 |
+
+### 刻意没改的（改了会断历史）
+
+- `.v3.lock` 文件名 —— 换了等于换锁，与已注册任务、旧日志对不上
+- `电脑算力调度中心_v3.log` / `v3-lifecycle.log` / `v3_heartbeat.json` —— 改了日志断层
+- `$env:PF_V3_NO_LOCK` —— 破坏既有测试约定
+- 计划任务名 `PowerFocusAutoV2`、脚本文件名 `_v3.ps1` —— 有注册与触发器，改名成本高于收益
+
+**规则**：版本号只以 `$script:PF_VersionLabel` 为权威，文件名/锁名/任务名是历史包袱，不追。
+
+### 验证（实测 02:36–02:37）
+
+| 项 | 证据 |
+|---|---|
+| 计划任务 | `State=Running`，`LastRunTime=02:36:11`，`LastResult=267009`（SCHED_S_TASK_RUNNING） |
+| 进程 | PID **37992**，`D:\PowerShell7\pwsh.exe -File "E:\PowerFocus\电脑算力调度中心.ps1"`，213 MB |
+| 实例锁 | `.v3.lock` 独占打开抛 "being used by another process" → 确有实例 |
+| 启动日志 | `02:36:41 [INFO] 电脑算力调度中心 v0.05 已启动（命令总线: True）` |
+| 规则引擎 | `02:36:39 规则引擎已随 v0.05 自动启动` |
+| 优先级自保 | `02:36:39 自保: 调度中心自身优先级已回正 Normal` |
+| 心跳 | `{"time":"2026-11-05 02:36:51","pid":37992,"uptime_sec":12.5,"tick":5,"rules_running":true,"cmd_bus":true,"busy":true}` |
+| 命令总线 | 投 `v005-verify-023649.json` → 6 秒内移入 `done\` → 回执 `OK: 状态已写入 out\status.json` |
+
+### 遗留
+
+- v2 代码在 `v2-archive\`，可回溯但不再运行。**不要往里复制 v0.05 的脚本**——`.v3.lock` 按 `$PSScriptRoot` 生成，复制过去会造出第二把锁、第二个总线轮询器。
+- `v2-archive\.auth_token`、`authorized_apps.json` 是旧运行数据，未迁移也未删除。
+
+### 桌面入口同步（02:39）
+
+定版后顺链检查桌面，发现**两个**快捷方式，其中一个已经烂了：
+
+| 快捷方式 | 原参数 | 问题 |
+|---|---|---|
+| `电脑算力调度中心.lnk` | → `电脑算力调度中心.ps1` | 参数正确，描述仍是旧文案 |
+| `算力调度中心.lnk` | → `电脑算力调度中心_v2.ps1` | **死链**：该文件是转发壳，指向 `v2\`，而 `v2` 已改名归档 → 一点就报「v2 主脚本缺失」并 exit 2 |
+
+处理：
+
+1. **`电脑算力调度中心_v2.ps1`** 改为转发入口 `电脑算力调度中心.ps1`，不再指向已归档目录。
+2. **两个 .lnk 参数统一**：`-NoProfile -ExecutionPolicy Bypass -File "E:\PowerFocus\电脑算力调度中心.ps1"`，工作目录 `E:\PowerFocus`。
+3. **描述加版本**：`v0.05 · 电脑算力调度中心（托盘工具）｜2026-11-05 定版`。
+4. **启动方式统一最小化**（`WindowStyle = 7`）：托盘工具不该在屏幕上弹黑窗口。原先一个是 1（正常）、一个是 7（最小化）。
+5. 图标沿用 `E:\PowerFocus\电脑算力调度中心.ico,0`，两份一致。
+
+**验证**：用快捷方式同一套命令行试跑 → 0.6 秒返回，退出码 1，stdout 为 `v3 已在运行（实例锁被占用），本次启动退出`。这是**正确行为**——命令行链路通、路径可达、单实例约束生效；原实例心跳不受影响（148.5 秒 / tick 70 继续）。
+
+**教训**：换版本不能只改主脚本和入口。**引用链要一路查到底**——桌面、任务栏、开始菜单、计划任务、启动文件夹，任何一个还捏着旧路径，用户点到的那一刻就是你的债。
+
+## 2026-11-05 · 对话改为云端 API 直连，不再依赖本地模型
+
+**问题（用户原话）**：「我不是给你 AI api 以及提示词了吗？结果你的对话功能居然聊天不了，还需要唤醒本地模型是干什么意思？他之所以需要本地模型，就是为了让本地模型更好的被使用，而不是他自己要使用本地模型。」
+
+定位：`/api/chat` 原先只代理 `http://127.0.0.1:8080/v1/chat/completions`（本地 llama-server）。前端在未加载模型时直接拦截并提示「先加载模型」，导致对话不可用。本地模型被当成了调度中心自己的聊天后端，定位完全错了。
+
+改动：
+
+1. **开发版 `app/server.py` + 产品版 `product/v1.00/app/server.py`**
+   - 新增云端配置读取：`MODEL_BASE_URL` / `MODEL_API_KEY` / `MODEL_NAME`；进程环境缺失时从用户级注册表 `HKCU\Environment` 兜底（打包 exe 由资源管理器启动时读不到用户环境变量）。
+   - `/api/chat` 增加 `target` 路由：缺省 `cloud`（可用时），`local` 才代理本地 8080；云端注入 `Authorization: Bearer` 与 system prompt。
+   - `/api/models` 返回 `cloud{ready,model,base_url,has_prompt}` 与 `default_target`。
+2. **开发版 `app/web/index.html`**：模型下拉云端置顶；`send()` 取消「必须先加载本地模型」拦截，云端未配置时才提示。
+3. **开发版 `app/server.py`**：`V3_ROOT` 由硬编码 `v3\` 改为 `versions\current.json` 指针解析（目录重构后总线路径曾整体失效，转发全部空转）。
+4. **测试**：`tests/run-tests.ps1` 的 JSON 契约/preset 路径同样改为跟随 `current.json`；pytest 改为在仓库根目录执行（原先在 `E:\AI 调度中心` 收 0 个用例）；`tests/py/test_console.py` 不再硬编码 `v3\电脑算力调度中心_v3.ps1`。
+
+**实测证据**：
+
+- 源码实例 `18081`：`/api/models` → `default=cloud`、`ready=true`、`model=agnes-3.0-flash`；`/api/chat`（非流式）返回 `云端通道正常`，usage 84+4；流式 SSE 正常分块。
+- 重新打包 `dist\电脑算力调度中心.exe`（19.3 MB），新实例 PID 39820；用前端同款请求体打 `18080/api/chat` → 200，SSE 逐字返回「新版本 / 云端 / 对话」。
+- `tests\run-tests.ps1` → **PASS 8 / FAIL 0**（含 pytest 4 passed）。
+
+**遗留（必须用户确认）**：`/api/models` 的 `has_prompt=false` —— 对话系统提示词尚未落盘。当前只支持 `app\config.json` 的 `system_prompt` 或环境变量 `POWERFOCUS_SYSTEM_PROMPT`；仓库与内存中均未找到用户所说的「提示词」原文，需用户提供后写入，否则对话只有模型默认人格。
+
+## 2026-11-05 · 修复 MCP 核心链路（本产品真实用途：给 AI 调用）
+
+**定位**：产品不是给人点按钮的，核心是 `mcp-server.py` —— 其他 AI 通过 MCP stdio 调用调度能力。但版本目录重构后，它的总线仍硬编码 `v2\commands` / `v3\commands`，两个目录都已不存在，导致除 `list_apps` 外的所有原生工具一律超时。
+
+**改动**：
+
+1. `mcp-server.py`：新增 `_kernel_dir()`，按 `versions\current.json` 指针解析内核（回退取最大版本）；`CMD_IN/OUT/DONE`、`rules_state.json` 全部跟随；`list_apps` 的 `powershell` 改为 `pwsh`（遵守 pwsh7 唯一约束）；总线超时信息不再引用已废弃的 v2/v3。
+2. `tools/model-router.ps1`：`$Preset`/`$PidFile` 由硬编码 `v3\` 改为跟随内核指针；文件头注释同步。
+3. 按《VERSIONING.md》硬规则 4（stable 禁止原地改代码）新建 **v0.09**（`new-version.ps1 -From v0.08 -To v0.09`），修正 `Invoke-RouterScript` 的 `Split-Path $PSScriptRoot -Parent`（旧逻辑指向 `versions\tools\`），改为向上查找真正含 `tools\model-router.ps1` 的项目根。v0.09 置 `stage=stable`，`current.json` 指向 v0.09。
+4. 停 v0.08（PID 14820）→ 起 v0.09（PID 40088）→ 重启产品实例（PID 15540）。
+
+**实测证据**：
+
+- MCP `initialize` → `powerfocus-mcp 1.1.0`；`tools/list` → 245 个工具（16 原生 + REA 229）。
+- `power_status` → 真实状态（电源高性能、Top CPU、规则引擎运行中）。
+- `list_apps` → 进程枚举正常。
+- `list_model_profiles` → 8 个模型 + 实测档位。
+- `router_status` → 修复前报「缺少 versions\tools\model-router.ps1」，修复后返回「router 未运行；8080 被 PID 44324 占用」（按铁律不抢占他人端口）。
+- 产品 `/api/command {"action":"status"}` → `OK: 状态已写入 versions\v0.09\commands\out\status.json`，证明 GUI 与内核总线已对齐。
+- `run-tests.ps1` → **PASS 8 / FAIL 0**。
+
+## 2026-11-05 · 安全攻击推演（红队视角）与修复
+
+**威胁模型**：产品在本机以 127.0.0.1:18080 暴露能力，任何同机进程（含被投毒的 npm 包、AI 客户端、浏览器侧脚本）都是潜在攻击者。
+
+**真实 PoC 结果**：
+
+| 攻击 | 结果 | 结论 |
+|---|---|---|
+| 无任何凭据调 `/api/command kill_process confirm=true` | **成功终止目标进程** | 致命：鉴权被抹平 |
+| `process_name` 注入 `; New-Item ...` | 未执行（参数化传参） | 扛住 |
+| `/static/../server.py` 等 3 种编码穿越 | 全部 404 | 扛住 |
+| 1.2 MB JSON body → `/api/chat` | 修复前无限制，修复后 **413** | 已修 |
+| exe 内嵌 `cpk-` / `MODEL_API_KEY` 扫描 | 全部 -1（未内嵌） | 扛住 |
+| 内核 `kill_process` 杀 lsass/csrss | 被 `UnkillableProcesses` + token 双重拦截 | 扛住 |
+| 总线目录 `commands\in` ACL | `Authenticated Users: Modify`（任意登录用户可投递命令） | 致命：已修 |
+| `.auth_token` ACL | `Users: Read`，token 可被任意登录用户读取 | 致命：已修 |
+
+**根因**：内核本身有 token 校验和关键进程保护，但中间的 HTTP 层把 token 无条件注入给任何本地请求，把内核的安全边界整个抹平；同时总线目录和 token 文件继承了对 Users 的宽松 ACL。
+
+**修复**：
+
+1. `product/v1.00/app/server.py`：新增 `@app.middleware("http")` 鉴权，除 `/api/health` 外所有 `/api/*` 必须带 `X-PF-Token`；`/api/chat`、`/api/command` 限制 body ≤ 1 MB；`/` 返回 index.html 时把本机 token 注入 `__PF_TOKEN_VALUE__`（`Cache-Control: no-store`）。
+2. `product/v1.00/app/web/index.html`：包装 `window.fetch`，所有请求自动携带 `X-PF-Token`。
+3. 目录 ACL：`E:\PowerFocus\versions` 与 `E:\PowerFocus\logs` 执行 `icacls /inheritance:r`，只保留当前用户、SYSTEM、Administrators；移除 `Authenticated Users` / `Users`。
+
+**复测证据**：无 token `kill_process` → **401**；无 token `/api/models`、`/api/snapshot` → **401**；`/api/health` → 200；页面 token 注入成功（占位符 0 残留）；带 token `/api/command status` → **200 OK**；1.2 MB body → **413**。
+
+**残余风险（未修，需用户决策）**：MCP 工具无鉴权（设计上信任接入方 AI，REA 工具能力面很大）；云端 key 存于 HKCU 环境变量，同用户进程可读；同一 Windows 用户下的进程仍可读 token（单用户模型天花板，需 DPAPI 或 named pipe + SID 校验才能再收紧）。
+
+## 2026-11-05 · 同类缺陷全量扩散排查（发现一例 = 出现一类）
+
+**排查原则**：不修单点。每个已证实的缺陷都按「同类还有哪些」全仓复查。
+
+| 初查发现 | 同类扩散面 | 处理 |
+|---|---|---|
+| 产品版 `/api/*` 无鉴权 | 开发版 `app/server.py` 同样裸奔（18081 可无凭据调 `/api/command`） | 两套后端都加 `_api_auth` 中间件 |
+| `.auth_token` / `commands\in` ACL 宽松 | **整个 `E:\PowerFocus` 根目录 `Authenticated Users: Modify`** —— 可替换内核脚本、MCP 服务、产品 exe | 根目录 `icacls /inheritance:r` 全量收紧 |
+| body 无限流 | 原先只拦 `/api/chat`、`/api/command`，`/api/parse`、`/api/boost` 同样可打 | 中间件改为所有 POST 统一 1 MB |
+| 前端需带 token | 开发版 `api()` 封装与 chat 直连两处 fetch | 开发版同样包装 `window.fetch` |
+
+**复测证据**：
+
+- 开发版 18081：无 token `/api/models` → **401**；`GET /` token 注入成功、占位符 0 残留；带 token → **200**。
+- 产品版 18080（重新打包 19.3 MB，PID 52280）：无 token → **401**；带 token `/api/command status` → **200**。
+- ACL 复核：`E:\PowerFocus`、`product`、`tools`、`app`、`mcp-server.py` 仅剩 `YANG\Administrator` / `SYSTEM` / `Administrators`。
+- `run-tests.ps1` → **PASS 8 / FAIL 0**（pytest 5 passed，新增 `test_api_requires_token` 防回归）。
+
+## 2026-11-05 · 全面应用化改造（前端重做 + 安全基线对齐）
+
+**定位**：上一轮只是把「裸奔」补成「有锁」，但产品形态仍是一个大 HTML 内联页面 + 一个单文件后端。缺真正的应用该有的东西：分层信息架构、状态可视化、安全态势可观测、配置可持久化、后端与前端不分叉。本轮按成熟桌面应用（任务控制台/运维面板）的通用形态重做，并把后端安全对齐到当前公开基线。
+
+**调研基线**（外部公开资料，非臆测）：
+
+- 本地 HTTP 服务的头号外部攻击面是 DNS 重绑定 —— 浏览器里的任意网页可用攻击者域名解析到 `127.0.0.1` 后打本机接口；官方修复方式就是服务端 **Host 头白名单**（OWASP / 同类 CVE 处置建议一致）。
+- OWASP API Security Top 10（2023）：API2「认证失效」、API4「资源消耗无限制」、API8「安全配置错误」是本机服务最常踩的三条。
+- OWASP FastAPI Security Cheat Sheet：生产环境必须关闭 `/docs`、`/redoc`、`/openapi.json`；安全响应头必须显式下发。
+- 鉴权比较必须恒定时间（`hmac.compare_digest`），否则可被逐字节计时侧信道还原令牌。
+- Windows 本地凭据应用 DPAPI（`CryptProtectData`）而非明文/环境变量：密文绑定「本机 + 本用户」，拷走也解不开。
+
+**改动**：
+
+1. **新增 `product\v1.00\app\security.py`（安全层单点实现，17.9 KB）**
+   - `host_ok()`：Host 去端口/协议后必须在 `{127.0.0.1, localhost, ::1}` ∪ `PF_TRUSTED_HOSTS`；空值、含 `,`（多值注入）、非白名单一律拒绝 → 断 DNS 重绑定。
+   - `origin_ok()`：拒绝 `Origin: null` 与非白名单来源；`Sec-Fetch-Site: cross-site` 直接拒。
+   - `token_matches()` 用 `hmac.compare_digest`；`token_fingerprint()` 只回 `sha256:` 前 12 位，日志不落原值。
+   - `RateLimiter`（600 次/60 秒滑动窗口）、`FailureGuard`（5 分钟 20 次失败封 120 秒）。
+   - `audit()` 追加 JSONL 到 `%LOCALAPPDATA%\PowerFocus\logs\security.log`，2 MB 轮转。
+   - DPAPI：`dpapi_protect/unprotect`、`vault_get/set/clear`，固定 entropy `PowerFocus.v1`；写后 `icacls /inheritance:r` 只留当前用户。
+   - `SECURITY_HEADERS`：nosniff / DENY / no-referrer / COOP / COEP / 严格 CSP（`script-src 'self'; style-src 'self'`）。
+   - `SecurityMiddleware`（Host → Origin → 熔断/限流 → 鉴权 → 响应头）与 `BodyLimitMiddleware`（Content-Length 快路径 + chunked 累计双拦截）。
+2. **`product\v1.00\app\server.py` 重构**
+   - 实例化 `openapi_url=None, docs_url=None, redoc_url=None`；`uvicorn.run(..., server_header=False, date_header=False)`。
+   - 新增 `/api/security`（绑定/白名单/令牌指纹/限额/响应头/云端密钥状态/审计路径）、`/api/audit`、`/api/selfcheck`（用 `httpx.ASGITransport` 真打自身，逐条验证 404/403/401/413/200）。
+   - 新增 `/api/settings`（读改云端地址/模型/密钥/系统提示词，密钥进 DPAPI 库，支持 `clear_key`）、`/api/cloud/test`（真连 `/models` 返回状态与延迟）、`/api/router`、`/api/boost`。
+   - `/api/health` 收敛输出，不再泄露 `kernel_dir` / `llama_base`。
+   - 本地模型调用统一带 `Authorization: Bearer <MODEL_KEY_FILE>`。
+   - `cloud_config()` 优先级改为 **DPAPI 库 > 环境变量**，10 秒缓存 + 显式失效。
+3. **开发版 `app\server.py` 改为薄壳**：按 `importlib` 加载产品版同一份源码，消除双份后端分叉（旧版曾两次出现「产品版修了、开发版还裸奔」）。
+4. **前端整体重做为三段式应用**（`index.html` + `style.css` + `app.js`，共 62 KB）
+   - 七页导航：总览 / 进程 / 场景 / 模型与对话 / 安全态势 / 设置 / 日志；顶部 CPU/内存仪表 + 内核与模型状态 pill；底部状态栏。
+   - 严格 CSP 下运行：**零内联脚本、零内联 `style=`**，全部外置；渲染全程 `el()` + `textContent`，无 `innerHTML` → XSS 面为零。
+   - 进程表增量更新（`rowMap` + 顺序比对），不再每秒重建数百行。
+   - 安全态势页直接呈现后端的自检结果；日志页读审计尾。
+   - 删除旧 `E:\PowerFocus\app\web\index.html`，防 UI 分叉。
+5. **`tools\model-router.ps1` 加固**：新增 `.model_key`（自动生成 + ACL 收紧），`llama-server` 启动加 `--api-key-file` 与 `--cors-origins localhost`；健康检查与模型列表带鉴权头。
+6. **测试**：`tests\py\test_console.py` 重写为 16 项（含 Host 拒绝、跨源拒绝、docs 隐藏、响应头、413、非法 JSON 400、自检全过、DPAPI 往返、路由加固）；`tests\run-tests.ps1` 增加产品版编译与前端「零内联」反向检查、`security.py` 关键函数断言。
+
+**实测证据**（打包版，监听 `127.0.0.1:18080`）：
+
+| 攻击/检查 | 结果 |
+|---|---|
+| 无令牌 `/api/command kill_process` | **401** |
+| 错误令牌 | **401** |
+| `Host: evil.example.com` | **403** |
+| `Origin: https://evil.example.com` POST | **403** |
+| `GET /docs`、`/openapi.json`、`/redoc` | **404** |
+| 1.2 MB 请求体 | **413** |
+| 非法 JSON | **400**（非 500） |
+| `/api/selfcheck` | **ok=true，8/8** |
+| 本地 8080 无 key | **401**；带 key → **200** |
+| 本地 8080 非白名单 Origin | 无 ACAO 应答 |
+| 云端密钥 vault | 378 字节，`cpk-` 明文零命中，ACL 仅 `YANG\Administrator:(R,W)` |
+| 云端连通性 | ok=true，status=200 |
+| 前端浏览器实测 | 七页可切换、仪表有数值、进程表有数据、控制台无 CSP/JS 报错 |
+| `run-tests.ps1` | **PASS 8 / FAIL 0**（pytest 16 passed） |
+
+**残余风险（如实记录，未修）**：
+
+- 同一 Windows 用户下的进程仍可读 `.auth_token` 与 `.model_key`（单用户模型天花板；要再收紧需命名管道 + SID 校验或服务化到独立账户）。
+- MCP 工具面（245 个，含 REA 229 个）设计上信任接入的 AI 客户端，无鉴权；这是产品定位决定的，不是疏漏。
+- 云端密钥已加密，但后端运行期仍在内存中解密——任何能读进程内存的同用户工具理论上可取。
+- 防火墙/杀软对 `Win32_Process.Create` 常驻启动方式可能告警，属预期。

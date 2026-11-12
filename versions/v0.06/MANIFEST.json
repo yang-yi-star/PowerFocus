@@ -1,0 +1,42 @@
+{
+  "name": "电脑算力调度中心",
+  "version": "0.06",
+  "version_label": "v0.06",
+  "build_date": "2026-11-05",
+  "stage": "stable",
+  "note": "MemGuard 接入命令总线：action=mem_guard，op=status/once/start/stop（6/6 总线用例通过 2026-11-05 03:22）",
+  "entry": "电脑算力调度中心_v0.06.ps1",
+  "lineage": "v0.05",
+  "components": [
+    "电脑算力调度中心_v0.06.ps1",
+    "rules-engine.ps1",
+    "lib/app-purger.ps1",
+    "lib/clean-recyclebin.ps1",
+    "lib/geek-bridge.ps1",
+    "lib/mem-guard.ps1",
+    "lib/model-registry.ps1",
+    "lib/rollback.ps1"
+  ],
+  "configs": [
+    "rules.json",
+    "scenes.json",
+    "models-preset.ini",
+    "model-profiles.json",
+    "authorized_apps.json"
+  ],
+  "runtime_isolated": [
+    "logs/",
+    "commands/in|out|done",
+    "mem-guard.state.json",
+    "rules_state.json",
+    "v3_heartbeat.json",
+    ".v3.lock",
+    ".auth_token",
+    "router.pid"
+  ],
+  "portable": true,
+  "depends_on": [
+    "PowerShell 7+",
+    "llama.cpp"
+  ]
+}

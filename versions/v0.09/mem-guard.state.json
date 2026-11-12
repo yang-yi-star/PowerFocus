@@ -1,0 +1,19 @@
+{
+  "ts": "18:35:36",
+  "memPercent": 84.2,
+  "availMB": 5052.0,
+  "totalMB": 31968.0,
+  "modelRunning": true,
+  "modelCount": 1,
+  "modelPids": [
+    47396
+  ],
+  "level": "warn",
+  "fgPid": 98356,
+  "protectedCount": 8,
+  "priorityRaised": 0,
+  "trimmed": 0,
+  "freedMB": 0,
+  "cooldownSkip": 0,
+  "actions": []
+}

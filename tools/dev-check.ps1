@@ -79,6 +79,10 @@ $required = [ordered]@{
     '模型档案模块'  = 'v3\lib\model-registry.ps1'
     '回滚模块'      = 'v3\lib\rollback.ps1'
     '规则引擎'      = 'v2\rules-engine.ps1'
+    '模型路由器'    = 'tools\model-router.ps1'
+    '控制台服务'    = 'app\server.py'
+    '控制台页面'    = 'app\web\index.html'
+    '开发环境配置'  = 'pyproject.toml'
     '开发日志'      = 'DEVELOPMENT_LOG.md'
     '测试入口'      = 'tests\run-tests.ps1'
     '规范文档'      = 'docs\DEVELOPING.md'
@@ -89,7 +93,7 @@ foreach ($k in $required.Keys) {
 }
 
 # ---------------- 三、运行态 ----------------
-foreach ($port in 8080, 8686) {
+foreach ($port in 8080, 8686, 18080) {
     $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($conn) {
         $pname = (Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue).ProcessName
@@ -111,6 +115,32 @@ if (Test-Path $hb) {
     }
 } else {
     Add-Item '运行态' 'v2 心跳' 'WARN' '无心跳文件（v2 未运行）'
+}
+
+$hb3 = Join-Path $Root 'v3\v3_heartbeat.json'
+if (Test-Path $hb3) {
+    try {
+        $h3 = Get-Content $hb3 -Raw -Encoding utf8 | ConvertFrom-Json
+        $alive3 = $null -ne (Get-Process -Id $h3.pid -ErrorAction SilentlyContinue)
+        $age3 = [math]::Round(((Get-Date) - (Get-Item $hb3).LastWriteTime).TotalSeconds, 0)
+        Add-Item '运行态' 'v3 心跳' $(if ($alive3) { 'PASS' } else { 'WARN' }) "pid=$($h3.pid) tick=$($h3.tick) bus=$($h3.cmd_bus) 心跳距今 ${age3}s"
+    } catch {
+        Add-Item '运行态' 'v3 心跳' 'WARN' "无法解析：$($_.Exception.Message)"
+    }
+} else {
+    Add-Item '运行态' 'v3 心跳' 'WARN' '无心跳文件（v3 未运行）'
+}
+
+# ---------------- 三之二、开发环境 ----------------
+$venvPy = Join-Path $Root '.venv\Scripts\python.exe'
+if (Test-Path $venvPy) {
+    $ver = (& $venvPy --version 2>&1) -join ''
+    $pkgs = (& $venvPy -c "import fastapi,uvicorn,pytest,httpx;print('fastapi='+fastapi.__version__,'uvicorn='+uvicorn.__version__,'pytest='+pytest.__version__)" 2>&1) -join ' '
+    Add-Item '开发环境' '.venv' 'PASS' "$ver；$pkgs"
+    $ruff = Test-Path (Join-Path $Root '.venv\Scripts\ruff.exe')
+    Add-Item '开发环境' 'ruff' $(if ($ruff) { 'PASS' } else { 'WARN' }) $(if ($ruff) { '.venv\Scripts\ruff.exe' } else { '未安装（pip install ruff）' })
+} else {
+    Add-Item '开发环境' '.venv' 'WARN' '未创建（需 python -m venv .venv 后再装依赖）'
 }
 
 $lock = Join-Path $Root 'v3\.v3.lock'

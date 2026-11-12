@@ -1,0 +1,41 @@
+{
+  "ts": "03:52:31",
+  "memPercent": 78.4,
+  "availMB": 6896.0,
+  "totalMB": 31968.0,
+  "modelRunning": true,
+  "modelCount": 1,
+  "modelPids": [
+    44324
+  ],
+  "level": "warn",
+  "fgPid": 60684,
+  "protectedCount": 9,
+  "priorityRaised": 0,
+  "trimmed": 3,
+  "freedMB": 470.3,
+  "cooldownSkip": 0,
+  "actions": [
+    {
+      "pid": 31260,
+      "name": "pwsh",
+      "wsBeforeMB": 243.6,
+      "wsAfterMB": 0.0,
+      "freedMB": 243.6
+    },
+    {
+      "pid": 66404,
+      "name": "python",
+      "wsBeforeMB": 119.4,
+      "wsAfterMB": 0.0,
+      "freedMB": 119.4
+    },
+    {
+      "pid": 37276,
+      "name": "pwsh",
+      "wsBeforeMB": 107.3,
+      "wsAfterMB": 0.0,
+      "freedMB": 107.3
+    }
+  ]
+}

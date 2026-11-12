@@ -49,24 +49,37 @@ if ($bad.Count -eq 0) {
 }
 
 # ---------------- 2. JSON 配置契约 ----------------
+# 内核已迁到 versions\<当前版本>\，路径随 current.json 指针解析，避免目录重构后测试假红。
+$verDir = $null
+$curFile = Join-Path $Root 'versions\current.json'
+if (Test-Path $curFile) {
+    $curVer = (Get-Content $curFile -Raw -Encoding utf8 | ConvertFrom-Json).version
+    $cand = Join-Path $Root "versions\$curVer"
+    if (Test-Path $cand) { $verDir = $cand }
+}
+if (-not $verDir) {
+    $newest = Get-ChildItem (Join-Path $Root 'versions') -Directory -Filter 'v*' -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending | Select-Object -First 1
+    if ($newest) { $verDir = $newest.FullName }
+}
 $jsonSpec = [ordered]@{
-    'v3\model-profiles.json' = 'powerfocus/model-profiles/v2'
-    'v2\rules.json'          = $null
-    'v3\rules.json'          = $null
-    'v2\scenes.json'         = $null
-    'v2\authorized_apps.json' = $null
+    (Join-Path $verDir 'model-profiles.json')  = 'powerfocus/model-profiles/v2'
+    (Join-Path $verDir 'rules.json')           = $null
+    (Join-Path $verDir 'scenes.json')          = $null
+    (Join-Path $verDir 'authorized_apps.json') = $null
 }
 $jsonBad = [System.Collections.Generic.List[string]]::new()
 foreach ($rel in $jsonSpec.Keys) {
-    $p = Join-Path $Root $rel
-    if (-not (Test-Path $p)) { $jsonBad.Add("$rel 缺少文件"); continue }
+    $p = if ([System.IO.Path]::IsPathRooted($rel)) { $rel } else { Join-Path $Root $rel }
+    $leaf = Split-Path $p -Leaf
+    if (-not (Test-Path -LiteralPath $p)) { $jsonBad.Add("$leaf 缺少文件"); continue }
     try {
         $obj = Get-Content $p -Raw -Encoding utf8 | ConvertFrom-Json
     } catch {
-        $jsonBad.Add("$rel 不是合法 JSON: $($_.Exception.Message)"); continue
+        $jsonBad.Add("$leaf 不是合法 JSON: $($_.Exception.Message)"); continue
     }
     $want = $jsonSpec[$rel]
-    if ($want -and $obj.schema -ne $want) { $jsonBad.Add("$rel schema=$($obj.schema) 期望 $want") }
+    if ($want -and $obj.schema -ne $want) { $jsonBad.Add("$leaf schema=$($obj.schema) 期望 $want") }
 }
 if ($jsonBad.Count -eq 0) {
     Add-Result 'JSON 契约' 'PASS' "$($jsonSpec.Count) 个配置合法"
@@ -76,25 +89,57 @@ if ($jsonBad.Count -eq 0) {
 
 # ---------------- 3. Python 编译 ----------------
 $py = Get-DevPython
-$mcpPath = Join-Path $Root 'mcp-server.py'
+$pyTargets = @('mcp-server.py', 'app\server.py',
+               'product\v1.00\app\server.py', 'product\v1.00\app\security.py',
+               'product\v1.00\app\main.py')
 if (-not $py) {
     Add-Result 'Python 编译' 'FAIL' '未找到可用 Python 解释器'
 } else {
     $tmp = Join-Path $env:TEMP ("pf-compile-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    $pyBad = [System.Collections.Generic.List[string]]::new()
     try {
-        $outTxt = (& $py -c "import py_compile,sys; py_compile.compile(sys.argv[1], cfile=sys.argv[2], doraise=True)" $mcpPath (Join-Path $tmp 'mcp.pyc') 2>&1) -join "`n"
-        if ($LASTEXITCODE -eq 0) {
-            Add-Result 'Python 编译' 'PASS' "mcp-server.py 编译通过（$py）"
+        $i = 0
+        foreach ($rel in $pyTargets) {
+            $i++
+            $src = Join-Path $Root $rel
+            if (-not (Test-Path $src)) { $pyBad.Add("$rel 不存在"); continue }
+            $outTxt = (& $py -c "import py_compile,sys; py_compile.compile(sys.argv[1], cfile=sys.argv[2], doraise=True)" $src (Join-Path $tmp "t$i.pyc") 2>&1) -join "`n"
+            if ($LASTEXITCODE -ne 0) { $pyBad.Add("$rel -> $outTxt") }
+        }
+        if ($pyBad.Count -eq 0) {
+            Add-Result 'Python 编译' 'PASS' "$($pyTargets.Count) 个文件编译通过（$py）"
         } else {
-            Add-Result 'Python 编译' 'FAIL' $outTxt
+            Add-Result 'Python 编译' 'FAIL' ($pyBad -join ' ;; ')
         }
     } finally {
         Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
+# ---------------- 3b. Python 单元测试（.venv 存在才跑） ----------------
+$venvPy = Join-Path $Root '.venv\Scripts\python.exe'
+if (-not (Test-Path $venvPy)) {
+    Add-Result 'pytest' 'SKIP' '未创建 .venv（跳过单元测试）'
+} elseif (-not (Test-Path (Join-Path $Root 'tests\py'))) {
+    Add-Result 'pytest' 'SKIP' '无 tests\py 目录'
+} else {
+    Push-Location $Root
+    try {
+        $ptOut = (& $venvPy -m pytest 2>&1) -join "`n"
+    } finally {
+        Pop-Location
+    }
+    if ($LASTEXITCODE -eq 0) {
+        $tail = (($ptOut -split "`r?`n" | Where-Object { $_ -match 'passed|failed' }) | Select-Object -Last 1)
+        Add-Result 'pytest' 'PASS' $tail
+    } else {
+        Add-Result 'pytest' 'FAIL' (($ptOut -split "`r?`n" | Select-Object -Last 12) -join ' ;; ')
+    }
+}
+
 # ---------------- 4. MCP stdio 冒烟 ----------------
+$mcpPath = Join-Path $Root 'mcp-server.py'
 if ($SkipMcp) {
     Add-Result 'MCP 冒烟' 'SKIP' '按参数跳过'
 } elseif (-not $py) {
@@ -143,7 +188,8 @@ if ($SkipMcp) {
                 Add-Result 'MCP 冒烟' 'FAIL' 'tools/list 无有效响应'
             } else {
                 $names = @($list.result.tools | ForEach-Object { $_.name })
-                $need = @('power_status', 'power_request', 'power_release', 'rules_list', 'rea_status')
+                $need = @('power_status', 'power_request', 'power_release', 'rules_list', 'rea_status',
+                          'router_start', 'router_stop', 'router_status', 'list_model_profiles', 'boost_model')
                 $miss = @($need | Where-Object { $names -notcontains $_ })
                 $protocolOk = ($init.result.protocolVersion -eq '2025-06-18')
                 if ($miss.Count -gt 0) {
@@ -158,6 +204,81 @@ if ($SkipMcp) {
     } finally {
         if ($proc -and -not $proc.HasExited) { try { $proc.Kill($true) } catch {} }
     }
+}
+
+# ---------------- 4b. 模型路由与会话契约 ----------------
+$routeBad = [System.Collections.Generic.List[string]]::new()
+$presetPath = if ($verDir) { Join-Path $verDir 'models-preset.ini' } else { Join-Path $Root 'versions\v0.08\models-preset.ini' }
+if (-not (Test-Path $presetPath)) {
+    $routeBad.Add("缺少内核 models-preset.ini（$presetPath）")
+} else {
+    $globals = @{}
+    $sections = [ordered]@{}
+    $cur = ''
+    foreach ($line in Get-Content $presetPath -Encoding utf8) {
+        $t = $line.Trim()
+        if ($t -match '^\[(.+)\]$') {
+            $cur = $Matches[1].Trim()
+            if ($cur -ne '*' -and -not $sections.Contains($cur)) { $sections[$cur] = @{} }
+            continue
+        }
+        if ($cur -and $t -match '^(.*?)=(.*)$') {
+            $k = $Matches[1].Trim(); $v = $Matches[2].Trim()
+            if ($cur -eq '*') { $globals[$k] = $v } else { $sections[$cur][$k] = $v }
+        }
+    }
+    foreach ($need in 'threads', 'c', 'parallel') {
+        if (-not $globals.ContainsKey($need)) { $routeBad.Add("[*] 缺少 $need") }
+    }
+    if ($sections.Count -eq 0) { $routeBad.Add('preset 中没有任何模型 section') }
+    foreach ($name in $sections.Keys) {
+        $s = $sections[$name]
+        if (-not $s.ContainsKey('model')) { $routeBad.Add("[$name] 缺少 model"); continue }
+        if (-not (Test-Path -LiteralPath $s['model'])) { $routeBad.Add("[$name] 模型文件不存在: $($s['model'])") }
+        if (-not $s.ContainsKey('n-gpu-layers')) { $routeBad.Add("[$name] 缺少 n-gpu-layers") }
+    }
+}
+$webDir = Join-Path $Root 'product\v1.00\app\web'
+$indexHtml = Join-Path $webDir 'index.html'
+$appJs = Join-Path $webDir 'app.js'
+if (-not (Test-Path $indexHtml)) {
+    $routeBad.Add('缺少 product\v1.00\app\web\index.html')
+} else {
+    $html = Get-Content $indexHtml -Raw -Encoding utf8
+    foreach ($needle in '/static/app.js', '/static/style.css', '__PF_TOKEN_VALUE__') {
+        if ($html -notmatch [regex]::Escape($needle)) { $routeBad.Add("index.html 缺少 $needle") }
+    }
+    # 严格 CSP（script-src 'self' / style-src 'self'）下不允许内联脚本与内联样式
+    if ($html -match '<script>') { $routeBad.Add('index.html 含内联脚本，违反 CSP') }
+    if ($html -match 'style="') { $routeBad.Add('index.html 含内联样式，违反 CSP') }
+}
+if (-not (Test-Path $appJs)) {
+    $routeBad.Add('缺少 product\v1.00\app\web\app.js')
+} else {
+    $js = Get-Content $appJs -Raw -Encoding utf8
+    foreach ($needle in '/api/chat', '/api/boost', '/api/router', '/api/command',
+                      '/api/security', '/api/selfcheck', '/api/snapshot') {
+        if ($js -notmatch [regex]::Escape($needle)) { $routeBad.Add("前端缺少 $needle") }
+    }
+}
+# 安全基线静态检查：必须存在 Host 校验与恒定时间比较
+$secPy = Join-Path $Root 'product\v1.00\app\security.py'
+if (-not (Test-Path $secPy)) {
+    $routeBad.Add('缺少 product\v1.00\app\security.py')
+} else {
+    $secTxt = Get-Content $secPy -Raw -Encoding utf8
+    if ($secTxt -notmatch 'compare_digest') { $routeBad.Add('鉴权未使用恒定时间比较') }
+    if ($secTxt -notmatch 'def host_ok') { $routeBad.Add('缺少 Host 白名单校验') }
+    if ($secTxt -notmatch 'CryptProtectData') { $routeBad.Add('缺少 DPAPI 加密') }
+}
+$serverPy = Join-Path $Root 'product\v1.00\app\server.py'
+if ((Test-Path $serverPy) -and -not (Select-String -Path $serverPy -Pattern 'ALLOWED_ACTIONS' -Quiet)) {
+    $routeBad.Add('server.py 缺少命令白名单')
+}
+if ($routeBad.Count -eq 0) {
+    Add-Result '路由契约' 'PASS' "preset $($sections.Count) 个模型；前端/服务接口齐全"
+} else {
+    Add-Result '路由契约' 'FAIL' ($routeBad -join ' ;; ')
 }
 
 # ---------------- 5. 仓库卫生 ----------------

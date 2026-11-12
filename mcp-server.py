@@ -10,14 +10,39 @@
 # 启动：python E:\PowerFocus\mcp-server.py  （客户端以子进程方式拉起）
 # 自测：echo '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | python mcp-server.py
 # ============================================================
-import sys, os, json, time, re, uuid, atexit, shutil, subprocess, threading
+import sys, os, json, time, atexit, shutil, subprocess, threading, re
 
 POWERFOCUS = r"E:\PowerFocus"
-# v2 已独立到 E:\PowerFocus\v2，命令总线随之迁移（v3 有自己的 v3\commands）
-V2_ROOT = os.path.join(POWERFOCUS, "v2")
-CMD_IN  = os.path.join(V2_ROOT, "commands", "in")
-CMD_OUT = os.path.join(V2_ROOT, "commands", "out")
-CMD_DONE= os.path.join(V2_ROOT, "commands", "done")
+# 内核已迁到 versions\<当前版本>\（由 versions\current.json 指针维护）。
+# 命令总线必须跟随指针解析，否则 MCP 工具全部转发到不存在的目录、一律超时。
+def _kernel_dir():
+    vers = os.path.join(POWERFOCUS, "versions")
+    ptr = os.path.join(vers, "current.json")
+    try:
+        with open(ptr, "r", encoding="utf-8-sig") as f:
+            ver = str(json.load(f).get("version") or "")
+        cand = os.path.join(vers, ver)
+        if ver and os.path.isdir(cand):
+            return cand
+    except Exception:
+        pass
+    best, best_key = None, None
+    if os.path.isdir(vers):
+        for name in os.listdir(vers):
+            m = re.match(r"v(\d+)\.(\d+)$", name)
+            path = os.path.join(vers, name)
+            if not m or not os.path.isdir(path):
+                continue
+            key = (int(m.group(1)), int(m.group(2)))
+            if best_key is None or key > best_key:
+                best, best_key = path, key
+    return best or os.path.join(POWERFOCUS, "v3")
+
+KERNEL_DIR = _kernel_dir()
+BUS_ROOT = KERNEL_DIR
+CMD_IN  = os.path.join(BUS_ROOT, "commands", "in")
+CMD_OUT = os.path.join(BUS_ROOT, "commands", "out")
+CMD_DONE= os.path.join(BUS_ROOT, "commands", "done")
 
 SERVER_NAME = "powerfocus-mcp"
 SERVER_VERSION = "1.1.0"
@@ -89,7 +114,8 @@ def bus_call(cmd_obj, timeout=15.0):
                 with open(done_path, "r", encoding="utf-8-sig") as f:
                     return True, f.read().strip()
             time.sleep(0.3)
-        return False, "命令总线超时（v2 未响应 %s 秒）：请确认调度中心 v2 正在运行" % int(timeout)
+        return False, "命令总线超时（%s 未响应 %s 秒）：请确认调度中心内核正在运行" % (
+            KERNEL_DIR, int(timeout))
     except Exception as e:
         return False, "命令总线调用异常: %s" % e
 
@@ -347,7 +373,7 @@ def tool_power_release(args):
 def tool_power_status(args):
     ok, text = bus_call({"action": "status"})
     status = read_json(os.path.join(CMD_OUT, "status.json")) or {}
-    rules = read_json(os.path.join(POWERFOCUS, "rules_state.json")) or {}
+    rules = read_json(os.path.join(KERNEL_DIR, "rules_state.json")) or {}
     lines = []
     lines.append("== 调度中心状态 ==")
     if status:
@@ -405,12 +431,45 @@ def tool_unfocus(args):
     ok, text = bus_call({"action": "unfocus"})
     return text
 
+# ---------- v3：模型路由 / 档位加速（需 POWERFOCUS_BUS=v3 且 v3 在运行） ----------
+def tool_router_start(args):
+    cmd = {"action": "start_router"}
+    if args.get("model"): cmd["model"] = str(args["model"])
+    if args.get("port"): cmd["port"] = int(args["port"])
+    t = int(args.get("timeout_sec", 60) or 60)
+    cmd["timeout_sec"] = t
+    ok, text = bus_call(cmd, timeout=t + 45)
+    return text
+
+def tool_router_stop(args):
+    return bus_call({"action": "stop_router"}, timeout=30)[1]
+
+def tool_router_status(args):
+    cmd = {"action": "router_status"}
+    if args.get("port"): cmd["port"] = int(args["port"])
+    return bus_call(cmd, timeout=30)[1]
+
+def tool_list_model_profiles(args):
+    return bus_call({"action": "list_model_profiles"}, timeout=30)[1]
+
+def tool_boost_model(args):
+    if not args.get("model"):
+        return "ERROR: 缺少 model（gguf 路径或 models-preset.ini 中的模型名）"
+    cmd = {"action": "boost_model", "model": str(args["model"])}
+    if args.get("profile"): cmd["profile"] = str(args["profile"])
+    if args.get("ctx"): cmd["ctx"] = int(args["ctx"])
+    if args.get("ngl"): cmd["ngl"] = int(args["ngl"])
+    apply = bool(args.get("apply"))
+    cmd["apply"] = apply
+    ok, text = bus_call(cmd, timeout=180 if apply else 60)
+    return text
+
 def tool_list_apps(args):
     """只读：列出当前非系统关键进程（可申请/可聚焦的候选）。"""
     try:
         import subprocess
         ps = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
+            ["pwsh", "-NoProfile", "-Command",
              "Get-Process | Where-Object { $_.Id -ne $PID } | Select-Object -First 60 @{n='N';e={$_.ProcessName}},Id,@{n='M';e={[int]($_.WorkingSet64/1MB)}} | ConvertTo-Json -Compress"],
             capture_output=True, text=True, encoding="utf-8", timeout=15)
         data = json.loads(ps.stdout) if ps.stdout.strip() else []
@@ -489,6 +548,53 @@ TOOLS = [
         "name": "list_apps",
         "description": "只读列出当前可申请算力的进程（PID + 名 + 内存）。",
         "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "router_start",
+        "description": "启动本地模型路由服务（llama-server router 模式，读 v3\\models-preset.ini，OpenAI 兼容 /v1）。默认端口 8080，--models-max 1 保证 8GB 显存一次只驻留一个模型。需 v3 调度中心在运行且 POWERFOCUS_BUS=v3。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "model": {"type": "string", "description": "只加载指定模型（preset 中的 section 名，如 Qwen3-4B）；省略则用完整 preset"},
+                "port": {"type": "integer", "description": "监听端口，默认 8080"},
+                "timeout_sec": {"type": "integer", "description": "/health 等待秒数，默认 60"}
+            }
+        }
+    },
+    {
+        "name": "router_stop",
+        "description": "停止调度中心启动的模型路由服务（只停自己启动的进程，不动其他 llama-server）。",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "router_status",
+        "description": "查询模型路由状态：是否运行、PID、端口、health、已加载模型、显存占用。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "port": {"type": "integer", "description": "查询端口，默认 8080"}
+            }
+        }
+    },
+    {
+        "name": "list_model_profiles",
+        "description": "列出模型注册表：每个模型的身份（arch/层数/大小）与全部实测档位（ngl/fa/ctx/tps/显存余量）。",
+        "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "boost_model",
+        "description": "按 model-profiles.json 的实测档位加速指定模型。默认 dry-run 只输出计划；apply=true 才重启服务，失败自动按回滚记录还原。模型未命中档案时拒绝执行（硬约束）。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "model": {"type": "string", "description": "gguf 路径，或 models-preset.ini 中的模型名"},
+                "profile": {"type": "string", "description": "档位名（如 speed_8k / safe_8k / long_64k_safe）；省略则按显存与上下文自动选"},
+                "ctx": {"type": "integer", "description": "覆盖上下文长度（影响档位选择）"},
+                "ngl": {"type": "integer", "description": "覆盖 GPU 层数"},
+                "apply": {"type": "boolean", "description": "true 才真正重启服务；默认 false 仅 dry-run"}
+            },
+            "required": ["model"]
+        }
     }
 ]
 
@@ -503,6 +609,11 @@ HANDLERS = {
     "focus": tool_focus,
     "unfocus": tool_unfocus,
     "list_apps": tool_list_apps,
+    "router_start": tool_router_start,
+    "router_stop": tool_router_stop,
+    "router_status": tool_router_status,
+    "list_model_profiles": tool_list_model_profiles,
+    "boost_model": tool_boost_model,
 }
 
 # ---------- JSON-RPC 分发 ----------

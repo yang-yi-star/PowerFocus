@@ -1,0 +1,16 @@
+# PowerFocus 开发环境配置（仅本地工具链，不发布、不打包）
+# 用途：让 pytest / ruff 在本仓库根目录直接生效，无需额外命令行参数。
+
+[tool.pytest.ini_options]
+testpaths = ["tests/py"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = [".venv", "archive", "out", "__pycache__"]
+
+[tool.ruff.lint]
+# 只查会真正出问题的类别（未定义名、未使用导入、语法错误）；不强制重排既有代码风格。
+select = ["F", "E9"]

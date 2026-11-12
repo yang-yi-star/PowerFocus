@@ -1,0 +1,42 @@
+{
+  "name": "电脑算力调度中心",
+  "version": "0.05",
+  "version_label": "v0.05",
+  "build_date": "2026-11-05",
+  "stage": "stable",
+  "note": "首个可正式投入实际使用的标志性版本；自本版起所有迭代按正式版本管理。",
+  "entry": "电脑算力调度中心_v0.05.ps1",
+  "lineage": "v3",
+  "components": [
+    "电脑算力调度中心_v0.05.ps1",
+    "rules-engine.ps1",
+    "lib/mem-guard.ps1",
+    "lib/app-purger.ps1",
+    "lib/geek-bridge.ps1",
+    "lib/model-registry.ps1",
+    "lib/rollback.ps1",
+    "lib/clean-recyclebin.ps1"
+  ],
+  "configs": [
+    "rules.json",
+    "scenes.json",
+    "models-preset.ini",
+    "model-profiles.json",
+    "authorized_apps.json"
+  ],
+  "runtime_isolated": [
+    "logs/",
+    "commands/in|out|done",
+    "mem-guard.state.json",
+    "rules_state.json",
+    "v3_heartbeat.json",
+    ".v3.lock",
+    ".auth_token",
+    "router.pid"
+  ],
+  "portable": true,
+  "depends_on": [
+    "PowerShell 7+ (C:\\Tools\\PowerShell7\\pwsh.exe)",
+    "llama.cpp at E:\\Program Files\\llama.cpp"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "apps": [
+    {
+      "name": "llama-server",
+      "level": "high",
+      "added": "2026-11-03 05:00:00"
+    },
+    {
+      "level": "high",
+      "name": "notepad",
+      "added": "2026-11-05 03:49:28"
+    },
+    {
+      "added": "2026-11-05 13:49:13",
+      "level": "high",
+      "name": "python"
+    }
+  ]
+}

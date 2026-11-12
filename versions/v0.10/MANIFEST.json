@@ -1,0 +1,55 @@
+{
+  "name": "电脑算力调度中心",
+  "version": "0.10",
+  "version_label": "v0.10",
+  "build_date": "2026-11-12",
+  "stage": "dev",
+  "note": "V0.10 最基础原型：应用内安全扫描能力（引擎识别 + 适配器 + 每日扫描报告）。stage=dev，未切换 current.json。",
+  "entry": "电脑算力调度中心_v0.10.ps1",
+  "lineage": "v0.09",
+  "components": [
+    "电脑算力调度中心_v0.10.ps1",
+    "rules-engine.ps1",
+    "lib/app-purger.ps1",
+    "lib/clean-recyclebin.ps1",
+    "lib/geek-bridge.ps1",
+    "lib/mem-guard.ps1",
+    "lib/model-registry.ps1",
+    "lib/rollback.ps1",
+    "security_scan.py",
+    "prototype/index.html"
+  ],
+  "configs": [
+    "rules.json",
+    "scenes.json",
+    "models-preset.ini",
+    "model-profiles.json",
+    "authorized_apps.json"
+  ],
+  "runtime_isolated": [
+    "logs/",
+    "commands/in|out|done",
+    "mem-guard.state.json",
+    "rules_state.json",
+    "v3_heartbeat.json",
+    ".v3.lock",
+    ".auth_token",
+    "router.pid"
+  ],
+  "portable": true,
+  "depends_on": [
+    "PowerShell 7+",
+    "llama.cpp"
+  ],
+  "prototype": "prototype/index.html（单文件自包含，双击可运行；扫描与报告均为模拟数据）",
+  "security_scan": {
+    "stage": "prototype",
+    "simulated": true,
+    "builtin_engine": "ClamAV GPLv2 portable —— 接口占位，未打包二进制与病毒库",
+    "kaspersky": "外部适配器 avp.com SCAN；引擎内嵌需官方 OEM SDK 商业授权",
+    "discovery": "WMI root\\SecurityCenter2\\AntiVirusProduct（只读，本机实测通过）",
+    "scheduler": "应用内定时器，不注册系统计划任务、不写系统目录",
+    "reports": "原型内存模拟；真实落地写 versions/v0.10/reports/",
+    "api_contract": "9 条 /api/security/* 占位，尚未在 server.py 实装"
+  }
+}

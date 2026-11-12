@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>电脑算力调度中心 V0.10 · 应用内安全扫描原型</title>
+<!--
+  ============================================================
+  电脑算力调度中心 V0.10 · 应用内安全扫描能力（最基础原型）
+  ------------------------------------------------------------
+  约束：
+   1. 单文件自包含，无外部依赖、无网络请求、无服务调用，双击即可运行
+   2. 所有扫描与报告均为模拟数据，不调用任何真实杀毒引擎
+   3. 动态内容一律 textContent / DOM API，不拼接 innerHTML
+   4. 引擎命令来自官方公开文档；未查证的标为「无公开接口」，不臆造
+   5. 事实 / 实测 / 契约占位 / 演示数据 在界面上显式区分
+  ============================================================
+-->
+<style>
+:root{
+  --bg:#070b10; --panel:#0e1620; --panel2:#121c27; --panel3:#16222f;
+  --line:#1e2c3b; --line-soft:#17232f; --txt:#dbe6f2; --dim:#7b8fa3; --faint:#4d5f72;
+  --cyan:#22d3ee; --blue:#3b82f6; --green:#34d399; --amber:#fbbf24; --red:#f87171;
+  --violet:#a78bfa; --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(1100px 520px at 8% -8%,#0d2433 0,transparent 55%),
+             radial-gradient(900px 520px at 92% 0,#131a2e 0,transparent 50%),var(--bg);
+  color:var(--txt);font:13px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:58px minmax(0,1fr) 32px;
+  height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+header{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 18px;
+  background:linear-gradient(90deg,#0a151f,#091018 55%,#0a151f);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:11px;min-width:230px}
+.logo{width:32px;height:32px;border-radius:10px;position:relative;
+  background:conic-gradient(from 210deg,var(--cyan),var(--blue),var(--violet),var(--cyan));
+  box-shadow:0 0 20px rgba(34,211,238,.32)}
+.logo::after{content:"";position:absolute;inset:9px;border-radius:4px;background:#08131a}
+.brand h1{font-size:14px;font-weight:600;letter-spacing:.4px}
+.brand .sub{display:block;color:var(--faint);font-size:9.5px;letter-spacing:2px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;
+  font-size:11px;font-weight:600;border:1px solid;white-space:nowrap}
+.badge.proto{color:var(--amber);border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.09)}
+.badge.live{color:var(--green);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)}
+.badge.spec{color:var(--cyan);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.badge.demo{color:var(--dim);border-color:var(--line);background:var(--panel2)}
+.badge.oem{color:var(--violet);border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.09)}
+.badge.danger{color:var(--red);border-color:rgba(248,113,113,.45);background:rgba(248,113,113,.09)}
+.badge.ok{color:var(--green);border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08)}
+.hdr-sp{flex:1}
+.hdr-meta{display:flex;gap:18px;color:var(--dim);font-size:11px;white-space:nowrap}
+.hdr-meta b{color:var(--txt);font-weight:600}
+
+nav{border-right:1px solid var(--line);background:rgba(9,16,24,.6);padding:14px 10px;overflow:auto}
+nav .group{color:var(--faint);font-size:10px;letter-spacing:1.6px;padding:12px 10px 6px}
+.navbtn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;margin-bottom:3px;
+  background:none;border:1px solid transparent;border-radius:9px;color:var(--dim);
+  font:inherit;text-align:left;cursor:pointer}
+.navbtn:hover{background:var(--panel2);color:var(--txt)}
+.navbtn.active{background:var(--panel3);border-color:var(--line);color:var(--cyan)}
+.navbtn .ico{width:16px;text-align:center;font-size:14px}
+.navfoot{margin-top:24px;padding:11px;border:1px solid var(--line-soft);border-radius:9px;
+  background:var(--panel);color:var(--faint);font-size:10.5px;line-height:1.7}
+
+main{overflow:auto;padding:16px 20px 24px}
+.banner{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;margin-bottom:16px;
+  border:1px solid rgba(251,191,36,.35);border-radius:var(--radius);
+  background:linear-gradient(90deg,rgba(251,191,36,.1),rgba(251,191,36,.02));font-size:12px}
+.banner .ico{font-size:17px;line-height:1.2}
+.banner b{color:var(--amber)}
+.banner p{color:var(--dim);margin-top:3px}
+
+.view{display:none}
+.view.active{display:block}
+.pagehead{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.pagehead h2{font-size:16px;font-weight:600}
+.pagehead .desc{color:var(--faint);font-size:11.5px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.kpi{padding:13px 15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+.kpi .k{color:var(--dim);font-size:10.5px;letter-spacing:1px}
+.kpi .v{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px}
+.kpi .x{color:var(--faint);font-size:10.5px;margin-top:2px}
+.kpi .v small{font-size:11px;color:var(--dim);font-weight:400;margin-left:3px}
+
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:14px}
+.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:14px;overflow:hidden}
+.panel .head{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--panel2);font-size:12.5px;font-weight:600}
+.panel .head .sp{flex:1}
+.panel .head .hint{color:var(--faint);font-size:10.5px;font-weight:400}
+.panel .body{padding:14px}
+
+.btn{padding:6px 13px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);
+  color:var(--txt);font:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:rgba(34,211,238,.13);border-color:rgba(34,211,238,.45);color:var(--cyan)}
+.btn.primary:hover:not(:disabled){background:rgba(34,211,238,.22)}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.btn.danger{border-color:rgba(248,113,113,.4);color:var(--red)}
+
+.form{display:grid;grid-template-columns:150px minmax(0,1fr);gap:11px 14px;align-items:center}
+.form label{color:var(--dim);font-size:12px}
+.form input,.form select,.form textarea{width:100%;padding:7px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg2);background:#0a1118;color:var(--txt);font:inherit;outline:none}
+.form input:focus,.form select:focus{border-color:var(--cyan)}
+.form .actions{grid-column:2;display:flex;gap:9px;margin-top:5px}
+.form .note{grid-column:2;color:var(--faint);font-size:10.5px;margin-top:-4px}
+
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:7px 12px;font-size:12px}
+.kv .k{color:var(--dim)}
+.kv .v{color:var(--txt);word-break:break-all}
+
+.card{border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:12px 13px;margin-bottom:10px}
+.card:last-child{margin-bottom:0}
+.card .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card .name{font-size:13px;font-weight:600}
+.card .meta{color:var(--faint);font-size:10.5px;margin-top:2px}
+.card .desc{color:var(--dim);font-size:11.5px;margin-top:8px;line-height:1.65}
+.card .cmd{margin-top:8px;padding:7px 9px;border-radius:7px;background:#080e15;border:1px solid var(--line-soft);
+  color:var(--cyan);font:11px/1.5 Consolas,"Courier New",monospace;word-break:break-all}
+.card.warn{border-color:rgba(251,191,36,.32)}
+.card.oem{border-color:rgba(167,139,250,.32)}
+
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{color:var(--faint);font-weight:500;font-size:10.5px;letter-spacing:.5px;background:var(--panel2)}
+td{color:var(--dim)}
+td b{color:var(--txt);font-weight:600}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow:auto;border:1px solid var(--line-soft);border-radius:9px}
+
+.list{display:flex;flex-direction:column;gap:9px}
+.item{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel2);cursor:pointer}
+.item:hover{border-color:var(--cyan)}
+.item.sel{border-color:var(--cyan);background:var(--panel3)}
+.item .main{flex:1;min-width:0}
+.item .t{font-size:12.5px;font-weight:600}
+.item .s{color:var(--faint);font-size:10.5px;margin-top:2px}
+.item .stat{font-size:11px;white-space:nowrap}
+.stat.clean{color:var(--green)} .stat.threat{color:var(--red)} .stat.fail{color:var(--amber)}
+
+.progress{height:8px;border-radius:6px;background:#0a1118;border:1px solid var(--line-soft);overflow:hidden;margin-top:10px}
+.progress > i{display:block;height:100%;width:0;border-radius:6px;
+  background:linear-gradient(90deg,var(--blue),var(--cyan),var(--green));transition:width .35s}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.step{padding:8px 9px;border:1px solid var(--line-soft);border-radius:8px;background:#0a1118;
+  color:var(--faint);font-size:10.5px;text-align:center}
+.step.on{color:var(--cyan);border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.07)}
+.step.done{color:var(--green);border-color:rgba(52,211,153,.35)}
+
+.empty{padding:26px;text-align:center;color:var(--faint);font-size:12px}
+.out{background:#080e15;border:1px solid var(--line-soft);border-radius:9px;padding:11px 13px;
+  color:var(--dim);font:11px/1.7 Consolas,"Courier New",monospace;white-space:pre-wrap;word-break:break-all}
+
+.switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.switch input{appearance:none;width:36px;height:20px;border-radius:12px;background:var(--panel3);
+  border:1px solid var(--line);position:relative;cursor:pointer;transition:.2s}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;
+  border-radius:50%;background:var(--faint);transition:.2s}
+.switch input:checked{background:rgba(34,211,238,.25);border-color:var(--cyan)}
+.switch input:checked::after{left:18px;background:var(--cyan)}
+.switch span{font-size:12px}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);font-size:10.5px;margin-top:10px}
+.legend b{font-weight:600}
+.chip{display:inline-block;padding:1px 6px;border-radius:5px;background:var(--panel3);
+  border:1px solid var(--line);color:var(--cyan);font:10.5px Consolas,monospace}
+
+footer{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 18px;
+  border-top:1px solid var(--line);background:#090f16;color:var(--faint);font-size:10.5px}
+footer .sp{flex:1}
+footer b{color:var(--dim);font-weight:600}
+
+#toasts{position:fixed;right:18px;bottom:44px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.toast{padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel3);
+  color:var(--txt);font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:340px}
+.toast.ok{border-color:rgba(52,211,153,.5)} .toast.err{border-color:rgba(248,113,113,.5)}
+dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);color:var(--txt);
+  padding:0;max-width:520px;width:90%}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.dlg-h{padding:13px 16px;border-bottom:1px solid var(--line-soft);font-weight:600;background:var(--panel2)}
+.dlg-b{padding:16px;font-size:12px;color:var(--dim);line-height:1.8}
+.dlg-f{display:flex;justify-content:flex-end;gap:9px;padding:12px 16px;border-top:1px solid var(--line-soft)}
+@media(max-width:1000px){.grid2,.kpis{grid-template-columns:1fr}.hdr-meta{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo"></div>
+    <div><h1>电脑算力调度中心 · V0.10</h1><span class="sub">IN-APP SECURITY SCAN</span></div>
+  </div>
+  <span class="badge proto">◈ 原型模式</span>
+  <span class="badge live" id="hd-engine">内置引擎就绪</span>
+  <div class="hdr-sp"></div>
+  <div class="hdr-meta">
+    <span>内核 <b>v0.10 (dev)</b></span>
+    <span>自动扫描 <b id="hd-auto">每天 03:00</b></span>
+    <span>模拟报告 <b id="hd-count">0</b> 份</span>
+  </div>
+</header>
+
+<nav>
+  <div class="group">安全能力</div>
+  <button class="navbtn active" data-view="scan"><span class="ico">⛨</span>安全扫描</button>
+  <button class="navbtn" data-view="reports"><span class="ico">▤</span>扫描报告</button>
+  <div class="group">配置与识别</div>
+  <button class="navbtn" data-view="engines"><span class="ico">◎</span>引擎识别</button>
+  <button class="navbtn" data-view="settings"><span class="ico">⚙</span>自动扫描设置</button>
+  <div class="navfoot">
+    <b>原型边界</b><br>
+    不连接后端 · 不启动常驻进程<br>
+    不注册系统计划任务<br>
+    不调用任何真实杀毒引擎<br>
+    设置仅存浏览器本地
+  </div>
+</nav>
+
+<main>
+  <div class="banner">
+    <div class="ico">⚠</div>
+    <div>
+      <b>这是最基础的原型：所有扫描过程与报告均为模拟数据，没有调用任何真实杀毒引擎。</b>
+      <p>界面上的命令、识别结果与接口契约来自本机实测和官方公开文档，标注为「实测」或「契约」；凡标「演示」的都是占位数据。真实落地需要后端适配层 + 引擎授权，见引擎识别页底部说明。</p>
+    </div>
+  </div>
+
+  <!-- ============ 安全扫描（功能页） ============ -->
+  <section class="view active" data-view="scan">
+    <div class="pagehead"><h2>安全扫描</h2><span class="desc">应用内调用扫描能力，不要求系统另装杀毒软件</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">已识别引擎</div><div class="v" id="kp-eng">--</div><div class="x" id="kp-eng-x">本机实测 + 支持清单</div></div>
+      <div class="kpi"><div class="k">最近一次扫描</div><div class="v" id="kp-last" style="font-size:16px">--</div><div class="x" id="kp-last-x">--</div></div>
+      <div class="kpi"><div class="k">累计发现威胁</div><div class="v" id="kp-threat">--</div><div class="x">模拟报告统计</div></div>
+      <div class="kpi"><div class="k">自动扫描</div><div class="v" id="kp-auto" style="font-size:16px">--</div><div class="x" id="kp-next">--</div></div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <div class="panel">
+          <div class="head">发起扫描<span class="sp"></span><span class="hint">原型：模拟执行</span></div>
+          <div class="body">
+            <div class="form">
+              <label for="sc-engine">扫描引擎</label>
+              <select id="sc-engine"></select>
+              <label for="sc-type">扫描范围</label>
+              <select id="sc-type">
+                <option value="full">整机全盘扫描</option>
+                <option value="quick">快速扫描（内存 / 启动项 / 系统目录）</option>
+                <option value="custom">自定义目录</option>
+              </select>
+              <label for="sc-path">自定义路径</label>
+              <input id="sc-path" placeholder="例如 C:\Users\...\Downloads" disabled>
+              <label for="sc-cpu">CPU 上限</label>
+              <select id="sc-cpu">
+                <option value="25">25%（后台友好）</option>
+                <option value="50" selected>50%（默认）</option>
+                <option value="100">不限制</option>
+              </select>
+              <div class="actions">
+                <button class="btn primary" id="sc-run">立即扫描</button>
+                <button class="btn" id="sc-sched">模拟触发今日自动扫描</button>
+                <button class="btn" id="sc-abort" disabled>中止</button>
+              </div>
+              <div class="note">原型只推进度条并生成模拟报告；真实调用由后端适配层执行，需管理员权限与引擎授权。</div>
+            </div>
+            <div class="progress"><i id="sc-bar"></i></div>
+            <div class="steps" id="sc-steps">
+              <div class="step" data-i="0">初始化引擎</div>
+              <div class="step" data-i="1">枚举扫描对象</div>
+              <div class="step" data-i="2">执行检测</div>
+              <div class="step" data-i="3">生成报告</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="head">当前引擎<span class="sp"></span><span class="hint" id="sc-cur-tag">--</span></div>
+          <div class="body"><div id="sc-cur"></div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="head">扫描输出<span class="sp"></span><button class="btn sm" id="sc-clear">清空</button></div>
+          <div class="body"><div class="out" id="sc-out" style="min-height:190px">等待发起扫描…</div></div>
+        </div>
+        <div class="panel">
+          <div class="head">每日自动扫描<span class="sp"></span><button class="btn sm" id="sc-goto-set">去设置</button></div>
+          <div class="body"><div class="kv" id="sc-sched-kv"></div></div>
+        </div>
+        <div class="panel">
+          <div class="head">标注说明</div>
+          <div class="body">
+            <div class="legend">
+              <span><span class="badge live">实测</span> 本机真实探测结果</span>
+              <span><span class="badge spec">契约</span> 官方文档接口，未执行</span>
+              <span><span class="badge demo">演示</span> 模拟占位数据</span>
+              <span><span class="badge oem">授权</span> 需商业 OEM 许可</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 扫描报告页 ============ -->
+  <section class="view" data-view="reports">
+    <div class="pagehead"><h2>扫描报告</h2><span class="desc">每次扫描（手动或自动）自动生成一份报告</span></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="head">报告列表<span class="sp"></span>
+          <span class="badge demo">全部为模拟</span>
+          <button class="btn sm" id="rp-refresh">刷新</button>
+        </div>
+        <div class="body"><div class="list" id="rp-list"></div></div>
+      </div>
+      <div class="panel">
+        <div class="head">报告详情<span class="sp"></span><button class="btn sm" id="rp-export">导出 JSON</button></div>
+        <div class="body"><div id="rp-detail"><div class="empty">从左侧选择一份报告</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 引擎识别页 ============ -->
+  <section class="view" data-view="engines">
+    <div class="pagehead"><h2>引擎识别</h2><span class="desc">识别本机与不同电脑上已安装的杀毒软件、安全软件</span></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="head">本机探测结果<span class="sp"></span>
+          <span class="badge live">2026-11-12 实测</span>
+          <button class="btn sm" id="en-redetect">重新识别</button>
+        </div>
+        <div class="body"><div id="en-local"></div></div>
+      </div>
+      <div class="panel">
+        <div class="head">随包能力 / 授权路径</div>
+        <div class="body"><div id="en-bundle"></div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="head">支持的厂商识别清单<span class="sp"></span><span class="hint">识别方式：WMI SecurityCenter2 + 卸载项 + 安装目录 + 服务/进程</span></div>
+      <div class="body"><div class="tbl-wrap"><table id="en-table"></table></div></div>
+    </div>
+    <div class="panel">
+      <div class="head">后端接口契约（占位，尚未实现）</div>
+      <div class="body">
+        <div class="out" id="en-api"></div>
+        <div class="desc" style="color:var(--dim);font-size:11.5px;margin-top:10px;line-height:1.75">
+          契约按现有 v1.00 的 <span class="chip">/api/*</span> 风格设计，统一带 <span class="chip">X-PF-Token</span>。
+          真实落地时由 server.py 提供路由，扫描作业在后端排队执行，报告落盘到版本目录内的
+          <span class="chip">reports/</span>，不写系统目录、不注册系统计划任务。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 设置页 ============ -->
+  <section class="view" data-view="settings">
+    <div class="pagehead"><h2>自动扫描设置</h2><span class="desc">开关、频率、引擎策略均为应用内配置</span></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="head">计划任务<span class="sp"></span><span class="hint">保存在浏览器本地</span></div>
+        <div class="body">
+          <div class="form">
+            <label>启用自动扫描</label>
+            <label class="switch"><input type="checkbox" id="se-enabled" checked><span id="se-enabled-t">已开启</span></label>
+            <label for="se-freq">扫描频率</label>
+            <select id="se-freq">
+              <option value="daily">每天一次</option>
+              <option value="12h">每 12 小时</option>
+              <option value="weekly">每周一次</option>
+              <option value="custom">自定义间隔（小时）</option>
+            </select>
+            <label for="se-hours">自定义间隔</label>
+            <input id="se-hours" type="number" min="1" max="720" value="24" disabled>
+            <label for="se-time">每日执行时间</label>
+            <input id="se-time" type="time" value="03:00">
+            <label for="se-policy">引擎策略</label>
+            <select id="se-policy">
+              <option value="builtin">始终使用应用内置能力</option>
+              <option value="auto">自动选择已识别且可用的引擎</option>
+              <option value="specified">指定某一款引擎</option>
+            </select>
+            <label for="se-specified">指定引擎</label>
+            <select id="se-specified" disabled></select>
+            <label for="se-scantype">默认扫描范围</label>
+            <select id="se-scantype">
+              <option value="full">整机全盘扫描</option>
+              <option value="quick">快速扫描</option>
+            </select>
+            <label for="se-keep">报告保留天数</label>
+            <input id="se-keep" type="number" min="1" max="365" value="30">
+            <div class="actions">
+              <button class="btn primary" id="se-save">保存设置</button>
+              <button class="btn" id="se-reset">恢复默认</button>
+              <button class="btn" id="se-now">模拟触发一次</button>
+            </div>
+            <div class="note">真实落地使用应用内调度器（随应用启动、按配置计算下次执行），不依赖 Windows 任务计划程序，符合「不在系统层面另装/另配」的要求。</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="head">当前生效配置</div>
+          <div class="body"><div class="kv" id="se-kv"></div></div>
+        </div>
+        <div class="panel">
+          <div class="head">下次执行</div>
+          <div class="body"><div class="out" id="se-next" style="min-height:88px"></div></div>
+        </div>
+        <div class="panel">
+          <div class="head">合规与边界</div>
+          <div class="body">
+            <div class="card warn">
+              <div class="row"><span class="name">卡巴斯基引擎不能随第三方安装包自由再分发</span><span class="badge oem">授权</span></div>
+              <div class="desc">官方确有 OEM 嵌入产品（Kaspersky Scan Engine / Anti-Virus SDK v8），但需签订技术合作伙伴与商业授权后取得 SDK 与病毒库分发权。原型把卡巴斯基实现为「检测到已安装 → 调用 avp.com」的外部适配器，并保留 OEM 接入位，不伪造内嵌。</div>
+            </div>
+            <div class="card">
+              <div class="row"><span class="name">随包自带的真实解法</span><span class="badge spec">可落地</span></div>
+              <div class="desc">ClamAV（GPLv2）官方提供 Windows portable ZIP 与 clamscan 命令行，可随安装包分发、无需系统安装；需遵守 GPLv2 并单独维护病毒库更新。这是「安装包自带杀毒能力」在工程与许可上都能成立的路径。</div>
+            </div>
+            <div class="card">
+              <div class="row"><span class="name">调用已装安全软件</span><span class="badge live">实测</span></div>
+              <div class="desc">对有公开命令行的（Defender、卡巴斯基企业版）直接调用并解析输出；对没有公开接口的（多数国产管家类）降级为「打开主程序并引导扫描」，绝不伪造命令或谎报扫描结果。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>V0.10 原型 · <b>versions/v0.10/prototype/</b></span>
+  <span>事实与实测 / 契约占位 / 演示数据 <b>已分离标注</b></span>
+  <span class="sp"></span>
+  <span>自包含单文件 · 无外部依赖 · 不联网</span>
+</footer>
+
+<div id="toasts"></div>
+<dialog id="dlg">
+  <div class="dlg-h" id="dlg-h">说明</div>
+  <div class="dlg-b" id="dlg-b"></div>
+  <div class="dlg-f"><button class="btn primary" id="dlg-ok">知道了</button></div>
+</dialog>
+
+<script>
+'use strict';
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const BS = String.fromCharCode(92);
+
+  /* ============ 数据：引擎 ============
+     tag: live=本机实测 / spec=官方接口契约 / demo=演示 / oem=需商业授权
+     origin: builtin=随包 / external=外部已装 / oem=需 OEM SDK
+  */
+  const ENGINES = [
+    {
+      id: 'builtin', name: '应用内置扫描引擎', vendor: 'PowerFocus / ClamAV',
+      origin: 'builtin', bundled: true, usable: true, tag: 'spec', status: '就绪（原型占位）',
+      cmd: 'clamscan.exe -r --database=<随包病毒库> --max-filesize=64M <路径>',
+      desc: '随安装包分发的开源引擎，客户电脑无需另装杀毒软件。ClamAV 为 GPLv2，官方提供 Windows portable ZIP；病毒库需随版本维护更新。原型阶段为接口占位，未真实打包引擎二进制。',
+      why: '唯一同时满足「随包自带」「无需系统安装」「许可允许再分发」的方案'
+    },
+    {
+      id: 'kaspersky', name: '卡巴斯基（Kaspersky）', vendor: 'Kaspersky',
+      origin: 'external', bundled: false, usable: false, tag: 'oem', status: '本机未安装 · 引擎未随包',
+      cmd: 'avp.com SCAN /RA:<报告文件> /MEMORY /STARTUP <路径>',
+      desc: '官方 KES for Windows 命令行接口（SCAN /RA: 写全部事件），另有 GetScanState / GetLastScanTime / GetThreats。引擎与病毒库受商业许可约束，不能由本应用随包再分发；如需真正内嵌，须走 Kaspersky Scan Engine / Anti-Virus SDK v8 的 OEM 授权。',
+      why: '本机实测：卸载项 371 条、注册表 KasperskyLab、Program Files 目录、avp.com、AVP 服务/进程、扫描计划任务 全部无痕迹'
+    },
+    {
+      id: 'defender', name: 'Windows Defender', vendor: 'Microsoft',
+      origin: 'external', bundled: false, usable: false, tag: 'live', status: '已注册但整体停用',
+      cmd: 'MpCmdRun.exe -Scan -ScanType 2 -CpuThrottling 50',
+      desc: '官方文档：ScanType 1=快速 / 2=全盘 / 3=自定义，返回码 0=无威胁或已修复、2=发现未修复或出错，需管理员权限。本机实测 AMServiceEnabled / AntivirusEnabled / RealTimeProtectionEnabled 全为 False，WinDefend 服务 Stopped。',
+      why: '本机实测：root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct 中 productState=401664'
+    },
+    {
+      id: 'qqpcmgr', name: '腾讯电脑管家系统防护', vendor: 'Tencent',
+      origin: 'external', bundled: false, usable: false, tag: 'live', status: '已识别 · 无公开命令行扫描接口',
+      cmd: '（无公开命令行扫描接口）→ 降级：打开主程序引导用户扫描',
+      desc: '本机安全中心已注册该防护产品，路径 C:' + BS + 'Program Files (x86)' + BS + 'Tencent' + BS + 'QQPCMgr' + BS + '18.2.30648.204' + BS + 'QQPCMgr.exe，productState=266240。未查到官方公开的全盘扫描命令行参数，因此不臆造调用，只做识别与引导。',
+      why: '本机实测：root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct'
+    }
+  ];
+
+  /* 支持识别的厂商清单（识别能力，不代表本机已安装） */
+  const VENDORS = [
+    ['卡巴斯基 Kaspersky', 'Kaspersky Lab', 'avp.com / KESCLI', '命令行扫描（企业版）', 'OEM SDK 需授权'],
+    ['Microsoft Defender', 'Microsoft', 'MpCmdRun.exe / Start-MpScan', '命令行扫描', '系统自带'],
+    ['腾讯电脑管家', 'Tencent', 'QQPCMgr.exe / QQPCTray.exe', '仅引导主程序', '无公开接口'],
+    ['360 安全卫士 / 杀毒', 'Qihoo 360', '360Safe.exe / 360sd.exe', '仅引导主程序', '无公开接口'],
+    ['火绒安全软件', 'Huorong', 'HipsMain.exe / HipsTray.exe', '仅引导主程序', '无公开接口'],
+    ['Avast / AVG', 'Gen Digital', 'ashCmd.exe / AvastUI.exe', '部分版本命令行', '版本相关'],
+    ['Bitdefender', 'Bitdefender', 'bdscan.exe / vsserv.exe', '部分版本命令行', '版本相关'],
+    ['ESET NOD32', 'ESET', 'ecls.exe', '命令行扫描', '需确认安装路径'],
+    ['Norton / McAfee / Avira', 'Gen Digital / Trellix / Avira', '厂商专属 CLI / 服务', '多数仅引导', '版本相关'],
+    ['Malwarebytes / Trend Micro', 'Malwarebytes / Trend Micro', 'mbam.exe / 服务', '多数仅引导', '版本相关']
+  ];
+
+  const LOCAL_DETECTED = [
+    { name: '腾讯电脑管家系统防护', raw: 'productState = 266240', state: '已注册', tag: 'live' },
+    { name: 'Windows Defender', raw: 'productState = 401664', state: '已停用', tag: 'live' },
+    { name: '卡巴斯基', raw: '无任何安装痕迹', state: '未检测到', tag: 'demo' }
+  ];
+
+  const API_CONTRACT = [
+    'GET    /api/security/engines            识别本机已装杀毒/安全软件 + 内置引擎状态',
+    'POST   /api/security/scan               发起扫描 {engine, scan_type, path, cpu_limit, trigger}',
+    'GET    /api/security/scan/{job_id}      查询扫描进度与阶段',
+    'POST   /api/security/scan/{job_id}/cancel  中止扫描',
+    'GET    /api/security/reports            报告列表（分页、按日期/引擎/结论过滤）',
+    'GET    /api/security/reports/{id}       报告详情（含威胁明细与原始日志）',
+    'GET    /api/security/settings           读取自动扫描配置',
+    'PUT    /api/security/settings           更新开关 / 频率 / 引擎策略 / 保留天数',
+    'POST   /api/security/settings/test      模拟触发一次（仅原型调试用）'
+  ].join('\n');
+
+  /* ============ 状态 ============ */
+  const DEFAULT_SETTINGS = {
+    enabled: true, freq: 'daily', hours: 24, time: '03:00',
+    policy: 'builtin', specified: 'builtin', scantype: 'full', keep: 30
+  };
+  let settings = Object.assign({}, DEFAULT_SETTINGS);
+  const STORE = 'pf-v010-prototype-settings';
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw) settings = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
+  } catch (e) { /* file:// 下 localStorage 可能不可用，忽略 */ }
+
+  let reports = [];
+  let selectedReport = null;
+  let scanTimer = null;
+  let scanPct = 0;
+  let logLines = [];
+
+  /* ============ 工具 ============ */
+  function el(tag, attrs, kids) {
+    const n = document.createElement(tag);
+    if (attrs) for (const k of Object.keys(attrs)) {
+      const v = attrs[k];
+      if (v === null || v === undefined || v === false) continue;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const kid of (kids || [])) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      n.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+    }
+    return n;
+  }
+  function badge(kind, text) {
+    return el('span', { class: 'badge ' + kind, text: text });
+  }
+  function toast(msg, kind) {
+    const n = el('div', { class: 'toast ' + (kind || ''), text: msg });
+    $('toasts').appendChild(n);
+    setTimeout(() => n.remove(), 4000);
+  }
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function stamp(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+           pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  function engineById(id) { return ENGINES.find((e) => e.id === id) || ENGINES[0]; }
+  function activeEngine() {
+    if (settings.policy === 'builtin') return ENGINES[0];
+    if (settings.policy === 'specified') return engineById(settings.specified);
+    const found = ENGINES.find((e) => e.id !== 'builtin' && e.usable);
+    return found || ENGINES[0];
+  }
+  function freqLabel() {
+    if (settings.freq === 'daily') return '每天 ' + settings.time;
+    if (settings.freq === '12h') return '每 12 小时';
+    if (settings.freq === 'weekly') return '每周 ' + settings.time;
+    return '每 ' + settings.hours + ' 小时';
+  }
+  function nextRun() {
+    const now = new Date();
+    if (settings.freq === 'daily' || settings.freq === 'weekly') {
+      const parts = (settings.time || '03:00').split(':');
+      const d = new Date(now);
+      d.setHours(Number(parts[0]) || 3, Number(parts[1]) || 0, 0, 0);
+      if (d <= now) d.setDate(d.getDate() + (settings.freq === 'weekly' ? 7 : 1));
+      return d;
+    }
+    const h = settings.freq === '12h' ? 12 : Math.max(1, Number(settings.hours) || 24);
+    return new Date(now.getTime() + h * 3600000);
+  }
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(settings)); } catch (e) { /* 忽略 */ }
+  }
+
+  /* ============ 视图切换 ============ */
+  function switchView(name) {
+    for (const b of document.querySelectorAll('.navbtn')) b.classList.toggle('active', b.dataset.view === name);
+    for (const v of document.querySelectorAll('.view')) v.classList.toggle('active', v.dataset.view === name);
+    if (name === 'reports') renderReports();
+    if (name === 'settings') renderSettings();
+    if (name === 'engines') renderEngines();
+  }
+  for (const b of document.querySelectorAll('.navbtn')) {
+    b.addEventListener('click', () => switchView(b.dataset.view));
+  }
+
+  /* ============ 引擎卡片 ============ */
+  function engineCard(e, compact) {
+    const row = el('div', { class: 'row' }, [
+      el('span', { class: 'name', text: e.name }),
+      badge(e.tag === 'live' ? 'live' : e.tag === 'oem' ? 'oem' : e.tag === 'spec' ? 'spec' : 'demo',
+            e.tag === 'live' ? '实测' : e.tag === 'oem' ? '授权' : e.tag === 'spec' ? '契约' : '演示'),
+      e.bundled ? badge('ok', '随包') : badge('demo', '外部'),
+      el('span', { class: 'meta', text: e.vendor })
+    ]);
+    const kids = [row, el('div', { class: 'meta', text: '状态：' + e.status }),
+                  el('div', { class: 'desc', text: e.desc })];
+    if (!compact) {
+      kids.push(el('div', { class: 'cmd', text: e.cmd }));
+      kids.push(el('div', { class: 'meta', style: 'margin-top:7px', text: '依据：' + e.why }));
+    }
+    return el('div', { class: 'card' + (e.id === 'kaspersky' ? ' oem' : e.id === 'builtin' ? ' warn' : '') }, kids);
+  }
+
+  function renderEngineOptions() {
+    const sc = $('sc-engine'); sc.textContent = '';
+    for (const e of ENGINES) {
+      const o = el('option', { value: e.id, text: e.name + (e.usable ? '' : '（当前不可用）') });
+      sc.appendChild(o);
+    }
+    const ae = activeEngine();
+    sc.value = ae.id;
+    const sp = $('se-specified'); sp.textContent = '';
+    for (const e of ENGINES) sp.appendChild(el('option', { value: e.id, text: e.name }));
+    sp.value = settings.specified;
+  }
+
+  function renderCurrentEngine() {
+    const e = engineById($('sc-engine').value);
+    $('sc-cur').textContent = '';
+    $('sc-cur').appendChild(engineCard(e, false));
+    $('sc-cur-tag').textContent = e.tag === 'live' ? '本机实测' : e.tag === 'oem' ? '需 OEM 授权' : '接口契约';
+  }
+
+  /* ============ 引擎识别页 ============ */
+  function renderEngines() {
+    const box = $('en-local'); box.textContent = '';
+    for (const d of LOCAL_DETECTED) {
+      box.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'name', text: d.name }),
+          badge(d.tag === 'live' ? 'live' : 'demo', d.tag === 'live' ? '实测' : '演示'),
+          badge(d.state === '已停用' ? 'danger' : d.state === '已注册' ? 'ok' : 'demo', d.state)
+        ]),
+        el('div', { class: 'cmd', text: d.raw }),
+        el('div', { class: 'meta', text: d.tag === 'live' ? '来源：WMI root' + BS + 'SecurityCenter2' + BS + 'AntiVirusProduct（本机查询）' : '来源：注册表卸载项 / 安装目录 / 服务 / 计划任务 全量扫描' })
+      ]));
+    }
+    box.appendChild(el('div', { class: 'desc', style: 'margin-top:10px',
+      text: '识别链路：① WMI 安全中心列出已注册防护产品 → ② 注册表卸载项与安装目录补全版本/路径 → ③ 服务与进程判断存活 → ④ 匹配适配器决定「可命令行调用 / 仅引导 / 需授权」。' }));
+
+    const bundle = $('en-bundle'); bundle.textContent = '';
+    bundle.appendChild(engineCard(ENGINES[0], false));
+    bundle.appendChild(engineCard(ENGINES[1], false));
+    bundle.appendChild(el('div', { class: 'card' }, [
+      el('div', { class: 'row' }, [el('span', { class: 'name', text: '三条路径对照' }), badge('spec', '契约')]),
+      el('div', { class: 'desc', text:
+        '① 内置开源引擎（ClamAV GPLv2 portable）：可随包、可离线、无需系统安装 —— 满足「安装包自带杀毒能力」。\n' +
+        '② 卡巴斯基 OEM SDK：需签商业授权，取得 SDK 与病毒库分发权后才可真正内嵌 —— 满足「品牌即卡巴斯基」。\n' +
+        '③ 外部适配器：检测客户机上已装的卡巴斯基/Defender/管家类，按官方命令行调用或引导 —— 满足「识别并调用各类安全软件」。\n' +
+        '本原型把三条都建模为同一个 EngineAdapter 接口，切换引擎不改上层业务代码。' })
+    ]));
+
+    const t = $('en-table'); t.textContent = '';
+    const thead = el('thead', {}, [el('tr', {}, [
+      el('th', { text: '产品' }), el('th', { text: '厂商' }), el('th', { text: '识别特征' }),
+      el('th', { text: '调用能力' }), el('th', { text: '备注' })
+    ])]);
+    const tbody = el('tbody');
+    for (const r of VENDORS) {
+      tbody.appendChild(el('tr', {}, [
+        el('td', {}, [el('b', { text: r[0] })]), el('td', { text: r[1] }),
+        el('td', { text: r[2] }), el('td', { text: r[3] }), el('td', { text: r[4] })
+      ]));
+    }
+    t.appendChild(thead); t.appendChild(tbody);
+    $('en-api').textContent = API_CONTRACT;
+  }
+
+  /* ============ 报告 ============ */
+  function seedReports() {
+    const now = Date.now();
+    const base = [
+      { ago: 3600 * 5, engine: 'builtin', type: 'full', trigger: 'scheduled', files: 184203, threats: 0, sec: 942 },
+      { ago: 3600 * 29, engine: 'builtin', type: 'quick', trigger: 'manual', files: 12871, threats: 1, sec: 118 },
+      { ago: 3600 * 53, engine: 'defender', type: 'full', trigger: 'scheduled', files: 176540, threats: 0, sec: 1104 },
+      { ago: 3600 * 77, engine: 'builtin', type: 'full', trigger: 'scheduled', files: 181990, threats: 2, sec: 988 }
+    ];
+    for (let i = 0; i < base.length; i++) {
+      const b = base[i];
+      const d = new Date(now - b.ago * 1000);
+      const eng = engineById(b.engine);
+      const items = [];
+      for (let k = 0; k < b.threats; k++) {
+        items.push({
+          name: k % 2 ? 'PUA.Win.Tool.Packed' : 'EICAR-Test-File (模拟)',
+          path: 'C:' + BS + 'Users' + BS + '...' + BS + 'Downloads' + BS + 'sample' + (k + 1) + '.bin',
+          risk: k % 2 ? '中' : '低', action: '已隔离（模拟）'
+        });
+      }
+      reports.push({
+        id: 'RPT-' + stamp(d).replace(/[-: ]/g, '') + '-' + pad(i + 1),
+        date: stamp(d), engineId: eng.id, engineName: eng.name,
+        scope: b.type === 'full' ? '整机全盘' : '快速扫描',
+        scanType: b.type, trigger: b.trigger === 'scheduled' ? '每日自动' : '手动',
+        durationSec: b.sec, filesScanned: b.files, threats: items,
+        status: b.threats ? 'threats' : 'clean', simulated: true,
+        cpuLimit: 50, rawLog: '[模拟] 引擎=' + eng.id + ' 对象=' + b.files + ' 威胁=' + b.threats + ' 耗时=' + b.sec + 's'
+      });
+    }
+    reports.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  function makeReport(engineId, type, trigger, cpu) {
+    const d = new Date();
+    const eng = engineById(engineId);
+    const files = 120000 + Math.floor(Math.random() * 90000);
+    const n = Math.random() < 0.22 ? 1 : 0;
+    const threats = [];
+    if (n) threats.push({
+      name: 'EICAR-Test-File (模拟)', path: 'C:' + BS + 'Users' + BS + '...' + BS + 'Downloads' + BS + 'eicar.com',
+      risk: '低', action: '已隔离（模拟）'
+    });
+    return {
+      id: 'RPT-' + stamp(d).replace(/[-: ]/g, ''), date: stamp(d),
+      engineId: eng.id, engineName: eng.name,
+      scope: type === 'full' ? '整机全盘' : type === 'quick' ? '快速扫描' : '自定义目录',
+      scanType: type, trigger: trigger, durationSec: 60 + Math.floor(Math.random() * 180),
+      filesScanned: files, threats: threats, status: n ? 'threats' : 'clean',
+      simulated: true, cpuLimit: Number(cpu),
+      rawLog: '[模拟] 引擎=' + eng.id + ' 对象=' + files + ' 威胁=' + n + ' 触发=' + trigger
+    };
+  }
+
+  function renderReports() {
+    const list = $('rp-list'); list.textContent = '';
+    if (!reports.length) { list.appendChild(el('div', { class: 'empty', text: '暂无报告，去安全扫描页发起一次' })); }
+    for (const r of reports) {
+      const stat = r.status === 'clean' ? '未发现威胁' : r.status === 'threats' ? r.threats.length + ' 项威胁' : '扫描失败';
+      const cls = r.status === 'clean' ? 'clean' : r.status === 'threats' ? 'threat' : 'fail';
+      const item = el('div', { class: 'item' + (selectedReport === r.id ? ' sel' : '') }, [
+        el('div', { class: 'main' }, [
+          el('div', { class: 't', text: r.date + ' · ' + r.engineName }),
+          el('div', { class: 's', text: r.scope + ' / ' + r.trigger + ' / 扫描 ' + r.filesScanned.toLocaleString() + ' 个对象 / ' + r.durationSec + 's' })
+        ]),
+        el('span', { class: 'stat ' + cls, text: stat }),
+        badge('demo', '模拟')
+      ]);
+      item.addEventListener('click', () => { selectedReport = r.id; renderReports(); });
+      list.appendChild(item);
+    }
+    $('hd-count').textContent = String(reports.length);
+    renderReportDetail();
+  }
+
+  function renderReportDetail() {
+    const box = $('rp-detail'); box.textContent = '';
+    const r = reports.find((x) => x.id === selectedReport);
+    if (!r) { box.appendChild(el('div', { class: 'empty', text: '从左侧选择一份报告' })); return; }
+    const kv = el('div', { class: 'kv' });
+    const pairs = [
+      ['报告编号', r.id], ['扫描时间', r.date], ['使用引擎', r.engineName],
+      ['扫描范围', r.scope], ['触发方式', r.trigger], ['CPU 上限', r.cpuLimit + '%'],
+      ['扫描对象', r.filesScanned.toLocaleString() + ' 个'], ['耗时', r.durationSec + ' 秒'],
+      ['结论', r.status === 'clean' ? '未发现威胁' : r.threats.length + ' 项威胁（模拟）'],
+      ['数据性质', '模拟数据 · 未调用真实引擎']
+    ];
+    for (const p of pairs) { kv.appendChild(el('div', { class: 'k', text: p[0] })); kv.appendChild(el('div', { class: 'v', text: p[1] })); }
+    box.appendChild(el('div', { class: 'row', style: 'margin-bottom:12px' }, [
+      badge('demo', '模拟'), badge(r.status === 'clean' ? 'ok' : 'danger', r.status === 'clean' ? '安全' : '需关注')
+    ]));
+    box.appendChild(kv);
+    box.appendChild(el('div', { class: 'head', style: 'margin:14px -14px 10px;padding:10px 14px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)', text: '威胁明细' }));
+    if (!r.threats.length) box.appendChild(el('div', { class: 'empty', text: '本次扫描未发现威胁（模拟）' }));
+    for (const t of r.threats) {
+      box.appendChild(el('div', { class: 'card' }, [
+        el('div', { class: 'row' }, [el('span', { class: 'name', text: t.name }), badge('danger', '风险 ' + t.risk)]),
+        el('div', { class: 'cmd', text: t.path }),
+        el('div', { class: 'meta', text: '处置：' + t.action })
+      ]));
+    }
+    box.appendChild(el('div', { class: 'out', style: 'margin-top:12px', text: r.rawLog }));
+  }
+
+  /* ============ 扫描模拟 ============ */
+  function log(text) {
+    logLines.push('[' + stamp(new Date()).slice(11) + '] ' + text);
+    if (logLines.length > 120) logLines.shift();
+    $('sc-out').textContent = logLines.join('\n');
+  }
+  function setSteps(idx) {
+    for (const s of document.querySelectorAll('.step')) {
+      const i = Number(s.dataset.i);
+      s.classList.toggle('on', i === idx);
+      s.classList.toggle('done', i < idx);
+    }
+  }
+  function startScan(trigger) {
+    if (scanTimer) { toast('已有扫描在进行中', 'err'); return; }
+    const eid = trigger === 'scheduled' ? activeEngine().id : $('sc-engine').value;
+    const eng = engineById(eid);
+    const type = trigger === 'scheduled' ? settings.scantype : $('sc-type').value;
+    const cpu = $('sc-cpu').value;
+    scanPct = 0; $('sc-bar').style.width = '0%';
+    $('sc-run').disabled = true; $('sc-sched').disabled = true; $('sc-abort').disabled = false;
+    log('── 开始模拟扫描 ──');
+    log('引擎：' + eng.name + '（' + eng.id + '）');
+    log('范围：' + (type === 'full' ? '整机全盘' : type === 'quick' ? '快速' : '自定义') + ' · 触发：' + (trigger === 'scheduled' ? '每日自动' : '手动'));
+    log('原型提示：以下过程为模拟，不会执行 ' + eng.cmd.split(' ')[0]);
+    const phases = [
+      [12, '初始化引擎：检查随包组件 / 病毒库版本'],
+      [35, '枚举扫描对象：磁盘、内存、启动项、计划任务'],
+      [72, '执行检测：按引擎适配器逐项扫描'],
+      [96, '汇总结果：生成威胁明细与统计'],
+      [100, '写入报告：reports/ 目录（原型内存）']
+    ];
+    let pi = 0;
+    setSteps(0);
+    scanTimer = setInterval(() => {
+      scanPct += 3 + Math.floor(Math.random() * 5);
+      if (scanPct > 100) scanPct = 100;
+      $('sc-bar').style.width = scanPct + '%';
+      while (pi < phases.length && scanPct >= phases[pi][0]) {
+        log(phases[pi][1]);
+        setSteps(Math.min(pi + 1, 3));
+        pi++;
+      }
+      if (scanPct >= 100) {
+        clearInterval(scanTimer); scanTimer = null;
+        setSteps(4);
+        const r = makeReport(eid, type, trigger === 'scheduled' ? '每日自动' : '手动', cpu);
+        reports.unshift(r); selectedReport = r.id;
+        $('sc-run').disabled = false; $('sc-sched').disabled = false; $('sc-abort').disabled = true;
+        log('完成：' + r.id + ' · ' + (r.status === 'clean' ? '未发现威胁' : r.threats.length + ' 项威胁（模拟）'));
+        renderReports(); renderKPI();
+        toast('扫描完成，报告已生成：' + r.id, 'ok');
+        switchView('reports');
+      }
+    }, 220);
+  }
+  function abortScan() {
+    if (!scanTimer) return;
+    clearInterval(scanTimer); scanTimer = null;
+    $('sc-run').disabled = false; $('sc-sched').disabled = false; $('sc-abort').disabled = true;
+    setSteps(-1); log('已中止模拟扫描'); toast('扫描已中止', 'err');
+  }
+
+  /* ============ 设置 ============ */
+  function renderSettings() {
+    $('se-enabled').checked = !!settings.enabled;
+    $('se-enabled-t').textContent = settings.enabled ? '已开启' : '已关闭';
+    $('se-freq').value = settings.freq;
+    $('se-hours').value = settings.hours;
+    $('se-hours').disabled = settings.freq !== 'custom';
+    $('se-time').value = settings.time;
+    $('se-time').disabled = !(settings.freq === 'daily' || settings.freq === 'weekly');
+    $('se-policy').value = settings.policy;
+    $('se-specified').disabled = settings.policy !== 'specified';
+    $('se-specified').value = settings.specified;
+    $('se-scantype').value = settings.scantype;
+    $('se-keep').value = settings.keep;
+
+    const kv = $('se-kv'); kv.textContent = '';
+    const pairs = [
+      ['自动扫描', settings.enabled ? '开启' : '关闭'],
+      ['频率', freqLabel()],
+      ['引擎策略', settings.policy === 'builtin' ? '始终内置能力' : settings.policy === 'auto' ? '自动选择已识别引擎' : '指定：' + engineById(settings.specified).name],
+      ['默认范围', settings.scantype === 'full' ? '整机全盘' : '快速扫描'],
+      ['报告保留', settings.keep + ' 天'],
+      ['调度实现', '应用内调度器（不注册系统任务）'],
+      ['配置存储', '浏览器 localStorage（原型）']
+    ];
+    for (const p of pairs) { kv.appendChild(el('div', { class: 'k', text: p[0] })); kv.appendChild(el('div', { class: 'v', text: p[1] })); }
+
+    const sk = $('sc-sched-kv'); sk.textContent = '';
+    const sp = [
+      ['状态', settings.enabled ? '已开启' : '已关闭'],
+      ['频率', freqLabel()],
+      ['执行引擎', activeEngine().name],
+      ['下次执行', settings.enabled ? stamp(nextRun()) : '（未启用）'],
+      ['报告去向', '扫描报告页']
+    ];
+    for (const p of sp) { sk.appendChild(el('div', { class: 'k', text: p[0] })); sk.appendChild(el('div', { class: 'v', text: p[1] })); }
+
+    $('hd-auto').textContent = settings.enabled ? freqLabel() : '已关闭';
+    $('kp-auto').textContent = settings.enabled ? '已开启' : '已关闭';
+    $('kp-next').textContent = settings.enabled ? '下次 ' + stamp(nextRun()) : '未启用自动扫描';
+  }
+
+  function readSettings() {
+    settings.enabled = $('se-enabled').checked;
+    settings.freq = $('se-freq').value;
+    settings.hours = Math.max(1, Math.min(720, Number($('se-hours').value) || 24));
+    settings.time = $('se-time').value || '03:00';
+    settings.policy = $('se-policy').value;
+    settings.specified = $('se-specified').value;
+    settings.scantype = $('se-scantype').value;
+    settings.keep = Math.max(1, Math.min(365, Number($('se-keep').value) || 30));
+  }
+
+  /* ============ KPI ============ */
+  function renderKPI() {
+    $('kp-eng').textContent = String(LOCAL_DETECTED.filter((d) => d.state !== '未检测到').length) + ' / ' + VENDORS.length;
+    $('kp-eng-x').textContent = '本机识别 2 款 · 清单支持 ' + VENDORS.length + ' 类';
+    if (reports.length) {
+      $('kp-last').textContent = reports[0].date;
+      $('kp-last-x').textContent = reports[0].engineName + ' · ' + (reports[0].status === 'clean' ? '未发现威胁' : reports[0].threats.length + ' 项威胁（模拟）');
+    }
+    const total = reports.reduce((s, r) => s + r.threats.length, 0);
+    $('kp-threat').textContent = String(total);
+    $('hd-count').textContent = String(reports.length);
+    renderSettings();
+  }
+
+  /* ============ 事件绑定 ============ */
+  $('sc-type').addEventListener('change', () => { $('sc-path').disabled = $('sc-type').value !== 'custom'; });
+  $('sc-engine').addEventListener('change', renderCurrentEngine);
+  $('sc-run').addEventListener('click', () => startScan('manual'));
+  $('sc-sched').addEventListener('click', () => startScan('scheduled'));
+  $('sc-abort').addEventListener('click', abortScan);
+  $('sc-clear').addEventListener('click', () => { logLines = []; $('sc-out').textContent = '等待发起扫描…'; });
+  $('sc-goto-set').addEventListener('click', () => switchView('settings'));
+  $('rp-refresh').addEventListener('click', () => { renderReports(); toast('报告列表已刷新'); });
+  $('rp-export').addEventListener('click', () => {
+    const r = reports.find((x) => x.id === selectedReport);
+    if (!r) { toast('请先选择一份报告', 'err'); return; }
+    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: r.id + '.json' });
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast('已导出 ' + r.id + '.json（模拟数据）', 'ok');
+  });
+  $('en-redetect').addEventListener('click', () => { renderEngines(); toast('已按本机实测结果重新识别'); });
+  $('se-freq').addEventListener('change', renderSettings);
+  $('se-policy').addEventListener('change', renderSettings);
+  $('se-enabled').addEventListener('change', () => { renderSettings(); });
+  $('se-save').addEventListener('click', () => {
+    readSettings(); save(); renderSettings(); renderEngineOptions(); renderCurrentEngine();
+    toast('设置已保存（本原型仅存浏览器本地）', 'ok');
+  });
+  $('se-reset').addEventListener('click', () => {
+    settings = Object.assign({}, DEFAULT_SETTINGS); save();
+    renderSettings(); renderEngineOptions(); renderCurrentEngine(); toast('已恢复默认设置');
+  });
+  $('se-now').addEventListener('click', () => { readSettings(); save(); switchView('scan'); startScan('scheduled'); });
+  $('dlg-ok').addEventListener('click', () => $('dlg').close());
+
+  /* ============ 启动 ============ */
+  seedReports();
+  selectedReport = reports[0].id;
+  renderEngineOptions();
+  renderCurrentEngine();
+  renderEngines();
+  renderReports();
+  renderKPI();
+  log('原型已就绪。所有扫描与报告均为模拟数据。');
+  log('本机实测：卡巴斯基未安装；Defender 已停用；腾讯电脑管家系统防护已注册。');
+  setInterval(() => { if (document.querySelector('.view[data-view="settings"]').classList.contains('active')) renderSettings(); }, 30000);
+})();
+</script>
+</body>
+</html>

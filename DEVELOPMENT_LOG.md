@@ -1069,3 +1069,34 @@
 **约定（后续必须遵守）**：快捷方式不再写 IconLocation；项目图标只由 `build.ps1` / spec 的 `--icon app.ico` 内嵌进 exe。ico 原件与 ASCII 副本保留不动。
 
 **备份**：`archive\desktop-fix-20261112-1055\desktop\*.before-no-iconloc`。桌面视图若仍显示旧图，右键刷新；运行中窗口的任务栏图标需重启应用。
+
+
+## 2026-11-12 12:05 · V0.10 最基础原型：应用内安全扫描能力
+
+**触发**：用户要求「安装包自带卡巴斯基杀毒能力、客户机无需另装、每天自动整机扫描、设置可开关/调频率/选内置或已识别软件、扫描完报告放报告页、识别并调用各类安全软件，且识别/配置/调用都在应用内完成」，并指定往 V0.10 推进。
+
+**查证（先查后做，不猜接口）**：
+- 本机无卡巴斯基：卸载项 371 条、注册表 KasperskyLab、Program Files 目录、avp.com、AVP 服务/进程、扫描计划任务 全部零痕迹。
+- Defender 整体停用：AMServiceEnabled / AntivirusEnabled / RealTimeProtectionEnabled 全 False，WinDefend Stopped；MpCmdRun.exe 4.18.25080.5 文件仍在。
+- 安全中心注册：腾讯电脑管家系统防护 266240、Windows Defender 401664。
+- 现有前端七页无「功能页面」「报告页面」；current.json = v0.09。
+- 官方资料：Kaspersky 支持中心 avp.com SCAN /RA: /MEMORY /STARTUP 与 KESCLI GetScanState/GetLastScanTime/GetThreats；Kaspersky 技术联盟页明确 OEM (SDK) / 白标 / 捆绑三种商业模式（Scan Engine、AV SDK v8）→ 引擎内嵌需商业授权，不能自由再分发；Microsoft Learn MpCmdRun -Scan -ScanType 0/1/2/3、返回码 0/2；WMI root\SecurityCenter2\AntiVirusProduct + productState 位掩码；ClamAV GPLv2 + Windows portable ZIP + clamscan。
+
+**架构决策（三条路径统一 EngineAdapter 接口）**：
+1. 内置 ClamAV（GPLv2 portable）随包、免系统安装、可离线 —— 唯一同时满足「自带 / 免装 / 可再分发」的方案；
+2. 卡巴斯基 OEM SDK —— 品牌内嵌可行但需商业授权，原型只保留接入位，不伪造内嵌；
+3. 外部适配器 —— 有官方命令行的构造真实命令，无公开接口的只识别+引导，拒绝臆造命令或谎报结果。
+
+**落地**：
+- 按 VERSIONING.md 用版本创建工具从 v0.09 派生 versions\v0.10（stage=dev，入口 电脑算力调度中心_v0.10.ps1，MANIFEST 补 prototype / security_scan 两段）。未改 v0.09、未切 current.json、未重打包 exe。
+- prototype\index.html：单文件自包含四页原型（安全扫描 / 扫描报告 / 引擎识别 / 自动扫描设置），模拟扫描进度与报告、设置持久化、引擎契约展示、四色标注（实测 / 契约 / 授权 / 演示）。
+- security_scan.py：真实只读识别（WMI 安全中心）、6 个适配器、命令构造、ScanReport / Threat / ScanSettings 数据结构、next_run 计算、run_scan 执行边界（默认 dry-run，拒绝真实扫描）、三个 CLI 模式。
+- 设计文档：E:/AI 调度中心\V0.10_应用内安全扫描原型_2026-11-12.md。
+
+**修复的真实 bug**：首次 --discover 因命令行解释器管道输出为 GBK、按 UTF-8 解码抛 UnicodeDecodeError。改为强制 UTF-8 输出 + UTF-8/GBK 双解码兜底，复测通过（中文产品名与路径完整）。
+
+**验证**：node --check PASS；DOM 引用 53 id / 48 引用 / 0 缺失；标签全配平；无外部脚本/网络/fetch/innerHTML/eval；Edge 无头实渲染截图 + dump-dom 动态内容全部填充、无 NaN / [object Object] / Uncaught / TypeError；py_compile PASS；--discover / --dry-run / --settings 全通过；run-tests.ps1 -SkipMcp → PASS 7 / FAIL 0。
+
+**硬边界**：所有扫描与报告为模拟数据（simulated: true + 界面徽章）；不注册系统计划任务、不写系统目录；9 条 /api/security/* 仅契约占位；内置引擎二进制与病毒库未打包。
+
+**残余 / 下一步**：ClamAV 二进制与病毒库随包及 GPLv2 合规、卡巴斯基 OEM 决策、server.py 9 条路由、报告落盘 reports/、应用内调度器实装、多机适配器逐台验证、权限与 CPU 限速、接入 v1.00 七页导航、stage 转 stable 后切指针并重打包。

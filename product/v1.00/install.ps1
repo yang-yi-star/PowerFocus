@@ -11,8 +11,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $AppDir = $PSScriptRoot
 $Exe = Join-Path $AppDir 'dist\电脑算力调度中心.exe'
-# 项目图标（11-03 制作的古早 ico 副本；ASCII 路径避免 .lnk 编码差异）
-$IconPath = Join-Path $AppDir 'app.ico'
+# 图标说明（2026-11-12 二次修复）：11-03 古早 ico 已由 build\build.ps1 的 --icon 内嵌进 exe。
+# 安装脚本不再给 lnk 写 IconLocation —— 实测 Shell 不采纳写入的该字段（无论指向 .ico 还是 exe），
+# 会退化成「白纸 + 箭头」通用图标；不指定时 Shell 自动取 Target exe 的内嵌图标，效果一致且可靠。
 $Shell = New-Object -ComObject WScript.Shell
 $Desktop = [Environment]::GetFolderPath('Desktop')
 $StartMenu = Join-Path ([Environment]::GetFolderPath('Programs')) '电脑算力调度中心'
@@ -21,14 +22,14 @@ $DesktopLnk = Join-Path $Desktop '电脑算力调度中心.lnk'
 $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) '电脑算力调度中心.lnk'
 
 function New-Lnk([string]$Path) {
+    # CreateShortcut() 就地改写已存在的 lnk 时会保留未赋值字段（Arguments / IconLocation 都会残留）。
+    # 11-05 事故根因就是旧 PowerShell 托盘参数残留；11-12 又发现残留的 IconLocation 会让图标变白纸。
+    # 因此先移除旧 lnk 再原生生成一份全新的，只赋必需字段，不写 IconLocation。
+    if (Test-Path -LiteralPath $Path) { Remove-Item -LiteralPath $Path -Force }
     $s = $Shell.CreateShortcut($Path)
     $s.TargetPath = $Exe
     $s.WorkingDirectory = Split-Path $Exe -Parent
-    # 2026-11-12 修复：CreateShortcut() 就地改写已存在的 lnk 时会保留未赋值字段。
-    # 必须显式清空 Arguments，否则旧 PowerShell 托盘参数会残留到新 exe 上（11-05 事故根因）。
     $s.Arguments = ''
-    if (Test-Path -LiteralPath $IconPath) { $s.IconLocation = "$IconPath,0" }
-    else { $s.IconLocation = "$Exe,0" }
     $s.Description = '通用电脑算力调度中心'
     $s.Save()
 }

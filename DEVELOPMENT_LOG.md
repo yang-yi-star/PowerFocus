@@ -1056,3 +1056,16 @@
 **验证**：tests\run-tests.ps1 -SkipMcp → PASS 7 / FAIL 0（PS 语法 83 文件 / JSON 契约 4 / Python 编译 5 / pytest 16 passed / 路由契约 / 仓库卫生 / 工具对齐）。lnk 二进制复核、计划任务复核、manifest JSON 解析、文档一致性全部通过。
 
 **残余**：当前运行中的窗口仍是旧映像，任务栏图标需下次启动才更新；重打包副本留在 out\rebuild-20261112\dist\；D 盘旧版解释器路径已弃用；下一代网页原型任务仍暂停。
+
+
+## 2026-11-12 11:30 · 二次修复：桌面图标空白（IconLocation 方案作废）
+
+**触发**：用户反馈「没有图标，你手动刷新一下」。11-05/11-12 首轮把 lnk 的 `IconLocation` 指向 `app.ico,0`，桌面实际显示白纸默认图标。
+
+**排查**：刷新动作全套执行（utime + SHCNE_UPDATEITEM/SHCNF_PATHW + SHCNE_ASSOCCHANGED/FLUSH + ie4uinit -show，退出码 0）后截图无变化 → 排除缓存。用 `SHGetFileInfoW(lnk, SHGFI_ICON)` 取 Shell 实给图标并 `DrawIconEx` 渲染成 PNG 做三方对照：ico 原件与 dist exe 都是古早蓝色篮子图案，只有 lnk 是白纸默认图标；把 IconLocation 改指 exe,0 复测仍为白纸 → 根因是手工改写 lnk 写入的该字段不被 Shell 采纳，与 ico 帧格式无关。
+
+**修复**：清 `HasArguments` + `HasIconLocation`，桌面/开始菜单 lnk 统一为 flags 0x97 / 953 B / 无参数 / 无 IconLocation；Shell 自动取 Target exe 的内嵌古早 ico，渲染复验通过。`install.ps1` 的 `New-Lnk()` 改为先移除旧 lnk 再 COM 原生生成，删除全部 IconLocation 赋值与 `$IconPath`，语法解析 PASS。文档四处对齐（`使用说明.md` / `index.md` / `manifest.json` / 本日志）。
+
+**约定（后续必须遵守）**：快捷方式不再写 IconLocation；项目图标只由 `build.ps1` / spec 的 `--icon app.ico` 内嵌进 exe。ico 原件与 ASCII 副本保留不动。
+
+**备份**：`archive\desktop-fix-20261112-1055\desktop\*.before-no-iconloc`。桌面视图若仍显示旧图，右键刷新；运行中窗口的任务栏图标需重启应用。

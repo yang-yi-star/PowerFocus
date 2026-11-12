@@ -150,6 +150,33 @@
       "kaspersky_free": "full antivirus writing system drivers and services; official URL only, never installed silently"
     },
     "node_note": "Node.js is a dev/build tool here, not a client runtime dependency, because the frontend is a dependency-free single HTML file",
+    "generic_acquire": {
+      "industry_term": "bootstrapping",
+      "conclusion": "This is a standard, decades-old software distribution practice with an official Microsoft term, not a workaround.",
+      "verified_official_sources": [
+        "Microsoft Learn - Application Deployment Prerequisites / How to: Install Prerequisites in Windows Installer Deployment",
+        "WiX Toolset - How To: Install the .NET Framework Using Burn (NetFx45Web remote payload, optional local payload)",
+        "nodejs.org/api/corepack.html - packageManager pinning, on-demand download, offline workflow",
+        "docs.astral.sh/uv/guides/install-python/ - automatic Python downloads, no admin, no system writes",
+        "code.visualstudio.com/docs/remote/ssh plus remote FAQ - VS Code Server auto install and local-transfer fallback"
+      ],
+      "spec_type": "AcquireSpec",
+      "pipeline": "download -> official checksum -> safe extract -> version probe -> artifact.json",
+      "install_modes_added": ["on_demand"],
+      "version_pinned": {"nodejs": "v26.13.1", "kvrt_engine": null},
+      "offline_fallback": "engines/_offline/<official archive> with --offline",
+      "checksum_limit": "SHASUMS256.txt GPG .sig is not verified; only HTTPS + official host + manifest hash + pinned hash",
+      "real_install_2026_11_13": {
+        "url": "https://nodejs.org/dist/v26.13.1/node-v26.13.1-win-x64.zip",
+        "bytes": 41166246,
+        "elapsed_sec": 8.1,
+        "sha256_match": true,
+        "extracted_files": 2398,
+        "verify_output": "v26.13.1",
+        "system_path_modified": false,
+        "needs_admin": false
+      }
+    },
     "local_check_2026_11_13": {
       "total": 7,
       "present": 6,
@@ -167,7 +194,10 @@
     "not_yet": [
       "startup_check not wired into v1.00 exe main process",
       "no /api/bootstrap/* routes and no frontend panel yet (static snapshot would be simulation)",
-      "current.json still points to v0.09"
+      "current.json still points to v0.09",
+      "KVRT engine uses a latest direct link: version is not pinned, Authenticode only proves the signer",
+      "GPG signature of Node SHASUMS256.txt is not verified",
+      "download failure quarantine branch not yet exercised with a real corrupted sample"
     ]
   }
 }

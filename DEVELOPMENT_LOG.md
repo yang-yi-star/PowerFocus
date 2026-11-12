@@ -1172,3 +1172,21 @@
 **刻意没接前端**：静态快照等于又变模拟，与「真跑」相悖；要真联动必须先挂主进程 + `/api/bootstrap/*` 路由。**未完成（如实）**：模块未挂进 v1.00 exe 主进程、无路由无面板、`current.json` 仍 v0.09、v1.00 exe 未重打包、下载失败留档分支未经真实失败样本验证。待用户确认「提供安装」指 KVRT 还是完整版。
 
 **文档**：E:\AI 调度中心\V0.10_启动依赖自检_2026-11-13.md；README 加章、MANIFEST 加 `startup_bootstrap` 段。
+
+---
+
+## 2026-11-13 06:10 · 通用 bootstrapping（用户追问「这种常不常见」）
+
+**用户观点**：以后装 Node 一类组件也应该能这么干，这是最常见的计算机方法，让上网搜一下常不常见。**核实结论：非常常见，且有官方术语 `bootstrapping`**。Microsoft Learn《Application Deployment Prerequisites》原文：「automatically detect the existence of components during installation and install a predetermined set of prerequisites — a process known as bootstrapping」，并注明「By default, bootstrapped components are deployed from the component vendor's website」；ClickOnce 安装前检查 application manifest 的最低要求，Visual Studio 生成的 `Setup.exe` 就叫 bootstrapper。其余逐条查证：WiX Burn `NetFx45Web` remote payload 按需下载 + 本地 payload 离线；Node 官方 Corepack 按 `packageManager` 锁版本、`downloading it on demand if needed`、`corepack pack` Offline Workflow；Astral uv「automatically installs missing Python versions as needed」、装用户目录、不需 sudo、不覆盖系统 Python；VS Code Remote-SSH 首次连接自动装 Server、远端失败回退本地下载后传输。**用户这个思路是正统做法，之前纠结「能不能把杀毒引擎塞进包」才是绕远路。**
+
+**落地泛化**：上一版下载/验签流程是贴着 KVRT 一个组件写的，等于开特例。新增 `AcquireSpec`（官方 URL / 校验清单 / 锁定哈希 / 压缩包名 / 解包后 exe 相对路径 / 二次探测参数）与通用 `acquire_zip()`（下载 → 官方 SHA256 比对 → 防路径穿越与体积异常的安全解包 → `-v` 二次探测 → 写 `artifact.json`）；新增 `on_demand` 模式：启动自检不主动装 Node（当前不是运行时依赖），用户主动点一下即走同一流程，以后加组件只加一行声明。下载仍复用 `kvrt_bundle.download()` 的分块 + `.part` + 原子改名，**没另造下载器**。补齐业界七条通行约定里的两条：**版本锁定**（Node 锁 `v26.13.1` + 固定 SHA256）与**离线降级**（`engines/_offline/` + `--offline`）。如实标注差距：KVRT 仍是 `latest` 直链未锁版本；Node 官方 `SHASUMS256.txt` 的 GPG `.sig` 未验，只做到 HTTPS + 官方域名 + 清单哈希 + 锁定哈希。
+
+**真跑（不是模拟）**：`--install nodejs --consent USER_APPROVED_DOWNLOAD` → 官方下载 41,166,246 字节 / 8.1 秒，SHA256 `e2edda75…` 与官方清单及锁定值双重一致，解包 2,398 文件，`node.exe -v` → `v26.13.1` / rc=0，`artifact.json` 记录 `needs_admin=False / writes_system_path=False`，**系统 PATH 未改动**（`shutil.which('node')` 仍指向 `.workbuddy` 外部工具链 v22.22.2），幂等复跑不再下载。
+
+**修 3 个真实 bug**：① `kvrt_bundle.download()` 进度文字污染 stdout 会让应用解析 JSON 失败 → `contextlib.redirect_stdout(sys.stderr)`；② 幂等跳过被当成失败返回码 2 → 新增显式 `ok` 字段，成功/幂等均 `ok=True`；③ 解包缺路径穿越与体积异常防护 → 解包前逐条校验，实测拦截 `../evil.txt`。另实测离线降级提示与官方清单缺项报错。
+
+**验证**：`py_compile` 4 模块 PASS；`--check` 识别 Node 为「应用目录内自备」、`startup_ok=true`；四类边界（无同意 / 已齐不重下 / guided 拒绝 / KVRT 已齐）全拦；`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**；引擎二进制、离线包、审计文件全部被 `.gitignore` 排除。
+
+**未完成（如实）**：仍未挂 v1.00 exe 主进程、无 `/api/bootstrap/*` 路由与前端面板、`current.json` 仍 v0.09、KVRT 未锁版本、下载失败留档分支未经真实损坏样本验证。
+
+**文档**：E:\AI 调度中心\Bootstrapping_业界通行做法调研_2026-11-13.md。

@@ -110,6 +110,16 @@ CLI：`--check`（默认自检）/ `--plan`（只列待办）/ `--list`（清单
 
 本机真跑（2026-11-13）：7 项中 6 项齐全、1 项缺（Kaspersky Free 完整版，仅引导）；`startup_ok=true`。四类边界均实测拦住：无同意拒绝下载、已齐全不重复下载 122 MB 引擎、Node 与完整版卡巴即使带同意也不自动安装。
 
+### 通用制品补齐（2026-11-13 扩展，Node 为第二个实例）
+
+「开头自检 → 缺了同意 → 官方源下载 → 校验 → 落到应用目录」是业界标准做法，正式名称 **bootstrapping**：Microsoft Learn 定义为「自动检测必备组件并安装」，默认从厂商站点下载；WiX Burn `NetFx45Web` 用 remote payload 按需下载并支持本地离线包；Node 官方 Corepack 按 `packageManager` 锁版本并按需下载、提供 Offline Workflow；Astral uv 自动下载缺失 Python 到用户目录、不写系统不需管理员；VS Code Remote-SSH 首次连接自动装 Server、失败回退本地传输。详见 `E:\AI 调度中心\Bootstrapping_业界通行做法调研_2026-11-13.md`。
+
+因此把「只给 KVRT 写的下载流程」泛化成通用能力：`AcquireSpec` 声明官方 URL、校验清单、锁定哈希、压缩包名、解包后可执行路径与二次探测命令；`acquire_zip()` 共用「下载 → 官方哈希比对 → 安全解包（防路径穿越/体积异常）→ 跑 `-v` 二次探测 → 写 `artifact.json`」。新增 `on_demand` 模式：启动自检不主动要求装 Node（它现在不是运行时依赖），用户主动点一下就走同一套流程；以后加任何组件只加一行声明，不改流程。
+
+补齐业界七条通行约定中的两条：**版本锁定**（Node 锁 `v26.13.1` + 固定 SHA256；KVRT 仍是 `latest` 直链，未锁版本，验签只保证「卡巴签的」不保证具体版本，如实标注为差距）、**离线降级**（`engines/_offline/` 放官方包 + `--offline`，对应 WiX 本地 payload / Corepack `pack` / VS Code 回退本地传输）。校验边界：Node 的 `SHASUMS256.txt` 另有 GPG `.sig`，本项目未验 GPG，只做到 HTTPS + 官方域名 + 清单哈希 + 锁定哈希，与 Corepack 写死 sha224 同级。
+
+Node 真跑实证：`--install nodejs --consent USER_APPROVED_DOWNLOAD` → 官方下载 41,166,246 字节 / 8.1 秒，SHA256 与官方清单及锁定值双重一致，解包 2,398 文件，`node.exe -v` 返回 `v26.13.1`（rc=0），`artifact.json` 记录 `needs_admin=False / writes_system_path=False`，**系统 PATH 未改动**。另修三个真实问题：下载进度污染 stdout（重定向 stderr）、幂等跳过被误判为失败码 2（新增显式 `ok`）、解包缺路径穿越防护（实测拦截 `../evil.txt`）。
+
 ## 仍是原型/未完成的部分
 
 - 自检模块 `dependency_bootstrap.py` **已可独立真跑，但尚未挂进 v1.00 exe 的主进程**，桌面端点开还看不到自检结果；前端展示需要 `/api/bootstrap/*` 路由实装后才能真正联动（硬塞静态快照等于又变成模拟，不做）。

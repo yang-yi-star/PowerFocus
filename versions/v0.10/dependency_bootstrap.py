@@ -17,14 +17,23 @@
      不改注册表、不注册服务或计划任务、不写任何文件。
   2. 显式同意。install() 必须由设置页在用户点击「同意下载」后传入
      CONSENT_TOKEN；模块自身永远不替用户同意，也不在启动时静默触发。
-  3. 只落应用目录。download_to_app 只写 versions/v0.10/engines/，
-     绝不写 Program Files；guided 项连下载都不做，只给官方入口。
+  3. 只落应用目录。download_to_app / on_demand 只写 versions/v0.10/engines/，
+     绝不写 Program Files 或系统 PATH；guided 项连下载都不做，只给官方入口。
   4. 先验签后可用。复用 kvrt_bundle.verify() / save_state()，校验不过
      一律标记不可用；未通过的文件只改名留档，不删除。
   5. 不随包预置。任何第三方二进制都不进安装包、不进 git 仓库
      （.gitignore 已排除 engines/ 与 reports/）。
   6. 缺能力不阻塞启动。required=False 的项只提示，不阻断主流程；
      required=True 的项由应用自己内嵌，正常情况下不会缺。
+
+通用制品（2026-11-13 扩展）：AcquireSpec 声明官方 URL、校验清单、锁定哈希与
+    解包后的可执行路径，共用 acquire_zip() 的「下载 -> 官方校验 -> 安全解包 ->
+    二次探测 -> 写状态」流程。以后新增 Node 一类组件只需加一行声明，不改流程。
+    依据 2026-11-13 逐条查证的通行做法：Microsoft Learn bootstrapping（安装前
+    检测必备组件并从厂商站点下载）、WiX Burn NetFx45Web（remote payload 按需
+    下载 + 本地 payload 离线）、Node Corepack（packageManager 锁版本 + 哈希 +
+    offline workflow）、Astral uv（自动下载缺失 Python 到用户目录、不写系统、
+    不需管理员）、VS Code Remote-SSH（首次连接自动装 Server、失败回退本地传输）。
 
 复用现有接口（不另造一套下载/验签/识别实现）：
   kvrt_bundle.status / download / verify / save_state
@@ -33,12 +42,16 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+import urllib.request
+import zipfile
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -54,6 +67,49 @@ import kvrt_bundle  # noqa: E402  （必须先补 sys.path）
 # 用字符串令牌而不是 True，避免调用方随手写个默认值就把下载放出去。
 CONSENT_TOKEN = "USER_APPROVED_DOWNLOAD"
 
+# ---------------------------------------------------------------------------
+# 通用「制品」声明：这就是「以后装别的东西也能这么干」的关键。
+# 每个可补齐组件只需声明下面几项，共用同一套 下载 -> 校验 -> 解包 -> 二次探测。
+# 依据业界通行做法（2026-11-13 逐条查证）：
+#   * Microsoft Learn「bootstrapping」：安装前检测必备组件，缺了从厂商站点下载
+#   * WiX Burn NetFx45Web：remote payload 按需下载，可选本地 payload 支持离线
+#   * Node Corepack：packageManager 锁定版本 + sha224 校验 + offline workflow
+#   * Astral uv：自动下载缺失 Python 到用户自有目录，不写系统、不需管理员
+#   * VS Code Remote-SSH：首次连接自动装 VS Code Server，远端下载失败回退本地传输
+# ---------------------------------------------------------------------------
+
+# Node 官方 LTS 与校验值，2026-11-13 从 nodejs.org/dist/index.json 与
+# /dist/v26.13.1/SHASUMS256.txt 实测取得。锁定版本是为了可复现，
+# 不跟 Corepack 的 latest 直链那样每次拿到不同二进制。
+NODE_LTS_VERSION = "v26.13.1"
+NODE_ZIP = "node-%s-win-x64.zip" % NODE_LTS_VERSION
+NODE_BASE = "https://nodejs.org/dist/%s/" % NODE_LTS_VERSION
+NODE_ZIP_URL = NODE_BASE + NODE_ZIP
+NODE_CHECKSUM_URL = NODE_BASE + "SHASUMS256.txt"
+NODE_SHA256 = "e2edda75bfb089654705cf65a13b58933bfd5f57148e8ebda916f58a2474f1f7"
+NODE_EXE_RELPATH = "node-%s-win-x64/node.exe" % NODE_LTS_VERSION
+
+ENGINE_DIR = ROOT / "engines"
+NODE_DIR = ENGINE_DIR / "Node"
+NODE_STATE = NODE_DIR / "artifact.json"
+OFFLINE_DIR = ENGINE_DIR / "_offline"
+DOWNLOAD_DIR = ENGINE_DIR / "_downloads"
+
+
+@dataclass
+class AcquireSpec:
+    """一个可补齐组件的通用制品声明。"""
+    kind: str                          # kvrt_exe / zip_artifact
+    version: str = ""                  # 锁定版本；空表示跟随 latest（不推荐）
+    url: str = ""
+    checksum_url: str = ""             # 官方校验清单，空表示用 Authenticode 验签
+    checksum_filename: str = ""        # 清单里要匹配的文件名
+    pinned_sha256: str = ""            # 与官方清单双重比对
+    archive_name: str = ""
+    exe_relpath: str = ""
+    verify_args: List[str] = field(default_factory=list)
+    license_note: str = ""
+
 
 # ---------------------------------------------------------------------------
 # 统一的组件描述
@@ -65,13 +121,14 @@ class Component:
     name: str
     category: str                      # runtime / capability / devtool / detected
     required: bool                     # 缺失是否阻塞启动
-    install_mode: str                  # bundled / download_to_app / guided / detect_only
+    install_mode: str                  # bundled / download_to_app / on_demand / guided / detect_only
     checker: Callable[[], Dict[str, Any]]
     source_url: str = ""
     official_page: str = ""
     target_dir: str = ""               # 允许写入的位置，空表示不写入
     license_note: str = ""
     note: str = ""
+    acquire: Optional[AcquireSpec] = None
 
 
 def _state(present: bool, ready: bool = False, version: str = "",
@@ -110,6 +167,25 @@ def _check_kvrt() -> Dict[str, Any]:
                "应用目录内没有引擎文件"))
     return _state(present, ready, version=str(sig.get("file_version") or ""),
                   path=str(st.get("path") or ""), detail=detail)
+
+
+def _check_nodejs() -> Dict[str, Any]:
+    """优先认应用自己装的 Node；PATH 里的只能算「外部工具链」，不能当成客户机已装。"""
+    if NODE_STATE.is_file():
+        try:
+            st = json.loads(NODE_STATE.read_text(encoding="utf-8"))
+            exe = Path(str(st.get("exe") or ""))
+            if exe.is_file():
+                r = subprocess.run([str(exe), "-v"], capture_output=True, timeout=20)
+                ver = (r.stdout or b"").decode("utf-8", "replace").strip()[:60]
+                return _state(True, True, version=ver, path=str(exe),
+                              detail="应用目录内自备（未写入系统 PATH）")
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    s = _probe_executable("node", ["-v"])
+    if s["present"]:
+        s["detail"] = "来自系统/外部 PATH，不是应用自备；客户机上未必存在"
+    return s
 
 
 def _check_browser() -> Dict[str, Any]:
@@ -179,6 +255,10 @@ COMPONENTS: List[Component] = [
                       "5.3 禁止用其创建检测/处置数据或软件，9.1 限制商标使用。"),
         note=("免安装绿色工具，下载到应用目录即用，不写系统驱动、不与已有杀软冲突。"
               "这是「应用内自带扫描能力」的默认实现。"),
+        acquire=AcquireSpec(
+            kind="kvrt_exe", version="", url=kvrt_bundle.KVRT_URL,
+            license_note="免费专有软件；官方直链为 latest，未锁版本（见 policy.version_pinned）",
+        ),
     ),
     Component(
         id="kaspersky_free", name="卡巴斯基完整版（免费版）", category="capability",
@@ -190,10 +270,23 @@ COMPONENTS: List[Component] = [
     ),
     Component(
         id="nodejs", name="Node.js（含 npm）", category="devtool",
-        required=False, install_mode="guided", checker=lambda: _probe_executable("node", ["-v"]),
+        required=False, install_mode="on_demand", checker=_check_nodejs,
+        source_url=NODE_ZIP_URL,
         official_page="https://nodejs.org/",
-        note=("当前前端是零依赖单文件 HTML，Node 并不是客户机运行时依赖，"
-              "只用于开发期的构建与验证。因此不自动下载安装，避免逼客户装用不到的东西。"),
+        target_dir=str(NODE_DIR),
+        license_note=("Node.js 为 MIT 许可的开源软件；官方分发包由 nodejs.org 提供，"
+                      "下载到应用目录后不写系统 PATH、不需管理员权限。"),
+        note=("当前前端是零依赖单文件 HTML，Node 并非客户机运行时依赖，所以启动自检"
+              "不会主动要求安装；但整套「按需下载 → 官方校验 → 落到应用目录」能力已备好，"
+              "以后真要用（例如换成需要构建的前端），用户主动点一下即可补齐，不必改代码。"),
+        acquire=AcquireSpec(
+            kind="zip_artifact", version=NODE_LTS_VERSION,
+            url=NODE_ZIP_URL, checksum_url=NODE_CHECKSUM_URL,
+            checksum_filename=NODE_ZIP, pinned_sha256=NODE_SHA256,
+            archive_name=NODE_ZIP, exe_relpath=NODE_EXE_RELPATH,
+            verify_args=["-v"],
+            license_note="MIT；官方 SHASUMS256.txt 校验；离线包可放 engines/_offline/",
+        ),
     ),
     Component(
         id="git", name="Git", category="devtool",
@@ -224,6 +317,7 @@ def _action(c: Component, s: Dict[str, Any]) -> str:
         return "无需处理" if s.get("ready") else "存在但不可用：需验签或查看原因"
     return {
         "download_to_app": "可经用户同意后从官方源下载到应用目录",
+        "on_demand": "启动不主动安装；用户可在设置页主动补齐（同一套校验流程）",
         "guided": "不自动安装，仅提供官方下载入口",
         "detect_only": "仅识别，不安装",
         "bundled": "随应用内嵌，异常需重装应用",
@@ -246,6 +340,8 @@ def check_all() -> Dict[str, Any]:
             "source_url": c.source_url, "official_page": c.official_page,
             "target_dir": c.target_dir, "license_note": c.license_note,
             "note": c.note,
+            "acquirable": c.acquire is not None,
+            "pinned_version": (c.acquire.version if c.acquire else ""),
         })
     missing = [x for x in items if not x["present"]]
     not_ready = [x for x in items if x["present"] and not x["ready"]]
@@ -270,6 +366,15 @@ def check_all() -> Dict[str, Any]:
             "bundles_third_party_binaries": False,
             "verify_before_enable": True,
             "startup_blocked_by_optional": False,
+            "version_pinned": {"nodejs": NODE_LTS_VERSION, "kvrt_engine": None},
+            "checksum_source": {
+                "nodejs": "官方 SHASUMS256.txt + 源码锁定哈希双重比对",
+                "kvrt_engine": "Windows Authenticode 签名链 + 厂商标识",
+            },
+            "offline_fallback": "把官方压缩包放到 engines/_offline/ 后用 --offline 安装",
+            "on_demand_components": [x.id for x in COMPONENTS
+                                     if x.install_mode == "on_demand"],
+            "acquire_kinds": ["kvrt_exe", "zip_artifact"],
         },
     }
 
@@ -297,10 +402,13 @@ def plan() -> Dict[str, Any]:
                               if x["install_mode"] == "download_to_app"],
         "manual_only": [x["id"] for x in pending
                         if x["install_mode"] != "download_to_app"],
+        "on_demand_installable": [x.id for x in COMPONENTS
+                                  if x.install_mode == "on_demand" and x.acquire],
         "pending": [{k: x[k] for k in
                      ("id", "name", "category", "required", "install_mode",
                       "present", "ready", "detail", "action", "official_page",
-                      "target_dir", "license_note", "note")}
+                      "target_dir", "license_note", "note", "acquirable",
+                      "pinned_version")}
                     for x in pending],
         "note": "本清单只是建议动作；任何下载必须等用户同意后再调用 install()。",
     }
@@ -317,17 +425,165 @@ def _audit(record: Dict[str, Any]) -> str:
     return str(p)
 
 
-def install(component_id: str, consent: str = "", force: bool = False) -> Dict[str, Any]:
+# ---------------------------------------------------------------------------
+# 通用制品补齐：下载 -> 官方校验 -> 安全解包 -> 二次探测 -> 写状态
+# 任何 zip 形态的官方制品都能走这一条，不必为每个组件重写下载/校验逻辑。
+# ---------------------------------------------------------------------------
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 512), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _official_sha256(spec: AcquireSpec) -> str:
+    """只认厂商官方校验清单里的哈希，不信任第三方博客或本地缓存值。"""
+    req = urllib.request.Request(
+        spec.checksum_url, headers={"User-Agent": "PowerFocus-V0.10/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        text = resp.read().decode("utf-8", "replace")
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[-1].lstrip("*") == spec.checksum_filename:
+            return parts[0].lower()
+    raise RuntimeError("官方校验清单中找不到 %s" % spec.checksum_filename)
+
+
+def _quarantine(path: Path, suffix: str) -> str:
+    """校验失败的下载件只改名留档，不删除。"""
+    if not path.is_file():
+        return ""
+    dest = path.with_name(path.name + "." + suffix + "-" +
+                          datetime.now().strftime("%Y%m%d-%H%M%S"))
+    try:
+        path.rename(dest)
+        return str(dest)
+    except OSError:
+        return ""
+
+
+def _extract_zip_safely(zip_path: Path, target_dir: Path) -> int:
+    """防路径穿越与体积异常：解包前逐条检查，绝不盲信压缩包内容。"""
+    with zipfile.ZipFile(zip_path) as z:
+        members = z.infolist()
+        total = sum(m.file_size for m in members)
+        if total > 600 * 1024 * 1024:
+            raise RuntimeError("解压后体积异常: %d 字节" % total)
+        for m in members:
+            p = Path(m.filename)
+            if p.is_absolute() or ".." in p.parts:
+                raise RuntimeError("压缩包含非法路径: %s" % m.filename)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        z.extractall(target_dir)
+        return len(members)
+
+
+def acquire_zip(spec: AcquireSpec, target_dir: Path,
+                offline: bool = False) -> Dict[str, Any]:
+    """通用补齐入口：落应用目录，不写系统 PATH、不改注册表、不需管理员。"""
+    out: Dict[str, Any] = {"kind": spec.kind, "version": spec.version,
+                           "executed": False, "offline": offline}
+    exe = target_dir / spec.exe_relpath
+    if exe.is_file():
+        out["reason"] = "已安装，幂等跳过（不重复下载）"
+        out["exe"] = str(exe)
+        return out
+
+    offline_zip = OFFLINE_DIR / spec.archive_name
+    zip_path = offline_zip if offline else (DOWNLOAD_DIR / spec.archive_name)
+    if offline:
+        if not offline_zip.is_file():
+            out["reason"] = "离线包不存在；请把官方压缩包放到该路径后用 --offline 安装"
+            out["offline_path"] = str(offline_zip)
+            out["official_url"] = spec.url
+            return out
+        out["source"] = "offline_local"
+    else:
+        if not zip_path.is_file():
+            try:
+                # 复用 kvrt_bundle.download 的分块下载 + .part + 原子改名实现，
+                # 只换 url / dest，不另造一套下载器。进度文字重定向到 stderr，
+                # 保证 stdout 只输出结构化 JSON，应用侧能直接解析。
+                with contextlib.redirect_stdout(sys.stderr):
+                    out["download"] = kvrt_bundle.download(
+                        url=spec.url, dest=zip_path, force=False, timeout=900)
+            except Exception as e:
+                out["reason"] = "下载失败: %s: %s" % (type(e).__name__, e)
+                out["offline_hint"] = str(offline_zip)
+                out["retryable"] = True
+                return out
+        else:
+            out["download"] = {"downloaded": False, "note": "复用本地缓存"}
+        out["source"] = "official_url"
+
+    try:
+        actual = _sha256(zip_path)
+        official = _official_sha256(spec)
+    except Exception as e:
+        out["reason"] = "校验失败: %s: %s" % (type(e).__name__, e)
+        out["retryable"] = True
+        return out
+    out["sha256"] = actual
+    out["official_sha256"] = official
+    ok_official = (actual == official)
+    ok_pinned = (not spec.pinned_sha256 or actual == spec.pinned_sha256)
+    out["checks"] = {"官方清单一致": ok_official, "锁定哈希一致": ok_pinned}
+    if not (ok_official and ok_pinned):
+        out["quarantined"] = _quarantine(zip_path, "unverified")
+        out["reason"] = "SHA256 与官方清单或锁定值不一致，禁止解包启用"
+        return out
+
+    try:
+        out["extracted_files"] = _extract_zip_safely(zip_path, target_dir)
+    except Exception as e:
+        out["reason"] = "解包失败: %s: %s" % (type(e).__name__, e)
+        return out
+    if not exe.is_file():
+        out["reason"] = "解包后未找到预期可执行文件: %s" % spec.exe_relpath
+        return out
+    try:
+        r = subprocess.run([str(exe)] + list(spec.verify_args),
+                           capture_output=True, timeout=30)
+        out["verify_output"] = (r.stdout or b"").decode("utf-8", "replace").strip()[:80]
+        out["verify_returncode"] = r.returncode
+    except Exception as e:
+        out["reason"] = "落地后二次探测失败: %s: %s" % (type(e).__name__, e)
+        return out
+    if r.returncode != 0:
+        out["reason"] = "落地后二次探测返回非 0，禁止标记为可用"
+        return out
+
+    state = {"component_kind": spec.kind, "version": spec.version,
+             "exe": str(exe), "sha256": actual, "source": out["source"],
+             "official_url": spec.url, "checksum_url": spec.checksum_url,
+             "installed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+             "writes_system_path": False, "needs_admin": False}
+    target_dir.mkdir(parents=True, exist_ok=True)
+    state_file = target_dir / "artifact.json"
+    state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2),
+                          encoding="utf-8")
+    out["executed"] = True
+    out["exe"] = str(exe)
+    out["state_file"] = str(state_file)
+    return out
+
+
+def install(component_id: str, consent: str = "", force: bool = False,
+            offline: bool = False) -> Dict[str, Any]:
     """
     用户同意后由应用进程自己补齐组件。
 
     consent 必须严格等于 CONSENT_TOKEN；空值、布尔 True、随手写的值一律拒绝。
-    目前只有 kvrt_engine 属于 download_to_app；其余组件不提供静默安装。
+    zip_artifact 走通用 acquire_zip()，kvrt_exe 继续复用 kvrt_bundle 的验签链路，
+    guided / detect_only 一律不下载不安装。
     """
     c = next((x for x in COMPONENTS if x.id == component_id), None)
     record: Dict[str, Any] = {
         "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "component_id": component_id, "executed": False, "force": force,
+        "component_id": component_id, "executed": False, "ok": False,
+        "force": force, "offline": offline,
     }
     if c is None:
         record["reason"] = "清单中不存在该组件"
@@ -340,6 +596,20 @@ def install(component_id: str, consent: str = "", force: bool = False) -> Dict[s
         return record
     record["consent"] = "verified"
 
+    if c.acquire and c.acquire.kind == "zip_artifact":
+        result = acquire_zip(c.acquire, Path(c.target_dir), offline)
+        record["acquire"] = result
+        record["executed"] = bool(result.get("executed"))
+        record["reason"] = (result.get("reason") or
+                            ("安装完成，已落到应用目录" if result.get("executed")
+                             else "未完成"))
+        # 「已安装，幂等跳过」是成功，不是失败；不能让 CLI 返回非 0。
+        record["ok"] = bool(result.get("executed") or
+                            str(result.get("reason") or "").startswith("已安装"))
+        record["retryable"] = bool(result.get("retryable"))
+        record["audit_file"] = _audit(record)
+        return record
+
     if c.install_mode != "download_to_app":
         record["reason"] = "该组件不提供应用内自动下载（不写系统、不静默安装）"
         record["official_page"] = c.official_page
@@ -351,6 +621,7 @@ def install(component_id: str, consent: str = "", force: bool = False) -> Dict[s
     if before.get("ready") and not force:
         record["reason"] = "组件已齐全且验签通过，无需重复下载"
         record["path"] = before.get("path")
+        record["ok"] = True
         _audit(record)
         return record
 
@@ -387,6 +658,7 @@ def install(component_id: str, consent: str = "", force: bool = False) -> Dict[s
 
     kvrt_bundle.save_state(v)
     record["executed"] = True
+    record["ok"] = True
     record["ready"] = True
     record["path"] = str(kvrt_bundle.ENGINE_EXE)
     record["target_dir"] = c.target_dir
@@ -409,19 +681,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--consent", default="",
                     help="UI 在用户点击同意后传入 %s" % CONSENT_TOKEN)
     ap.add_argument("--force", action="store_true", help="配合 --install 强制重下")
+    ap.add_argument("--offline", action="store_true",
+                    help="不联网，改用 engines/_offline/ 下用户手动放置的官方包")
     args = ap.parse_args(argv)
 
     if args.list:
-        print(json.dumps([{k: getattr(c, k) for k in
-                           ("id", "name", "category", "required", "install_mode",
-                            "source_url", "official_page", "target_dir", "note")}
-                          for c in COMPONENTS], ensure_ascii=False, indent=2))
+        rows = []
+        for c in COMPONENTS:
+            row = {k: getattr(c, k) for k in
+                   ("id", "name", "category", "required", "install_mode",
+                    "source_url", "official_page", "target_dir", "note")}
+            row["acquire_kind"] = c.acquire.kind if c.acquire else ""
+            row["pinned_version"] = c.acquire.version if c.acquire else ""
+            rows.append(row)
+        print(json.dumps(rows, ensure_ascii=False, indent=2))
         return 0
 
     if args.install:
-        out = install(args.install, args.consent, args.force)
+        out = install(args.install, args.consent, args.force, args.offline)
         print(json.dumps(out, ensure_ascii=False, indent=2))
-        return 0 if (out.get("executed") or out.get("reason", "").startswith("组件已齐全")) else 2
+        return 0 if out.get("ok") else 2
 
     if args.plan:
         print(json.dumps(plan(), ensure_ascii=False, indent=2))

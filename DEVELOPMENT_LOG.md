@@ -1190,3 +1190,19 @@
 **未完成（如实）**：仍未挂 v1.00 exe 主进程、无 `/api/bootstrap/*` 路由与前端面板、`current.json` 仍 v0.09、KVRT 未锁版本、下载失败留档分支未经真实损坏样本验证。
 
 **文档**：E:\AI 调度中心\Bootstrapping_业界通行做法调研_2026-11-13.md。
+
+## 2026-11-13 06:40 · 完整版卡巴 + 基础工程盲区审计
+
+**用户拍板**：「完整版，个人能使用的完整版」——回答上一轮悬着的 KVRT / 完整版二选一。同时要求「看看这个开发的软件里面有多少个这种明显的问题，就像这种很常见的东西，结果你不知道的，你搜一下看一下有多少」。
+
+**完整版官方查证（不是凭印象）**：`support.kaspersky.com/help/Kaspersky Free/Win21.24/zh-Hans/101565.htm` 说明卡巴斯基免费版是**完整客户端的有限免费层级**，含实时文件/邮件防护、安全浏览、反钓鱼、系统监控，需 My Kaspersky 账号激活；与 KVRT（免安装绿色扫描工具、无实时防护）是两种东西。`Win21.7/zh-Hans/all-in-one.htm?sectionUrl=226833.htm` 给出命令行参数：默认交互式向导，`/s` 静默需 `/mybirthdate`，而 `/pAGREETOEULA=1` / `JOINKSN_*` 等于替用户接受协议 —— **本应用一律不用**。官方免费版下载页 `www.kaspersky.com/free-antivirus` 现重定向到区域站并主推 30 天试用，第三方论坛给的 `21.24.8.522` 直链实测 **404**；卡巴官方论坛与 beta 社区给出的 `dm.s.kaspersky-labs.com/<locale>/Kaspersky4Win/<版本>/startup.exe` 格式实测 `21.26.4.406` / `21.27.6.532` 均 200。因此做候选版本 HEAD 探测 + 全失效降级官方页，不写死单一 URL。
+
+**落地**：`dependency_bootstrap.py` 把 `kaspersky_free` 从 `guided` 升级为 `vendor_installer`。新增 `INSTALL_CONSENT_TOKEN` 第二道令牌、`probe_vendor_versions()` 候选探测、`verify_vendor_installer()` 通用 Authenticode 验签（刻意**不复用** `kvrt_bundle.verify()`，那个把产品名写死为 `Virus Removal Tool`，会误判完整版；只复用其底层 `winverifytrust / pe_version_info / authenticode_signer_hint / sha256_file`）、`acquire_vendor_installer()` 只下载不运行、`launch_vendor_wizard()` 只传可执行路径不带任何参数。自检报告 `policy.system_level_install` 显式声明 `needs_admin / writes_system_drivers / may_conflict_with_existing_av / may_require_reboot / requires_vendor_account`。`_check_kaspersky_full()` 改为卸载注册表项 + 安装目录双证据（纯 Python winreg，不依赖被沙箱拦过的 sc/reg/PowerShell），并排除 KVRT/Rescue Disk 误判。
+
+**真跑**：`21.27.6.532` 中文区在线安装器 7,048,280 字节 / 2.9 秒，Authenticode `0x00000000`、签名者 `AO Kaspersky Lab`、产品名「卡巴斯基」、文件版本一致、SHA256 `C0C5DEC8…`，四项 checks 全 true；落 `engines/_downloads/` 且被 `.gitignore` 的 `versions/**/engines/` 挡住。六类边界全拦：无同意拒绝、有同意真下载且 `installed=false`、幂等不重下、无第二令牌拒绝、下载令牌冒充系统安装令牌被拒、非安装器组件拒绝。**实测前后本机卸载注册表项与 `avp.exe` 均为空——没有替用户装任何杀毒软件**；官方向导成功分支刻意未执行。
+
+**基础工程盲区审计**：换用「装进 Program Files、标准用户、长期运行、开源给陌生人、能干净卸载」的视角复核，联网查 Microsoft Learn WACK / GitHub Docs 社区标准 / Python logging.handlers 等官方依据，逐条在代码里取证，共识别 **14 条**此前完全没想到的通行做法（严重 5 / 中等 6 / 轻微 3），另 4 条已知功能未完成单列不计数。最严重三条：① v0.10 全把运行态写 `ROOT/reports`、`ROOT/engines`，而 v1.00 已用 `%LOCALAPPDATA%`，策略分裂且 PyInstaller `--onefile` 程序目录是临时解压目录（WACK「Install to the correct folders test」原文禁止写 Program Files）；② 无 LICENSE 与整套开源治理文件，与用户上 GitHub 的计划直接冲突；③ exe 未签名/无 UAC manifest、卸载只删快捷方式且无注册表卸载项。文档：`E:\AI 调度中心\项目常识盲区审计_2026-11-13.md`。**本轮只完成审计，未改这 14 条的代码。**
+
+**反思（写进结论）**：之前每轮验证视角都是「在我这个对话环境里能不能跑通」——管理员、路径可写、工具链齐全、跑一次就结束。这 14 条不是 14 个独立 bug，是同一个盲区的 14 个切面；bootstrapping 是第一个暴露点。
+
+**验证**：`py_compile` 4 模块 PASS；`--check` 显示 7 项 6 齐 1 缺、`vendor_installer_missing=1`、`startup_ok=true`；`--list` / `--plan` 输出正确；版本失效降级实测（`21.24.8.522` 404 → 下一个可用；全部失效 → 官方页）；`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**（pytest 16 passed）。

@@ -120,6 +120,28 @@ CLI：`--check`（默认自检）/ `--plan`（只列待办）/ `--list`（清单
 
 Node 真跑实证：`--install nodejs --consent USER_APPROVED_DOWNLOAD` → 官方下载 41,166,246 字节 / 8.1 秒，SHA256 与官方清单及锁定值双重一致，解包 2,398 文件，`node.exe -v` 返回 `v26.13.1`（rc=0），`artifact.json` 记录 `needs_admin=False / writes_system_path=False`，**系统 PATH 未改动**。另修三个真实问题：下载进度污染 stdout（重定向 stderr）、幂等跳过被误判为失败码 2（新增显式 `ok`）、解包缺路径穿越防护（实测拦截 `../evil.txt`）。
 
+## 卡巴斯基完整版（2026-11-13 用户拍板「个人能使用的完整版」）
+
+`kaspersky_free` 由 `guided` 升级为 `vendor_installer`，但**应用只下载并验签，绝不代装**：
+
+- 产品形态（官方 `Win21.24/zh-Hans/101565.htm`）：卡巴斯基免费版是**完整客户端的有限免费层级**，含实时文件/邮件防护、安全浏览、反钓鱼、系统监控，需连接 My Kaspersky 账号激活。与 KVRT（免安装绿色扫描工具、无实时防护）是两种东西。
+- 官方分发：`dm.s.kaspersky-labs.com/<locale>/Kaspersky4Win/<版本>/startup.exe` 在线安装器（约 7 MB，运行后自行下载完整包）。实测 `21.24.8.522` 已 404、`21.26.4.406` / `21.27.6.532` 均 200，因此做**候选版本 HEAD 探测 + 全失效降级到官方下载页**，不写死单一 URL。
+- 真跑实证：`21.27.6.532` 中文区 7,048,280 字节 / 2.9 秒，Authenticode `0x00000000`、签名者 `AO Kaspersky Lab`、产品名「卡巴斯基」、文件版本一致、SHA256 `C0C5DEC8…`；落 `engines/_downloads/`，被 `.gitignore` 排除。**实测前后本机卸载注册表项与 `avp.exe` 均为空，没有安装任何杀毒软件。**
+- 系统级边界：官方 `Win21.7` 帮助写明 `/s` 静默安装需 `/mybirthdate`，而 `/pAGREETOEULA=1` / `JOINKSN_*` 等参数等于替用户接受协议 —— 本应用**一律不用**。启动官方向导需第二道令牌 `USER_APPROVED_SYSTEM_INSTALL`，且只传可执行路径、不带任何参数；EULA / 隐私政策 / KSN / 账号激活全部由用户本人在向导里完成。
+- 自检报告 `policy.system_level_install` 显式声明：`needs_admin / writes_system_drivers / may_conflict_with_existing_av / may_require_reboot / requires_vendor_account` 均为 true，`app_accepts_eula_on_behalf_of_user` 与 `silent_install` 为 false。
+
+```bash
+python dependency_bootstrap.py --check
+python dependency_bootstrap.py --install kaspersky_free --consent USER_APPROVED_DOWNLOAD   # 只下载验签
+python dependency_bootstrap.py --launch-wizard kaspersky_free --install-consent USER_APPROVED_SYSTEM_INSTALL  # 用户本人操作
+```
+
+**方向冲突如实记录**：用户最早要求「不在客户机系统层面另装杀毒软件」，而完整版必然写系统驱动与服务。本轮按最新拍板实现，但把真正装进系统那一步留给用户本人。
+
+## 基础工程盲区审计（2026-11-13）
+
+按「装进 Program Files、标准用户、长期运行、开源给陌生人、能干净卸载」的视角复核，共识别 **14 条** 业界通行但项目没做的东西（严重 5 / 中等 6 / 轻微 3）。最要紧的三条：运行态数据写在程序目录（v0.10 全是 `ROOT/reports` `ROOT/engines`，而 v1.00 已用 `%LOCALAPPDATA%`，策略分裂；WACK 明令禁止写 Program Files）、无 LICENSE 与整套开源治理文件、卸载不干净且无注册表卸载项。详见 `E:\AI 调度中心\项目常识盲区审计_2026-11-13.md`。**本轮只完成审计，未修改这些问题的代码。**
+
 ## 仍是原型/未完成的部分
 
 - 自检模块 `dependency_bootstrap.py` **已可独立真跑，但尚未挂进 v1.00 exe 的主进程**，桌面端点开还看不到自检结果；前端展示需要 `/api/bootstrap/*` 路由实装后才能真正联动（硬塞静态快照等于又变成模拟，不做）。

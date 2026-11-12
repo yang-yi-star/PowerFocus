@@ -128,26 +128,30 @@
     "model": "At startup the application checks its own component list (Kaspersky, Node, etc.). Missing items are listed first; only after explicit user consent does the application itself download, verify and place them inside its own directory. The product provides an install capability, it does not bundle third-party binaries or rely on an external agent to install them.",
     "component_count": 7,
     "categories": ["runtime", "capability", "devtool", "detected"],
-    "install_modes": ["bundled", "download_to_app", "guided", "detect_only"],
+    "install_modes": ["bundled", "download_to_app", "vendor_installer", "on_demand", "guided", "detect_only"],
     "consent_token": "USER_APPROVED_DOWNLOAD",
+    "system_install_consent_token": "USER_APPROVED_SYSTEM_INSTALL",
     "reuses": [
       "kvrt_bundle.status",
       "kvrt_bundle.download",
       "kvrt_bundle.verify",
       "kvrt_bundle.save_state",
+      "kvrt_bundle.winverifytrust / pe_version_info / authenticode_signer_hint / sha256_file",
       "engine_adapters.probe_all"
     ],
     "hard_boundaries": [
       "startup_check is read-only: no download, no install, no writes at all",
       "install refuses any request without the exact consent token",
       "download_to_app writes only into versions/v0.10/engines; guided items only expose an official URL",
+      "vendor_installer downloads and verifies the vendor installer but NEVER runs it; installed stays false",
+      "launching the vendor wizard requires a SECOND token and passes NO arguments (no /s, no EULA acceptance)",
       "unverified downloads are renamed and archived, never enabled",
       "no third-party binary is bundled or committed",
       "missing optional capabilities never block startup"
     ],
     "kaspersky_distinction": {
-      "kvrt": "portable free tool, downloaded into app directory, default path",
-      "kaspersky_free": "full antivirus writing system drivers and services; official URL only, never installed silently"
+      "kvrt": "portable free tool with no real-time protection, downloaded into app directory, default path",
+      "kaspersky_free": "full client free tier with real-time protection; requires admin, writes system drivers, needs My Kaspersky account; app only downloads the official online installer and the user completes installation in the vendor interactive wizard"
     },
     "node_note": "Node.js is a dev/build tool here, not a client runtime dependency, because the frontend is a dependency-free single HTML file",
     "generic_acquire": {
@@ -187,9 +191,53 @@
       "boundaries_verified": [
         "install without consent rejected",
         "already-ready engine not re-downloaded",
-        "nodejs install rejected even with consent",
-        "kaspersky_free install rejected even with consent"
+        "nodejs on-demand install works with the official checksum",
+        "kaspersky_free installer download requires consent and never runs the installer",
+        "launch-wizard without the second token rejected",
+        "download token cannot be reused as the system-install token",
+        "non-vendor component cannot launch a wizard"
       ]
+    },
+    "vendor_installer_2026_11_13": {
+      "component": "kaspersky_free",
+      "product": "Kaspersky Free / Standard consumer client, limited free tier with real-time protection",
+      "official_help": "https://support.kaspersky.com/help/Kaspersky%20Free/Win21.24/zh-Hans/101565.htm",
+      "install_params_help": "https://support.kaspersky.com/help/Kaspersky%20Free/Win21.7/zh-Hans/all-in-one.htm?sectionUrl=226833.htm",
+      "official_page": "https://www.kaspersky.com.cn/downloads#update-product",
+      "url_template": "https://dm.s.kaspersky-labs.com/{locale}/Kaspersky4Win/{version}/startup.exe",
+      "candidate_versions": ["21.27.6.532", "21.26.4.406"],
+      "version_discovery": "HEAD probe per candidate, newest first; 21.24.8.522 confirmed 404; all-failed falls back to the official page",
+      "real_download_2026_11_13": {
+        "version": "21.27.6.532",
+        "locale": "zh-Hans-CN",
+        "bytes": 7048280,
+        "elapsed_sec": 2.9,
+        "trust_hresult": "0x00000000",
+        "signer": "AO Kaspersky Lab",
+        "product_name": "卡巴斯基",
+        "file_version": "21.27.6.532",
+        "sha256": "C0C5DEC863ADAD3A7CCABDFCC6DB00DF7AA9ADF9C73B12FE4CF9B64BA11C020B",
+        "installed": false,
+        "system_unchanged": true
+      },
+      "refused_params": [
+        "/s", "/mybirthdate", "/pAGREETOEULA=1", "/pAGREETOPRIVACYPOLICY=1",
+        "/pJOINKSN_ENHANCE_PROTECTION=1", "/pJOINKSN_MARKETING=1", "/pSKIPPRODUCTCHECK=1"
+      ],
+      "direction_conflict": "User originally required no system-level AV install; the full client necessarily writes system drivers and services. Implemented per the latest decision, but installation itself is left to the user in the vendor wizard."
+    },
+    "engineering_audit_2026_11_13": {
+      "report": "E:/AI 调度中心/项目常识盲区审计_2026-11-13.md",
+      "new_blind_spots": 14,
+      "by_severity": {"severe": 5, "medium": 6, "minor": 3},
+      "known_incomplete_items": 4,
+      "top_3": [
+        "runtime data written into program directory (v0.10 uses ROOT/, v1.00 uses LOCALAPPDATA; WACK forbids Program Files writes; PyInstaller onefile extracts to a temp dir)",
+        "no LICENSE and no open-source governance files (README/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG)",
+        "exe unsigned, no UAC manifest; uninstall is not clean and writes no registry uninstall entries"
+      ],
+      "root_cause": "Verification was always done from the perspective of this admin conversation environment, never from the perspective of a standard user on a customer machine running for years with a public open-source repository.",
+      "status": "audit only, no code changed for these 14 items"
     },
     "not_yet": [
       "startup_check not wired into v1.00 exe main process",
@@ -197,7 +245,9 @@
       "current.json still points to v0.09",
       "KVRT engine uses a latest direct link: version is not pinned, Authenticode only proves the signer",
       "GPG signature of Node SHASUMS256.txt is not verified",
-      "download failure quarantine branch not yet exercised with a real corrupted sample"
+      "download failure quarantine branch not yet exercised with a real corrupted sample",
+      "vendor wizard success branch intentionally not executed (would install an AV on this machine)",
+      "14 audited engineering blind spots not yet fixed"
     ]
   }
 }

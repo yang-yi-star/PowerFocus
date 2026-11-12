@@ -9,17 +9,19 @@ PowerFocus 是**通用算力调度加速器**：给任意本地模型榨干整�
 
 1. **单模型优先**：不做多模型并存调度。
 2. **参数不跨模型复用**：未命中档案（`v3\model-profiles.json`）的模型禁止套用任何档位参数。
-3. **v2 / v3 物理隔离**：日志、状态、命令总线各自独立，禁止混写。
+3. **单内核 + 产品层分离**：v2 / v3 已于 11-05 归档，现行为 `versions\<版本>` 单线内核 + `product\v1.00` 桌面产品层；日志、状态、命令总线按版本目录隔离，禁止混写。
 
 ## 2. 目录规范
 
-**现有文件一律不搬家**（脚本内是绝对路径，桌面快捷方式与计划任务 `PowerFocusAutoV2` 指向根目录转发壳）。只允许增量补齐：
+**现有文件一律不搬家**（脚本内是绝对路径）。2026-11-12 起入口已切换：桌面 / 开始菜单唯一 lnk 与计划任务 `PowerFocusAutoV2` 均指向 `product\v1.00\dist\电脑算力调度中心.exe`；根目录 ps1 只作兼容转发壳。只允许增量补齐：
 
 | 路径 | 角色 | 是否入库 |
 |---|---|---|
-| `电脑算力调度中心.ps1` | 主入口转发壳（快捷方式/计划任务指向此文件） | 是 |
-| `v2\` | v2 真身 + 独立 `logs`/`commands`/`rules_state` | 源码入库，运行时状态忽略 |
-| `v3\` | v3 引擎（未上线）；`lib\` 注册表与回滚模块 | 源码入库，`commands\`/`.v3.lock`/`rollback\*.json` 忽略 |
+| `product\v1.00\` | **桌面产品层**：`app\` 源码、`app\web\` 七页前端、`build\` 打包脚本与 spec、`dist\` exe、`install.ps1`、`app.ico` | 源码 / 脚本 / 文档入库，`dist\` 与 `build\pyi\` 忽略 |
+| `versions\` | 内核版本单线（v0.05~v0.09），`current.json` 为版本指针 | 源码入库，运行态忽略 |
+| `电脑算力调度中心.ps1` | 兼容转发壳，跟随 `versions\current.json`；不再指向已归档的 `v3\` | 是 |
+| `电脑算力调度中心_v2.ps1` | 二级兼容壳，转发到上面的主入口 | 是 |
+| `v2-archive\` / `archive\v3-legacy-*` | 已归档的 v2 / v3 真身，仅供回溯 | 部分 |
 | `lib\` | 根级共享模块（app-purger / clean-recyclebin / geek-bridge） | 是 |
 | `tools\` | 开发者工具：`env.ps1` 统一工具定位、`dev-check.ps1` 环境自检 | 是 |
 | `tests\` | 测试入口：`run-tests.ps1` | 是 |
@@ -87,8 +89,8 @@ pwsh -File E:\PowerFocus\tools\dev-check.ps1 -Json      # 机器可读
 pwsh -File E:\PowerFocus\tests\run-tests.ps1
 pwsh -File E:\PowerFocus\tests\run-tests.ps1 -SkipMcp   # 不想拉起 MCP 时
 
-# v2（生产）：双击转发壳或计划任务；调试时直接 dot-source
-# v3（未上线）：调试用 $env:PF_V3_NO_LOCK=1 绕过单实例锁
+# 产品（生产）：双击桌面唯一图标 = product\v1.00\dist\电脑算力调度中心.exe
+# 内核调试：pwsh -File E:\PowerFocus\电脑算力调度中心.ps1（跟随 versions\current.json）
 # MCP 服务：客户端以子进程方式拉起，手工冒烟见 tests\run-tests.ps1 第 4 项
 ```
 
@@ -129,7 +131,7 @@ pwsh -File E:\PowerFocus\tests\run-tests.ps1 -SkipMcp   # 不想拉起 MCP 时
 
 ## 8. 版本与归档
 
-- 版本演进 = **新目录 + 根目录转发壳切换**（v1 → `archive\`，v2 → `v2\`，v3 → `v3\`）。禁止在旧目录上就地重写主脚本，除非先备份进 `archive\`。
+- 版本演进 = **新版本目录 + `current.json` 指针切换**（v1 → `archive\`；v2 / v3 → 归档；现行为 `versions\v0.05`~`v0.09`）。桌面产品层独立在 `product\v1.00`，由 `build\build.ps1` 打包。禁止在旧目录上就地重写主脚本，除非先备份进 `archive\`。
 - 大版本切换前：`git commit` 一次基线，再动刀；切换失败用 `git checkout` 回退。
 - 归档命名：`archive\<主题>-<yyyyMMdd-HHmmss>\`，与现有目录保持一致。
 

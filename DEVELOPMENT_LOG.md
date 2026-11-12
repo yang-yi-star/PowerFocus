@@ -1031,3 +1031,28 @@
 - MCP 工具面（245 个，含 REA 229 个）设计上信任接入的 AI 客户端，无鉴权；这是产品定位决定的，不是疏漏。
 - 云端密钥已加密，但后端运行期仍在内存中解密——任何能读进程内存的同用户工具理论上可取。
 - 防火墙/杀软对 `Win32_Process.Create` 常驻启动方式可能告警，属预期。
+
+## 2026-11-12 11:10 · 桌面端版本错位修复（入口层 / 文档层 / 图标）
+
+**触发**：用户双击桌面 lnk 后要求「诊断第六节 6 项全部修复 + 桌面两个图标合并成一个 + 使用古早 ico」。
+
+**现场实证（更正上轮推断）**：
+- 10:48:47 desktop.log 新增「服务已就绪 18080 / 内核已拉起 电脑算力调度中心_v0.09.ps1」，10:48:49「已有实例在运行，退出」；窗口标题「电脑算力调度中心 v1.00」，18080 LISTENING，WebView2 子进程 10:48:48 新建。
+- exe 正常启动且是最新七页前端，残留的 -NoProfile 参数没拦住 exe。上轮报告第五节可能 B（exe 被参数干扰没起来）排除。「老 V1」观感来自 PyInstaller 默认图标 + 文档老双栏布局 + 两个重复入口，不是版本回退。
+
+**修复（对应诊断第六节 6 项，全部执行）**：
+1. 桌面 lnk 以 11-05 干净的 算力调度中心.lnk 为模板重建（MS-SHLLINK 二进制改写）：flags 0xf7→0xd7 清 HasArguments，IconLocation 指向 app.ico；复核无 -NoProfile 残留。开始菜单 lnk 同步。
+2. 桌面重复图标 算力调度中心.lnk 归档移出（不删除，sha 96cd3cd9 与备份一致），桌面只剩 1 个。
+3. install.ps1 的 New-Lnk() 补 $s.Arguments = '' 与项目图标；新增历史重复入口警告（只提示，不删用户文件）。
+4. 根目录 电脑算力调度中心.ps1 改为读 versions\current.json 动态拼 v0.09 内核；_v2.ps1 注释同步；v3 死链复活。
+5. 计划任务 PowerFocusAutoV2：Execute 改为 product\v1.00\dist\电脑算力调度中心.exe，Arguments 清空，登录触发 / Highest 保留（State Ready）。
+6. build.ps1 + spec 加 --icon app.ico；PyInstaller 退出码 0，新 exe 20,350,144 B（旧 20,258,888 B），256x256 图标 PNG 帧命中实证内嵌；已替换 dist exe，旧件归档。
+7. 文档：使用说明.md 第四节七页导航 + 云端默认（server.py:736/802 实证）；docs\DEVELOPING.md 第 1/2/4/8 节；E:\AI 调度中心\index.md 第三节重写 + manifest.json 结构化更新。
+
+**图标**：11-03 古早 电脑算力调度中心.ico（126,685 B，7 帧 PNG-ICO）原件保留，复制为 product\v1.00\app.ico（ASCII 路径，sha 一致 992785fa…），供 lnk / PyInstaller 引用。已发 SHChangeNotify 刷新图标缓存。
+
+**备份**：archive\desktop-fix-20261112-1055\（11 份原文件 + 2 个 lnk + 原始旧 exe），已加 .gitignore 排除，不入库。
+
+**验证**：tests\run-tests.ps1 -SkipMcp → PASS 7 / FAIL 0（PS 语法 83 文件 / JSON 契约 4 / Python 编译 5 / pytest 16 passed / 路由契约 / 仓库卫生 / 工具对齐）。lnk 二进制复核、计划任务复核、manifest JSON 解析、文档一致性全部通过。
+
+**残余**：当前运行中的窗口仍是旧映像，任务栏图标需下次启动才更新；重打包副本留在 out\rebuild-20261112\dist\；D 盘旧版解释器路径已弃用；下一代网页原型任务仍暂停。

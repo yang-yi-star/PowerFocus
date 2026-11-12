@@ -7,8 +7,11 @@ $ErrorActionPreference = 'Stop'
 $Here = $PSScriptRoot
 $Root = Split-Path $Here -Parent
 $Py = 'E:\PowerFocus\.venv\Scripts\pyinstaller.exe'
+# 2026-11-12 修复：给 exe 内嵌项目图标（此前一直用 PyInstaller 默认图标）
+$Icon = Join-Path $Root 'app.ico'
 
 if (-not (Test-Path $Py)) { throw "未找到 pyinstaller：$Py" }
+if (-not (Test-Path $Icon)) { throw "未找到图标：$Icon（由根目录 电脑算力调度中心.ico 复制而来）" }
 
 $webPath = Join-Path $Root 'app\web'
 $pyArgs = @(
@@ -16,6 +19,7 @@ $pyArgs = @(
     $(if ($Clean) { '--clean' } else { '--log-level=WARN' }),
     '--onefile', '--windowed',
     '--name', '电脑算力调度中心',
+    "--icon=$Icon",
     "--add-data=$webPath;web",
     '--collect-all', 'uvicorn',
     '--collect-all', 'webview',

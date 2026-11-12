@@ -36,6 +36,7 @@ exe = EXE(
     a.datas,
     [],
     name='电脑算力调度中心',
+    icon='E:/PowerFocus/product/v1.00/app.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

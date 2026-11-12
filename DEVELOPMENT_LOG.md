@@ -1224,3 +1224,21 @@
 **回归**：`run-tests.ps1 -SkipMcp` → **PASS 7 / FAIL 0**（pytest 16 passed）；`mem-guard.state.json` 运行态改动已还原不入库。
 
 **未完成（如实）**：exe 未重打包（打包配置改了但没跑 build）；`current.json` 仍 v0.09；官方向导成功分支刻意未执行；其余 13 条盲区未修。
+
+## 2026-11-13 08:10 · 多智能体团队协作轮（用户指令：启动团队、分角色完成应用）
+
+**编制**：team-lead（协调/裁决/最终提交）+ release-eng（打包发布）+ oss-governance（开源治理合规）+ desktop-hardening（桌面加固）+ qa-ci（测试与 CI）。各角色只动自己的文件区域，全部不 commit，lead 统一回归后提交。
+
+**release-eng**：真打包两次（07:21 基线 + 07:33 收编加固版，19.5 MB，增量 3.4s / 22.7s）；趟平两个环境坑（WorkBuddy 的 PYTHONPATH trash shim 拦截 os.remove 导致覆盖失败 → 打包前清空 PYTHONPATH；提权旧实例 56588 持单实例互斥锁与 dist 文件锁）；exe 级验证 frozen:true、/api/bootstrap/check 可用、manifest RT_MANIFEST 内嵌（asInvoker）、RotatingFileHandler 新路径生效；产出 docs/release-plan.md（签名两阶段：自签+TrustedPublisher 起步、对外 OV 证书；Azure 排除因个人信任路径不含中国大陆主体；MANIFEST 增补 build 字段建议）。**抓出真 bug**：exe 内 KVRT 显示 missing 与源码 6 齐 1 缺不符 → 三段链根因（frozen 下 `__file__` 在 _MEI 临时目录 → app_paths.REPO_ROOT 错位 → legacy 回退断裂），有行号、有源码/exe 对照表。
+
+**oss-governance**：LICENSE 选 **Apache-2.0**（显式专利授权 + NOTICE 机制贴合「仓库零第三方二进制」结构）；新增根 README/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG/THIRD_PARTY_NOTICES 七件；**联网核实 KVRT EULA 现行版**：5.3（禁用于创建其他检测软件）、5.4（禁与商业软件捆绑分发）——现在「用户本机经同意官方源下载」不构成分发，**未来做预装安装包立即触雷**，已在两处文档设禁；PyInstaller bootloader 例外确认不传染。
+
+**desktop-hardening**：日志轮转 RotatingFileHandler（2MB×5）落 %LOCALAPPDATA%\PowerFocus\v1.00\logs\；UAC asInvoker manifest（正确识别 build.ps1 会重建 spec，参数必须进命令行）；卸载闭环：HKCU 卸载注册表项 + 幂等 uninstall.ps1（删数据需 -DeleteData/交互确认）；全部 Parser 零语法错误，EstimatedSize 写入干跑验证。
+
+**qa-ci**：app_paths 12 个单测（monkeypatch/tmp_path 隔离，不碰真实用户目录）；.github/workflows/ci.yml（windows-latest + py3.13，零本机路径，复刻 run-tests 安全子集）；docs/error-codes.md 错误码提案（PF-<前缀><序号>，标注未全面落地）。
+
+**lead 亲自修复**：release-eng 第二轮结束时修复未落地，lead 采纳其方案亲自改 app_paths.legacy_root()（frozen 下从 sys.executable 向上找 versions/v0.10 + POWERFOCUS_ROOT 覆盖；源码/写路径零变化）——**重打包后 exe 内验证恢复 6 齐 1 缺，kvrt_engine path 正确指向源码目录真实引擎**。
+
+**回归**：pytest 33 passed（16 原 + 17 新）；run-tests.ps1 → PASS 7 / FAIL 0；mem-guard 运行态文件还原；提交 `a1a196a`（19 文件，+1414/−14）。
+
+**留给用户的决策**：① LICENSE=Apache-2.0 如不合意可换（文本独立无依赖）；② GitHub 发布前需开 Private vulnerability reporting、替换 CHANGELOG/CoC 的 owner 占位；③ 签名路线（自签起步→OV）待定夺；④ 错误码规范仅提案未迁移。

@@ -108,6 +108,12 @@ cd product\v1.00
   详见 [LICENSE](LICENSE) 的担保免责与责任限制条款。
 - 本项目与卡巴斯基、Microsoft、Node.js 基金会等第三方无任何隶属或背书关系；
   各商标归其各自所有者所有。
+- **数据流向如实说明**：本地快照（进程/资源数据）仅存于本机 `%LOCALAPPDATA%`，不上传；
+  使用云端模型对话时，你的输入内容由**你自己配置的第三方模型服务商**按其隐私政策处理，
+  本项目不经手、不存储、不转发该内容。
+- 本工具仅限用于**你拥有合法权限的计算机**；不得用于未授权控制或干扰他人的计算机系统。
+- 本项目的合规自查记录见 [docs/legal-review.md](docs/legal-review.md)，
+  竞品与定位分析见 [docs/competitive-analysis.md](docs/competitive-analysis.md)。
 
 ## 参与贡献
 

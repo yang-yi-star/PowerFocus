@@ -79,7 +79,7 @@
 `DEVELOPMENT_LOG.md` 对应日期条目（2026-11-03 起）。
 
 [Unreleased]: #unreleased
-[1.00.0]: https://github.com/<owner>/PowerFocus/releases/tag/v1.00.0
-[0.10.0]: https://github.com/<owner>/PowerFocus/releases/tag/v0.10.0
+[1.00.0]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v1.00.0
+[0.10.0]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.0
 
-<!-- 占位：`<owner>` 为 GitHub 组织 / 用户名，发布仓库后请替换为实际值。 -->
+<!-- 仓库：yang-yi-star/PowerFocus（2026-11-13 上线） -->

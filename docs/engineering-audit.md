@@ -189,7 +189,7 @@ F7 KVRT 验签 TOCTOU、F8 硬编码同意令牌、F10 无统一写审计、F13 
 - `calibrate-vram.ps1` 去 `E:\` 硬编码，支持 `LLAMA_SERVER_EXE` 覆盖；
 - 全仓扫描：项目代码零本机绝对路径残留。
 
-**验证**：pytest **106 passed**（新增 17 例）、ruff 0 错误、py_compile 10 目标、
+**验证**：pytest **104 passed**（新增 15 例）、ruff 0 错误、py_compile 10 目标、
 pwsh 7 全仓 `.ps1` 0 错误。冒烟中发现并修正 `New-EffectivePreset` 返回流被
 `Write-Output` 污染的真实 bug（`$usePreset` 会变成数组，`--models-preset` 传坏）。
 

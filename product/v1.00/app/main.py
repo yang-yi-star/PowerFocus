@@ -10,7 +10,6 @@ import logging
 import os
 import socket
 import subprocess
-import sys
 import threading
 import time
 import traceback
@@ -58,10 +57,34 @@ def log(msg: str):
         pass
 
 
+_MUTEX_HANDLE = None
+
+
+def notify_already_running():
+    """第二个实例被互斥量挡下时给出可见提示，避免「双击没反应」。
+
+    --windowed 打包没有控制台，日志写了用户也看不到；这里用系统消息框
+    作为唯一可见反馈。MB_TOPMOST 保证不会被其它窗口盖住。
+    """
+    try:
+        ctypes.windll.user32.MessageBoxW(
+            0,
+            "电脑算力调度中心已经在运行了。\n请查看任务栏或已打开的窗口，无需重复启动。",
+            "电脑算力调度中心",
+            0x40 | 0x40000,  # MB_ICONINFORMATION | MB_TOPMOST
+        )
+    except Exception:
+        pass
+
+
 def single_instance() -> bool:
     """命名互斥体，防止重复打开多个窗口。"""
+    global _MUTEX_HANDLE
     try:
-        ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\PowerFocusDesktop_v1")
+        # 64 位进程里 HANDLE 是指针；不设 restype 会被 ctypes 截成 c_int。
+        ctypes.windll.kernel32.CreateMutexW.restype = ctypes.c_void_p
+        _MUTEX_HANDLE = ctypes.windll.kernel32.CreateMutexW(
+            None, False, "Global\\PowerFocusDesktop_v1")
         return ctypes.windll.kernel32.GetLastError() != 183  # ERROR_ALREADY_EXISTS
     except Exception:
         return True
@@ -159,6 +182,7 @@ def log_bootstrap():
 def main():
     if not single_instance():
         log("已有实例在运行，退出")
+        notify_already_running()
         return
     import webview
 

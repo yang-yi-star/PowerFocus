@@ -1,0 +1,15 @@
+# CI 最小测试依赖（精确锁定）
+# 用法：python -m pip install -r requirements-ci.txt
+# 为什么单独一份：GitHub windows-latest 没有 WebView2 / .NET 本机工具链，
+# 装 pywebview / pythonnet / pyinstaller 会让 CI 无谓变红；打包构建请用
+# requirements-dev.txt。详见 docs/DEVELOPING.md。
+-c requirements.lock.txt
+
+fastapi==0.162.0
+starlette==1.10.0
+pydantic==2.14.2
+uvicorn==0.54.0
+httpx==0.28.1
+psutil==7.2.2
+pytest==9.2.0
+ruff==0.17.3

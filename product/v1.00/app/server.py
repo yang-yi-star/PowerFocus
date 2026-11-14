@@ -23,12 +23,13 @@ from pathlib import Path
 
 import psutil
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse, HTMLResponse
+from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import httpx
 import uvicorn
 
 import security
+import bus_receipt
 
 # 统一数据目录（审计 S1）：运行态配置不再写程序目录。
 try:
@@ -490,22 +491,45 @@ def _token() -> str:
         return ""
 
 
+_GC_LAST = [0.0]
+
+
+def _maybe_gc_bus_done():
+    """每 10 分钟回收一次历史回执，避免 done 目录无限增长。"""
+    now = time.time()
+    if now - _GC_LAST[0] < 600:
+        return
+    _GC_LAST[0] = now
+    bus_receipt.gc_done(BUS_DONE)
+
+
 async def bus_call(cmd: dict, timeout: float = 30.0):
     name = "ui-%d-%d" % (int(time.time() * 1000), next(_seq))
     in_path = BUS_IN / (name + ".json")
     done_path = BUS_DONE / (name + ".json.result.txt")
     try:
         BUS_IN.mkdir(parents=True, exist_ok=True)
-        in_path.write_text(json.dumps(cmd, ensure_ascii=False), encoding="utf-8")
+        # 原子发布：内核用 -Filter *.json 扫描，看不到写入中的 .tmp
+        bus_receipt.atomic_write(in_path, bus_receipt.dumps_command(cmd))
+        _maybe_gc_bus_done()
     except Exception as e:
         return False, "命令总线写入失败: %s" % e
     deadline = time.time() + timeout
     while time.time() < deadline:
         if done_path.exists():
             try:
-                return True, done_path.read_text(encoding="utf-8-sig").strip()
+                raw = done_path.read_text(encoding="utf-8-sig")
             except Exception as e:
                 return False, "读取结果失败: %s" % e
+            # 解析失败回执（ERROR: 前缀）并兼容旧版时间戳首行
+            ok, text = bus_receipt.parse_receipt(raw)
+            # 回执已消费即清理；内核 Move 进 done 的命令副本一并删除
+            for p in (done_path, BUS_DONE / (name + ".json")):
+                try:
+                    p.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            return ok, text
         await asyncio.sleep(0.2)
     try:
         in_path.unlink(missing_ok=True)

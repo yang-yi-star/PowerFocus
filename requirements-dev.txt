@@ -1,0 +1,11 @@
+# PowerFocus 开发 / 打包环境（在运行时依赖之上追加构建与质量工具）
+# 用法：python -m pip install -r requirements-dev.txt
+# 说明：build.ps1 依赖此环境内的 PyInstaller；PYTHONPATH 污染会导致
+#       PyInstaller 覆盖 exe 时被 shim 劫持，打包前必须清空该变量。
+-r requirements.txt
+-c requirements.lock.txt
+
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.9
+pytest==9.2.0
+ruff==0.17.3

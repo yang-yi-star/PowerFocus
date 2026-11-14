@@ -1,0 +1,140 @@
+# PowerFocus 工程审计与优化路线图
+
+- 审计日期：2026-11-14
+- 基线：`main = 5d98516`（v0.10.1 发布后）
+- 方法：四角色独立审计（架构 / 系统可靠性 / 安全 / 发布工程）+ 主理人逐条复核
+- 证据口径：**每条结论必须带 `路径:行号` 或实测命令输出**，无证据不写
+- 说明：会话中断导致「系统可靠性」「安全」两路成员未能恢复，其审计由主理人亲自补做并复核；
+  架构与发布工程两路由独立审计员完成，主理人对关键结论做了二次实算/实读确认。
+
+---
+
+## 1. 重新审视：这个应用实际在做什么
+
+名义定位是「电脑算力调度中心 / 把闲置家用电脑变成 AI 算力节点」。按代码还原的真实形态是：
+
+```
+web/app.js (1022 行)
+   ↓ HTTP + X-PF-Token
+server.py (1148 行 / 22 条路由 / 61 个函数)  ← 唯一枢纽
+   ├─→ 文件总线 commands/in|done → 内核.ps1 (2057 行) + lib/*.ps1 (1515 行)
+   │                                  ↓ 进程优先级 / 内存回收 / 场景 / 安全扫描
+   ├─→ llama-server:8080 或云端 API（server.py:748-791，OpenAI 兼容）
+   └─→ ctypes 原生进程枚举（server.py:251-327）
+```
+
+**定位落差（本次审视最重要的结论）**：真正的核心资产是 **PowerShell 内核的 3572 行本机进程与资源治理逻辑**；
+Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度」在当前实现里表现为
+「用本地/云端 LLM 解析自然语言指令 + 模型路由 + 可选本地推理」，**不是分布式算力调度，也没有节点发现/任务分发**。
+
+建议：对外表述收敛为「本机算力与进程调度控制台（含本地大模型推理）」。
+这不削弱产品价值，反而让 README / Release / 用户预期一致，也为将来真做节点化留出清晰边界。
+
+---
+
+## 2. 做对了什么（避免只挑毛病）
+
+| 项 | 证据 |
+|---|---|
+| 全局认证 + Host 校验 | `server.py:240-242` 三层中间件，仅 `/api/health` 豁免；`server.py:920` 有用错误 token 的自检用例 |
+| 写操作白名单 + 破坏性双确认 | `server.py:714-745`：`ALLOWED_ACTIONS` / `DESTRUCTIVE_ACTIONS`、`confirm=true`、后端注入本机 token、超时封顶 600s |
+| CSP 与请求体限制 | CSP 由 `security.py:319` 以响应头注入（非 meta）；`BodyLimitMiddleware` 1 MiB |
+| KVRT 供应链合规 | `kvrt_bundle.py:212` WinVerifyTrust、`:294` SHA256、`:36` 硬编码期望哈希、`:420` 未验签拒绝运行；引擎不入库（EULA 5.3/5.4） |
+| 凭据保护 | `security.py:200-256` ctypes 直调 Windows DPAPI，不依赖第三方加密库 |
+| 日志与数据目录 | `main.py:29-31` RotatingFileHandler 2 MiB × 5；`app_paths.py` 统一 `%LOCALAPPDATA%\PowerFocus` |
+| 界面工程 | 94 个 token 双主题、WCAG 2.1 AA 双人独立复算、类名体系不变使前端逻辑零结构改动 |
+
+---
+
+## 3. 与专业软件公司工程基线的差距（审计前）
+
+| 维度 | 审计前实测 | 公司基线 | 优先级 |
+|---|---|---|---|
+| 依赖锁定 | 无 requirements / lock；`ci.yml:46` 五个包全浮动 | pin + constraints + 可重建 | P0 |
+| 可复现构建 | `build.ps1:14` 硬编码 `E:\PowerFocus\.venv`；PYTHONPATH shim、pwsh 7 依赖未固化 | 与机器无关 + 构建元数据 | P0 |
+| CI 门禁 | 7 步全静态；无 lint / 构建 / 产物校验；tag push 不触发（`ci.yml:16-20`） | lint+type+test+build+audit | P0 |
+| 测试防线 | 33 用例，仅覆盖 app_paths 与安全契约；无覆盖率、无集成、无 exe 冒烟 | 覆盖率门槛 + 分层测试 | P1 |
+| 版本语义 | tag 0.10.x / 产品 1.00 / 内核 0.09 三线混用；`CHANGELOG.md:91` 死链 | 单一 SemVer 真源 | P0 |
+| 治理件 | `.github/` 仅 ci.yml；`SECURITY.md:17` 私密渠道为占位注释 | CODEOWNERS / 模板 / 检查单 | P1 |
+| 文档同步 | `MANIFEST.json:93` 记 16 passed（实测 33）、`:5` build_date 不符；`release-plan.md:77` 字节数属另一次构建 | 单一真源 + CI 校验 | P1 |
+| 发布完整性 | 无签名 / SBOM / provenance（SLSA 0）、无 Go-No-Go 单 | 签名 + SBOM + 回滚演练 | P2 |
+| 可观测性 | README 明示数据不上传，无崩溃上报 / SLI / SLO | 本地指标 + 可选上报 | P2 |
+
+---
+
+## 4. 问题清单（P0 / P1 / P2）
+
+### P0
+
+1. **失败回执被当成成功** — `server.py:504` 只判断 done 文件存在即 `return True`；内核 `电脑算力调度中心_v0.10.ps1:1755` 异常时正文写 `ERROR:`。结果：失败操作被前端提示为成功。
+2. **回执首行时间戳污染 JSON** — 内核 `:1760` 写 `"$stamp`n$resultText"`，`server.py:828` 直接 `json.loads(text)`，导致 `/api/router` 的 `data` 恒为 `None`。
+3. **文件总线无原子写 / 无幂等 / 无清理** — `server.py:494,499,511` 直接 `write_text`、超时只删 in；内核 `:1762` Move 进 done 后永不删。实测 `commands/done` 残留 **72 个**文件；半写 JSON 会被内核读成 ERROR；`kill/stress` 超时重试可能重复执行。
+4. **发布链路不可复现 / 版本真源缺失**（见第 3 节）。
+
+### P1
+
+5. `server.py` 上帝对象：1148 行混 7 类职责；`main.py:119` 越层 Popen 内核，`server.py:1036` 反向 import `versions/v0.10`。
+6. **单实例静默退出**：`main.py:160-162` 仅写日志后 return，`--windowed` 无控制台 → 用户双击「没反应」；且 `CreateMutexW` 未设 `restype`，64 位句柄被 ctypes 截成 `c_int`。
+7. `find_port` TOCTOU：`main.py:70-78` 先 bind 再由 `with` 释放，uvicorn 之后重新 bind 同一端口。
+8. 硬编码开发机路径：`models-preset.ini:16-79` 八个模型全为 `E:\`/`D:\` 绝对路径；`server.py:81` 兜底 `E:\PowerFocus`；端口 8080/18080 分散定义。
+9. 版本指针语义未声明：`versions/current.json:4` = v0.09、`server.py:1038` 硬编码加载 v0.10 自检、`app_paths.py:42` = v0.10、`main.py:28` = v1.00；CI 的 JSON 契约（`ci.yml:86-119`）守的是 v0.09 配置，与实际打包的 v0.10 自检模块错配。
+10. 文档漂移与治理件缺失（见第 3 节）。
+
+### P2
+
+11. `server.py:123` `BUS_OUT` 定义后零引用；内核 `:97,1176` 写 `out/status.json` 无消费者；根 `commands/` 与 `versions/v0.10/commands/` 并存，内核 `:15` 注释仍写 `E:\PowerFocus\v3\commands`。
+12. 新增一个视图要改 `index.html` 两处 + `app.js` 四处（`VIEW_ORDER` / `switchView` / 绑定 / 渲染），`app.js` 已 1022 行且持续膨胀。
+13. 27 处 `except Exception`（`server.py`），部分静默吞异常。
+14. `pyproject.toml` 配了 ruff 但 CI 从不执行；`tests/` 下 4 个 `.ps1` 被 `ci.yml:8-11` 明示不跑。
+
+---
+
+## 5. 第一批已落地（本轮实际改动）
+
+| 类别 | 改动 |
+|---|---|
+| P0 协议层 | 新增 `product/v1.00/app/bus_receipt.py`：`parse_receipt()` / `atomic_write()` / `dumps_command()` / `gc_done()`；`server.py` 的 `bus_call` 改用它；内核回执改为纯正文 |
+| P0 清理 | 回执消费后立即删除，10 分钟节流的过期回收 |
+| P1 体验 | `main.py` 增加 `notify_already_running()` 系统消息框；互斥量句柄 64 位修正并全局持有 |
+| 测试 | 新增 `tests/py/test_bus_receipt.py` 9 例（时间戳剥离 / ERROR 双格式 / 全角冒号 / 原子写 / GC），pytest 33 → **42** |
+| CI | 新增 `ruff check` 门禁；依赖改 `-r requirements-ci.txt`；`on` 增 `tags: ['v*']`；`py_compile` 目标补 `bus_receipt.py` |
+| 依赖 | `requirements.txt` / `.lock.txt` / `-dev.txt` / `-ci.txt` 四件套，全部精确锁定 2026-11-14 实测版本 |
+| 治理 | `CODEOWNERS`、`dependabot.yml`、PR 模板、Bug/Feature Issue 模板；`SECURITY.md` 占位补实 |
+| 版本 | `CHANGELOG.md` 重写为单一真源，消除 `v1.00.0` 死链与前导零违规，明确 stable/dev 分期 |
+| 文档 | 本报告 |
+
+**验证记录**：`pytest` 42/42 通过；`ruff check` 0 错误（清理了 2 处未使用导入）；
+`py_compile` 3 文件通过；PowerShell 内核 `Parser::ParseFile` **13191 token / 0 错误**。
+
+---
+
+## 6. 明确未擅自改动的高风险项（需产品决策）
+
+1. **`versions/current.json` 保持 v0.09**：`versions/v0.10/MANIFEST.json:6` 标 `stage: "dev"`，
+   `:7` note 明写「未切 current.json」。把它改成 v0.10 等于把未转正内核切为生产，
+   属于产品 Go/No-Go 决策，不是配置纠错。审计结论应表述为「缺治理声明」而非「配错了」。
+2. **`server.py:1038` 自检硬编码 v0.10**：建议补一条「dev 模块仅供自检、不参与运行时路由」的契约文档，
+   而不是直接改指针。
+3. **未加 CI 构建 job**：`windows-latest` 无 WebView2 / .NET 本机工具链，PyInstaller 在托管 runner 上
+   产出的 exe 与本机不一致，强加只会制造假绿灯。建议改用自托管 runner 后再上构建与产物校验。
+4. **未做 exe 签名 / SBOM / SLSA provenance**：需要代码签名证书与构建链改造，是独立项目，不在本轮范围。
+
+---
+
+## 7. 路线图（每批独立可验证）
+
+- **第二批 · 架构收敛**：`server.py` 抽 `bus.py` / `processes.py` / `nlp.py` / `llm_proxy.py`，降到 900 行内；
+  回执升级为结构化 `{ok, ts, payload}`（保留旧格式兼容）；命令带幂等 id；`find_port` 改由 uvicorn 直接占用；
+  模型路径改 `${DATA_DIR}/models` 相对解析；端口集中注入。验证：新增纯函数单测 + CI 全绿 + 源码启动实测。
+- **第三批 · 质量门禁**：覆盖率门槛（≥60% 起步）、`server.py` 路由集成测试、exe 冒烟（启动 → `/api/health` → 关闭）、
+  发布 Go/No-Go 检查单与回滚演练、构建元数据（commit / built_at / sha256）写入 MANIFEST 并由 CI 校验。
+- **第四批 · 公司化收尾**：自托管构建 runner、exe 签名与 SBOM、依赖 CVE SLA、
+  本地 SLI 指标（启动耗时 / 总线超时率 / 自检通过率）、SLO 与发布冻结阈值。
+
+---
+
+## 8. 一句话结论
+
+这个项目的**功能密度与安全边界意识超出典型个人项目**，但工程可重复性（依赖、版本、门禁、构建）
+还停在「一个人能跑通」的阶段。本轮把它推进到「换一台机器也能复现、改错了会被门禁挡下」的起点；
+真正决定它能否像公司产品一样长期演进的，是第二批的架构收敛与第三批的质量门禁。

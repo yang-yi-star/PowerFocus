@@ -1,0 +1,24 @@
+# PowerFocus 运行时依赖（顶层，精确锁定）
+# 采集自 E:\PowerFocus\.venv / Python 3.13，2026-11-14 实测 pip freeze。
+# 用途：重建打包环境，保证不同机器产出的 exe 依赖一致。
+# 安装：python -m pip install -r requirements.txt -c requirements.lock.txt
+#
+# 注意：本项目不使用 cryptography 包。云端凭据加密由
+# product/v1.00/app/security.py 通过 ctypes 调用 Windows DPAPI
+# （CryptProtectData / CryptUnprotectData），属于系统 API。
+
+# --- 本机 Web 服务层 ---
+fastapi==0.162.0
+starlette==1.10.0
+pydantic==2.14.2
+uvicorn==0.54.0
+
+# --- HTTP 客户端（云端 API / 本地 llama-server 双通道） ---
+httpx==0.28.1
+
+# --- 进程与系统资源采集 ---
+psutil==7.2.2
+
+# --- 桌面窗口（Windows WebView2，仅打包环境需要） ---
+pywebview==6.2.1
+pythonnet==3.2.1

@@ -1,0 +1,9 @@
+# PowerFocus 代码责任归属（CODEOWNERS）
+# 规则：最后一个匹配项生效；PR 会自动请求对应审阅者。
+# 单人维护阶段全部归仓库 owner；引入模块维护者后再按目录细分。
+
+*                           @yang-yi-star
+/product/v1.00/app/         @yang-yi-star
+/versions/                  @yang-yi-star
+/.github/workflows/         @yang-yi-star
+/docs/                      @yang-yi-star

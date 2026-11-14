@@ -1,6 +1,7 @@
 # 电脑算力调度中心 v1.00 · 打包脚本
 # 用途：在源码改动后重新生成单文件 exe。
-# 依赖：E:\PowerFocus\.venv 内已安装 pyinstaller / pywebview / psutil / fastapi / uvicorn / httpx
+# 依赖：项目 .venv 内已安装 pyinstaller / pywebview / psutil / fastapi / uvicorn / httpx
+#   （路径一律由 $PSScriptRoot 推导，不再写死开发机的 E:\... ）
 param([switch]$Clean)
 
 $ErrorActionPreference = 'Stop'
@@ -11,7 +12,11 @@ $Root = Split-Path $Here -Parent
 $Repo = Split-Path (Split-Path $Root -Parent) -Parent
 $V010 = Join-Path $Repo 'versions\v0.10'
 if (-not (Test-Path -LiteralPath $V010)) { throw "未找到 V0.10 模块目录：$V010" }
-$Py = 'E:\PowerFocus\.venv\Scripts\pyinstaller.exe'
+$Py = Join-Path $Repo '.venv\Scripts\pyinstaller.exe'
+if (-not (Test-Path -LiteralPath $Py)) {
+    $cmd = Get-Command pyinstaller -ErrorAction SilentlyContinue
+    if ($cmd) { $Py = $cmd.Source } else { throw "未找到 pyinstaller：请在本项目 .venv 中安装" }
+}
 # 2026-11-12 修复：给 exe 内嵌项目图标（此前一直用 PyInstaller 默认图标）
 $Icon = Join-Path $Root 'app.ico'
 # 2026-11-13（审计修复）：exe 显式内嵌 asInvoker UAC manifest（设计为普通权限运行，不要求管理员）。

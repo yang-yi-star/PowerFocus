@@ -12,15 +12,18 @@
 import asyncio
 import ctypes
 import ctypes.wintypes as wt
+import ipaddress
 import itertools
 import json
 import os
 import re
 import secrets
+import socket
 import sys
 import threading
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import psutil
 from fastapi import FastAPI, HTTPException, Request
@@ -41,12 +44,19 @@ except ImportError:
 
 
 def _config_path() -> Path:
-    """配置读取：新数据目录优先，程序目录里的历史 config.json 只读回退。"""
-    new = app_paths.data_root() / "config.json"
-    if new.exists():
-        return new
-    old = Path(__file__).resolve().parent / "config.json"
-    return old if old.exists() else new
+    """配置读取：唯一回退策略（新数据目录 → 历史数据根 → 程序目录只读）。
+
+    写入永远走 app_paths.write_path("config.json")；这里只负责读，
+    不再让 system_prompt() 与 _write_config() 各自实现一套回退。
+    """
+    for cand in (
+        app_paths.data_root() / "config.json",
+        app_paths.legacy_root() / "config.json",
+        Path(__file__).resolve().parent / "config.json",
+    ):
+        if cand.exists():
+            return cand
+    return app_paths.data_root() / "config.json"
 
 
 APP_VERSION = "1.00"
@@ -168,6 +178,32 @@ def _cfg(name):
 _vault_cache = {"ts": 0.0, "data": {}}
 
 
+def _cloud_url_ok(u: str) -> bool:
+    """B27：云端 base_url 白名单，防止 SSRF 与 api_key 外泄。
+
+    - 回环地址允许（本地 OpenAI 兼容服务），但必须是 http/https；
+    - 字面 IP 必须公网可达，拒绝 169.254.169.254 / 10.x / 192.168.x；
+    - 域名一律要求 https，避免把 Bearer 密钥明文发到任意主机；
+    - 禁止用户名密码、query、fragment，避免凭据被拼进 URL 或参数注入。
+    如实说明：DNS rebinding 到私网的域名仍有残余风险，由 https 证书校验兜底。
+    """
+    try:
+        p = urlparse(u)
+        host = (p.hostname or "").lower()
+        if p.scheme not in ("http", "https") or not host:
+            return False
+        if p.username or p.password or p.query or p.fragment:
+            return False
+        if host in ("localhost", "127.0.0.1", "::1"):
+            return True
+        try:
+            return bool(ipaddress.ip_address(host).is_global)
+        except ValueError:
+            return p.scheme == "https"
+    except Exception:
+        return False
+
+
 def cloud_config():
     """云端凭据解析优先级：DPAPI 加密库 > 用户级环境变量。
 
@@ -182,6 +218,10 @@ def cloud_config():
         _vault_cache["ts"] = now
     v = _vault_cache["data"] or {}
     base = (str(v.get("base_url") or "") or _cfg("MODEL_BASE_URL")).rstrip("/")
+    # 读取侧同样拦截：环境变量 / 旧凭据库里的地址也必须过白名单，
+    # 否则只改 set_settings 挡不住 API Key 被发到内网元数据服务。
+    if base and not _cloud_url_ok(base):
+        base = ""
     key = str(v.get("api_key") or "") or _cfg("MODEL_API_KEY")
     model = str(v.get("model") or "") or _cfg("MODEL_NAME")
     source = "vault" if v.get("api_key") else ("env" if _cfg("MODEL_API_KEY") else "")
@@ -230,11 +270,25 @@ ALLOWED_ACTIONS = {
 DESTRUCTIVE_ACTIONS = {"kill_process", "stress_process"}
 TOKEN_ACTIONS = {"authorize", "revoke", "suspend_process", "resume_process"}   # 内核要求 token，由后端自动注入
 
-SYSTEM_CRITICAL = {
-    "system", "registry", "idle", "memory compression", "smss", "csrss",
-    "wininit", "services", "lsass", "winlogon", "fontdrvhost", "dwm",
-    "wudfhost", "msmpeng", "logonui", "securityhealthservice", "audiodg",
-}
+def _critical_processes() -> set[str]:
+    """F9：系统关键进程名单单一真源，与两代内核共用同一份 JSON。
+
+    文件缺失 / 损坏时降级到内置集合，不让应用起不来。
+    """
+    fallback = {
+        "system", "registry", "idle", "memory compression", "smss", "csrss",
+        "wininit", "services", "lsass", "winlogon", "fontdrvhost", "dwm",
+        "wudfhost", "msmpeng", "logonui", "securityhealthservice", "audiodg",
+    }
+    try:
+        p = KERNEL_DIR / "critical_processes.json"
+        names = json.loads(p.read_text(encoding="utf-8-sig")).get("names") or []
+        return {str(n).lower() for n in names} or fallback
+    except Exception:
+        return fallback
+
+
+SYSTEM_CRITICAL = _critical_processes()
 
 _ACTIVE = {"port": PORT}   # 运行期实际监听端口（可能因占用而顺延）
 _seq = itertools.count(1)
@@ -308,8 +362,17 @@ def enum_parent_map():
 
 def enum_win_processes():
     """一次 EnumProcesses + 每进程 3 个查询，整轮约 30-60ms。返回 pid/name/cpu_s/rss。"""
-    k32 = ctypes.windll.kernel32
-    psapi = ctypes.windll.psapi
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    # B19：64 位 HANDLE 是指针，默认 restype=c_int 会截掉高 32 位。
+    k32.OpenProcess.restype = ctypes.c_void_p
+    k32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+    k32.CloseHandle.argtypes = [ctypes.c_void_p]
+    k32.QueryFullProcessImageNameW.argtypes = [
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.c_wchar_p,
+        ctypes.POINTER(ctypes.c_ulong)]
+    k32.GetProcessTimes.argtypes = [ctypes.c_void_p] + [
+        ctypes.POINTER(ctypes.c_ulonglong)] * 4
     arr = (ctypes.c_ulong * 8192)()
     need = ctypes.c_ulong(0)
     if not psapi.EnumProcesses(arr, ctypes.sizeof(arr), ctypes.byref(need)):
@@ -355,7 +418,11 @@ class Snapshot:
 
     @staticmethod
     def _priority(pid: int) -> str:
-        k32 = ctypes.windll.kernel32
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenProcess.restype = ctypes.c_void_p
+        k32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        k32.CloseHandle.argtypes = [ctypes.c_void_p]
+        k32.GetPriorityClass.argtypes = [ctypes.c_void_p]
         h = k32.OpenProcess(0x0400, False, pid)
         if not h:
             return ""
@@ -503,6 +570,8 @@ def _atomic_token(path: Path) -> str:
             tmp = path.with_name(path.name + ".tmp")
             tmp.write_text(tok, encoding="utf-8")
             os.replace(tmp, path)
+            # F14：HTTP 令牌文件收回继承，只留当前用户可读。
+            security.protect_file(path)
             security.audit("http_token_bootstrapped", path=str(path))
         except OSError:
             return ""
@@ -527,8 +596,19 @@ def _kernel_token() -> str:
 
 
 async def bus_call(cmd: dict, timeout: float = 30.0):
-    """兼容包装：路由层统一走 BusClient（I/O 编排见 bus.py）。"""
-    return await BUS.call(cmd, timeout)
+    """统一出口：注入内核授权令牌 + 审计，再交给 BusClient。
+
+    F4：内核只对来自 commands/in 的命令做令牌校验，因此**每一条**命令
+    （不只 TOKEN_ACTIONS / DESTRUCTIVE_ACTIONS）都必须在这里带令牌。
+    放在这一层既覆盖 /api/router 等内部调用，也不让客户端有机会覆盖。
+    F10：所有总线写操作统一在此留审计痕迹（只记 action 与结果，不记参数值）。
+    """
+    payload = dict(cmd)
+    payload["token"] = _kernel_token()
+    ok, text = await BUS.call(payload, timeout)
+    security.audit("bus_command", action=str(cmd.get("action") or "-"),
+                   ok=str(ok), result=str(text)[:120])
+    return ok, text
 async def _json_body(req: Request) -> dict:
     """统一解析 JSON 请求体：格式错就 400，绝不让解码异常冒成 500。"""
     try:
@@ -668,11 +748,17 @@ async def index():
 
 @app.get("/api/health")
 async def health():
-    """健康探针：只回非敏感字段（本接口免鉴权，绝不暴露路径与密钥）。"""
+    """健康探针：只回非敏感字段（本接口免鉴权，绝不暴露路径与密钥）。
+
+    ready = HTTP 服务与 PowerShell 内核双就绪，供桌面启动判定使用；
+    kernel_alive 保持原字段，避免破坏既有前端与 MCP 契约。
+    """
+    alive = await kernel_alive()
     return {
         "app": "ok", "name": PRODUCT_NAME, "version": APP_VERSION,
         "kernel_version": KERNEL_DIR.name,
-        "kernel_alive": await kernel_alive(),
+        "kernel_alive": alive,
+        "ready": alive,
         "frozen": _frozen(),
         "port": _ACTIVE["port"],
     }
@@ -747,6 +833,10 @@ async def command(req: Request):
     except (TypeError, ValueError):
         timeout = 30.0
     timeout = max(1.0, min(timeout, 600.0))
+    # F9：服务端也参与系统关键进程硬闸，不只依赖内核名单。
+    if action in ("kill_process", "stress_process", "suspend_process", "resume_process"):
+        if str(cmd.get("process_name") or "").lower() in SYSTEM_CRITICAL:
+            raise HTTPException(400, "系统关键进程，拒绝操作")
     if action in TOKEN_ACTIONS:
         tok = _kernel_token()
         if not tok:
@@ -772,6 +862,13 @@ async def chat(req: Request):
         target = "cloud" if cloud_ready() else "local"
     body.setdefault("stream", True)
 
+    # B11：messages 必须是对象数组并限量，否则 dict / 字符串会让 m.get 抛 500。
+    msgs = body.get("messages") or []
+    if not isinstance(msgs, list) or len(msgs) > 50 or any(
+            not isinstance(m, dict) or len(str(m.get("content") or "")) > 32_000
+            for m in msgs):
+        raise HTTPException(400, "messages 必须是 <=50 条、每条 <=32k 字符的对象数组")
+
     if target == "cloud":
         if not cloud_ready():
             raise HTTPException(503, "云端 API 未配置：需要 BASE_URL / MODEL / API_KEY")
@@ -779,7 +876,6 @@ async def chat(req: Request):
         if not body.get("model") or body.get("model") == "__cloud__":
             body["model"] = cfg["model"]
         prompt = system_prompt()
-        msgs = body.get("messages") or []
         if prompt and not any(m.get("role") == "system" for m in msgs):
             body["messages"] = [{"role": "system", "content": prompt}] + msgs
         url = cfg["base_url"] + "/chat/completions"
@@ -788,19 +884,22 @@ async def chat(req: Request):
         url = LLAMA_BASE + "/v1/chat/completions"
         headers = llama_headers()
 
+    security.audit("chat", target=target, stream=str(bool(body.get("stream"))))
     if not body.get("stream"):
         async with httpx.AsyncClient(timeout=httpx.Timeout(None, connect=8)) as c:
             r = await c.post(url, json=body, headers=headers)
             if r.status_code != 200:
-                return JSONResponse({"error": r.text[:800], "status": r.status_code}, status_code=502)
+                # B27：不回显上游正文，它可能含密钥或内网拓扑。
+                return JSONResponse({"error": "上游模型服务返回错误",
+                                    "status": r.status_code}, status_code=502)
             return JSONResponse(r.json(), status_code=r.status_code)
 
     async def gen():
         async with httpx.AsyncClient(timeout=httpx.Timeout(None, connect=8)) as c:
             async with c.stream("POST", url, json=body, headers=headers) as r:
                 if r.status_code != 200:
-                    detail = (await r.aread()).decode("utf-8", "ignore")[:800]
-                    yield ("data: " + json.dumps({"error": detail, "status": r.status_code},
+                    yield ("data: " + json.dumps({"error": "上游模型服务返回错误",
+                                                  "status": r.status_code},
                                                  ensure_ascii=False) + "\n\n").encode("utf-8")
                     return
                 async for chunk in r.aiter_bytes():
@@ -812,16 +911,22 @@ async def chat(req: Request):
 
 @app.get("/api/models")
 async def models():
-    cfg = {}
+    # B12：profiles 被手工改成 list / 字符串时不能在 try 外 .get 导致 500。
+    items = []
     try:
         cfg = json.loads(PROFILES.read_text(encoding="utf-8-sig"))
+        models_cfg = cfg.get("models") if isinstance(cfg, dict) else None
+        if not isinstance(models_cfg, dict):
+            models_cfg = {}
+        for key, entry in models_cfg.items():
+            if not isinstance(entry, dict):
+                continue
+            ident = entry.get("identity") if isinstance(entry.get("identity"), dict) else {}
+            common = entry.get("common") if isinstance(entry.get("common"), dict) else {}
+            items.append({"key": key, "alias": common.get("alias") or key,
+                          "arch": ident.get("architecture"), "size_gb": ident.get("size_gb")})
     except Exception:
-        pass
-    items = []
-    for key, entry in (cfg.get("models") or {}).items():
-        ident = entry.get("identity") or {}
-        items.append({"key": key, "alias": (entry.get("common") or {}).get("alias") or key,
-                      "arch": ident.get("architecture"), "size_gb": ident.get("size_gb")})
+        items = []
     loaded = []
     try:
         async with httpx.AsyncClient(timeout=2) as c:
@@ -840,14 +945,15 @@ async def models():
 
 @app.get("/api/router")
 async def router_status_api():
-    """本地模型路由状态：转发内核 router_status，附上原始文本便于排查。"""
+    """本地模型路由状态：无论成败都返回一致正文，不回显内核原始文本。"""
     ok, text = await bus_call({"action": "router_status"}, timeout=20)
     data = None
     try:
         data = json.loads(text) if text else None
     except Exception:
         data = None
-    return {"ok": ok, "text": "" if ok else text, "data": data}
+    return {"ok": ok, "text": "", "data": data,
+            "error": "" if ok else "内核路由状态不可用"}
 
 
 @app.post("/api/boost")
@@ -994,6 +1100,8 @@ async def set_settings(req: Request):
         u = str(body.get("base_url") or "").strip().rstrip("/")
         if u and not re.match(r"^https?://", u, re.I):
             raise HTTPException(400, "base_url 必须以 http:// 或 https:// 开头")
+        if u and not _cloud_url_ok(u):
+            raise HTTPException(400, "base_url 指向不允许的地址（内网 / 元数据 / 明文域名）")
         v["base_url"] = u
         changed.append("base_url")
     if "model" in body:
@@ -1029,9 +1137,10 @@ async def cloud_test():
         async with httpx.AsyncClient(timeout=20) as c:
             r = await c.get(cfg["base_url"] + "/models",
                             headers={"Authorization": "Bearer " + cfg["api_key"]})
-    except Exception as e:
+    except Exception:
+        # B27：异常字符串可能含目标主机 / 凭据片段，不回显给前端。
         return {"ok": False, "latency_ms": int((time.time() - t0) * 1000),
-                "detail": "连接失败：%s" % e}
+                "detail": "连接失败（详情已写入本机日志）"}
     count = None
     try:
         count = len((r.json() or {}).get("data") or [])
@@ -1040,7 +1149,7 @@ async def cloud_test():
     return {"ok": r.status_code == 200, "status": r.status_code,
             "latency_ms": int((time.time() - t0) * 1000),
             "model_count": count,
-            "detail": "" if r.status_code == 200 else r.text[:200]}
+            "detail": "" if r.status_code == 200 else "上游返回错误（正文不回显）"}
 
 
 # ---------------------------------------------------------------------------
@@ -1106,16 +1215,17 @@ async def bootstrap_plan():
 @app.post("/api/bootstrap/install")
 async def bootstrap_install(req: Request):
     """
-    用户点「同意下载」后由前端传入 consent；服务端绝不自动补令牌。
+    用户点「同意下载」后由前端传入意图；服务端现场签发一次性令牌并立即消费。
     真下载在线程池执行，不阻塞事件循环。
     """
     body = await _json_body(req)
     if not isinstance(body, dict):
         raise HTTPException(400, "请求体必须是 JSON 对象")
     cid = str(body.get("component_id") or "").strip()
-    consent = str(body.get("consent") or "")
     if not cid:
         raise HTTPException(400, "缺少 component_id")
+    if str(body.get("consent") or "") != "yes":
+        raise HTTPException(400, "缺少用户显式同意")
     # 只允许清单里的 id，避免把任意字符串传进 install()
     try:
         known = [c.id for c in _bootstrap().COMPONENTS]
@@ -1123,6 +1233,8 @@ async def bootstrap_install(req: Request):
         known = []
     if known and cid not in known:
         raise HTTPException(400, "未知组件：%s" % cid)
+    # F8：令牌在此现场签发并立即被 install() 消费，不下发浏览器、不进源码。
+    consent = _bootstrap().mint_consent("download")
     out = await asyncio.to_thread(_bootstrap().install, cid, consent, False, False)
     security.audit("bootstrap_install", component=cid,
                    executed=str(bool(out.get("executed"))),
@@ -1140,9 +1252,11 @@ async def bootstrap_wizard(req: Request):
     if not isinstance(body, dict):
         raise HTTPException(400, "请求体必须是 JSON 对象")
     cid = str(body.get("component_id") or "").strip()
-    token = str(body.get("install_consent") or "")
     if not cid:
         raise HTTPException(400, "缺少 component_id")
+    if str(body.get("install_consent") or "") != "yes":
+        raise HTTPException(400, "缺少用户对系统级安装的第二道显式同意")
+    token = _bootstrap().mint_consent("install")
     out = await asyncio.to_thread(_bootstrap().launch_vendor_wizard, cid, token)
     security.audit("bootstrap_wizard", component=cid,
                    launched=str(bool(out.get("launched"))),
@@ -1167,7 +1281,24 @@ def serve(port: int = PORT, sock=None):
         uv_server.run()
 
 
-if __name__ == "__main__":
+def serve_only(start: int = 18080, tries: int = 40):
+    """无窗口调试入口：与桌面端共用端口顺延 + _ACTIVE 契约（B29）。
+
+    刻意不再实现一遍 uvicorn.run(app, port=PORT)：那条老路径绕过
+    bind_port，多实例会互相抢端口，_ACTIVE 也永远是假的初始值。
+    """
     start_background()
-    uvicorn.run(app, host=HOST, port=PORT, log_level="info",
-                server_header=False, date_header=False)
+    for p in range(start, start + tries):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind((HOST, p))
+            s.listen(128)
+            serve(p, s)
+            return
+        except OSError:
+            s.close()
+    raise SystemExit("回环端口 %d~%d 均被占用" % (start, start + tries - 1))
+
+
+if __name__ == "__main__":
+    serve_only()

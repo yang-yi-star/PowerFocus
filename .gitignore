@@ -98,3 +98,8 @@ product/**/dist-v3/
 # 本机诊断快照含开发机用户名、绝对路径与无关项目目录。已入仓的历史副本
 # 是否从索引移除属需授权的仓库变更，此处只挡住今后新增的副本。
 archive/diagnostics-*/
+
+# 本机私有模型清单（通用化）：内置 models-preset.ini 是模板，
+# 各机器自己的模型路径写在这里，绝不提交私有绝对路径。
+models-preset.local.ini
+**/models-preset.local.ini

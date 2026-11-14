@@ -94,9 +94,34 @@ ROOT = CODE_DIR                 # 兼容旧引用，语义为「代码目录」
 
 import kvrt_bundle  # noqa: E402  （必须先补 sys.path）
 
-# 必须由 UI 在用户明确点击「同意下载」之后传入。
-# 用字符串令牌而不是 True，避免调用方随手写个默认值就把下载放出去。
-CONSENT_TOKEN = "USER_APPROVED_DOWNLOAD"
+# F8：用户同意改为「服务端收到明确意图后签发的一次性 nonce」。
+# 旧实现把令牌写成源码常量，还经只读的 /api/bootstrap/check 下发给浏览器，
+# 任何能读源码或调接口的人都能白拿；现在令牌不进源码、不进只读响应，
+# 绑定 scope、短 TTL、用后即失效。
+import secrets as _secrets
+import time as _time
+
+_CONSENT_NONCES: Dict[str, tuple] = {}
+_CONSENT_TTL = 120.0
+
+
+def mint_consent(scope: str) -> str:
+    """签发一次性同意令牌；只在服务端确认用户已点击同意后调用。"""
+    now = _time.time()
+    for key, ent in list(_CONSENT_NONCES.items()):
+        if ent[1] <= now:
+            _CONSENT_NONCES.pop(key, None)
+    token = _secrets.token_urlsafe(24)
+    _CONSENT_NONCES[token] = (scope, now + _CONSENT_TTL)
+    return token
+
+
+def check_consent(token: str, scope: str) -> bool:
+    """消费一次性同意令牌：scope 必须匹配、未过期、且只能用一次。"""
+    if not token:
+        return False
+    ent = _CONSENT_NONCES.pop(token, None)
+    return bool(ent and ent[0] == scope and ent[1] > _time.time())
 
 # ---------------------------------------------------------------------------
 # 通用「制品」声明：这就是「以后装别的东西也能这么干」的关键。
@@ -120,9 +145,8 @@ NODE_CHECKSUM_URL = NODE_BASE + "SHASUMS256.txt"
 NODE_SHA256 = "e2edda75bfb089654705cf65a13b58933bfd5f57148e8ebda916f58a2474f1f7"
 NODE_EXE_RELPATH = "node-%s-win-x64/node.exe" % NODE_LTS_VERSION
 
-# 第二道令牌：仅授权「启动厂商交互式安装向导」，与下载令牌分开。
-# 目的：把「下载一个文件」和「在客户机系统层面装杀软」拆成两个不可合并的决策。
-INSTALL_CONSENT_TOKEN = "USER_APPROVED_SYSTEM_INSTALL"
+# 第二道同意：scope="install"，与 scope="download" 完全隔离，
+# 保证「下载一个文件」和「在客户机系统层面装杀软」是两个不可合并的决策。
 
 # 卡巴斯基个人完整版（免费层级）在线安装器。
 # 候选版本按新 -> 旧排列：厂商会下线旧版本（实测 21.24.8.522 已 404），
@@ -412,7 +436,7 @@ COMPONENTS: List[Component] = [
             "app_accepts_eula_on_behalf_of_user": False,
             "silent_install": False,
             "second_consent_required": True,
-            "second_consent_token": INSTALL_CONSENT_TOKEN,
+            "second_consent_note": "由服务端在用户确认后签发一次性令牌",
         },
     ),
     Component(
@@ -512,7 +536,7 @@ def check_all() -> Dict[str, Any]:
         "components": items,
         "policy": {
             "consent_required": True,
-            "consent_token": CONSENT_TOKEN,
+            "consent_note": "由服务端在用户确认后签发一次性令牌，不下发浏览器",
             "writes_outside_app_dir": (
                 "默认 False；唯一例外 kaspersky_free 的官方向导由用户本人操作"),
             "silent_install": False,
@@ -541,7 +565,7 @@ def check_all() -> Dict[str, Any]:
                 "app_accepts_eula_on_behalf_of_user": False,
                 "silent_install": False,
                 "second_consent_required": True,
-                "second_consent_token": INSTALL_CONSENT_TOKEN,
+                "second_consent_note": "由服务端在用户确认后签发一次性令牌",
                 "official_install_params_not_used": [
                     "/s", "/mybirthdate", "/pAGREETOEULA=1",
                     "/pAGREETOPRIVACYPOLICY=1", "/pJOINKSN_ENHANCE_PROTECTION=1",
@@ -936,7 +960,7 @@ def acquire_vendor_installer(spec: AcquireSpec, target_dir: Path,
         "executed": True, "ok": True, "installer": str(installer),
         "version": state["version"], "state_file": str(state_file),
         "next_step": ("安装器已备好但未运行。需用户本人确认系统级安装，"
-                      "并传入第二道令牌 %s 才启动官方交互式向导。" % INSTALL_CONSENT_TOKEN),
+                      "由服务端签发第二道一次性同意令牌后才启动官方交互式向导。"),
     })
     return out
 
@@ -958,7 +982,7 @@ def launch_vendor_wizard(component_id: str, install_consent: str = "") -> Dict[s
     if c is None or c.install_mode != "vendor_installer" or not c.acquire:
         record["reason"] = "该组件不是厂商安装器类型"
         return record
-    if install_consent != INSTALL_CONSENT_TOKEN:
+    if not check_consent(install_consent, "install"):
         record["reason"] = "缺少用户对本机系统级安装的第二道显式同意，拒绝启动安装向导"
         record["consent_received"] = bool(install_consent)
         return record
@@ -1004,7 +1028,7 @@ def install(component_id: str, consent: str = "", force: bool = False,
     """
     用户同意后由应用进程自己补齐组件。
 
-    consent 必须严格等于 CONSENT_TOKEN；空值、布尔 True、随手写的值一律拒绝。
+    consent 必须是服务端签发的一次性令牌（scope=download）；空值、布尔 True 一律拒绝。
     zip_artifact 走通用 acquire_zip()，kvrt_exe 继续复用 kvrt_bundle 的验签链路，
     vendor_installer 只下载并验签官方安装器（**绝不运行**），
     guided / detect_only 一律不下载不安装。
@@ -1023,7 +1047,7 @@ def install(component_id: str, consent: str = "", force: bool = False,
         record["reason"] = "清单中不存在该组件"
         _audit(record)
         return record
-    if consent != CONSENT_TOKEN:
+    if not check_consent(consent, "download"):
         record["reason"] = "缺少用户显式同意，拒绝下载/安装"
         record["consent_received"] = bool(consent)
         _audit(record)
@@ -1135,14 +1159,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--list", action="store_true", help="列出组件清单")
     ap.add_argument("--install", metavar="ID", default="", help="补齐指定组件")
     ap.add_argument("--consent", default="",
-                    help="UI 在用户点击同意后传入 %s" % CONSENT_TOKEN)
+                    help="用户显式同意；CLI 现场签发一次性令牌，不接受固定常量")
     ap.add_argument("--force", action="store_true", help="配合 --install 强制重下")
     ap.add_argument("--offline", action="store_true",
                     help="不联网，改用 engines/_offline/ 下用户手动放置的官方包")
     ap.add_argument("--launch-wizard", metavar="ID", default="",
                     help="启动厂商交互式安装向导（会写系统，必须配合 --install-consent）")
     ap.add_argument("--install-consent", default="",
-                    help="用户对本机系统级安装的第二道同意 %s" % INSTALL_CONSENT_TOKEN)
+                    help="用户对本机系统级安装的第二道显式同意")
     args = ap.parse_args(argv)
 
     if args.list:
@@ -1160,12 +1184,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # 系统级动作单独一条命令，绝不被 --install 顺带触发。
     if args.launch_wizard:
-        out = launch_vendor_wizard(args.launch_wizard, args.install_consent)
+        # CLI 上带 --install-consent 本身就是显式操作，现场签发一次性令牌。
+        cli_consent = mint_consent("install") if args.install_consent else ""
+        out = launch_vendor_wizard(args.launch_wizard, cli_consent)
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0 if out.get("ok") else 2
 
     if args.install:
-        out = install(args.install, args.consent, args.force, args.offline)
+        cli_consent = mint_consent("download") if args.consent else ""
+        out = install(args.install, cli_consent, args.force, args.offline)
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0 if out.get("ok") else 2
 

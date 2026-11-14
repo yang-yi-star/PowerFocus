@@ -19,12 +19,8 @@ from pathlib import Path
 import server
 
 # ---------- 日志（审计修复：desktop.log 无限追加 → 大小轮转） ----------
-# 路径对齐 app_paths.py 的规则：%LOCALAPPDATA%\<产品>\<版本槽>\logs\。
-# v1.00 桌面端用版本槽 v1.00（app_paths.py 的 VERSION_SLOT=v0.10 是引擎槽，不混用）。
+# 统一走 app_paths.log_dir()：桌面日志 / 安全审计不再各写一套目录。
 # 依据：https://docs.python.org/3/library/logging.handlers.html#rotatingfilehandler
-#   "Rollover occurs whenever the current log file is nearly maxBytes in length"
-#   backupCount 保留 .1~.N 备份，超出上限的最旧备份被挤掉。
-_VERSION_SLOT = "v1.00"
 _LOG_MAX_BYTES = 2 * 1024 * 1024   # 单文件上限 2MB
 _LOG_BACKUPS = 5                   # desktop.log.1 ~ desktop.log.5，封顶约 12MB
 
@@ -34,24 +30,37 @@ _logger.setLevel(logging.INFO)
 
 
 def log_dir() -> Path:
-    base = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "PowerFocus"
-            / _VERSION_SLOT / "logs")
+    """桌面日志目录：与 security.audit 共用 app_paths 的单一真源。"""
     try:
-        base.mkdir(parents=True, exist_ok=True)
+        import app_paths
+        return app_paths.log_dir()
     except Exception:
-        base = Path(os.environ.get("TEMP", "."))
-    return base
+        base = Path(os.environ.get("TEMP", ".")) / "PowerFocus" / "logs"
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
+
+_LOG_LOCK = threading.Lock()
+
+
+def _init_logger():
+    """双重检查 + 锁：多线程首次并发写日志不能各加一个 handler。"""
+    if _logger.handlers:
+        return
+    with _LOG_LOCK:
+        if _logger.handlers:
+            return
+        # 先设 formatter 再挂 handler，避免另一线程在两者之间就 emit。
+        h = RotatingFileHandler(log_dir() / "desktop.log", maxBytes=_LOG_MAX_BYTES,
+                                backupCount=_LOG_BACKUPS, encoding="utf-8", delay=True)
+        h.setFormatter(logging.Formatter("%(asctime)s %(message)s",
+                                         datefmt="%Y-%m-%d %H:%M:%S"))
+        _logger.addHandler(h)
 
 
 def log(msg: str):
     try:
-        if not _logger.handlers:
-            # delay=True：首次 emit 才打开文件，目录回退 TEMP 时也不留空壳。
-            _logger.addHandler(RotatingFileHandler(
-                log_dir() / "desktop.log", maxBytes=_LOG_MAX_BYTES,
-                backupCount=_LOG_BACKUPS, encoding="utf-8", delay=True))
-            _logger.handlers[0].setFormatter(
-                logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+        _init_logger()
         _logger.info(msg)
     except Exception:
         pass
@@ -81,11 +90,17 @@ def single_instance() -> bool:
     """命名互斥体，防止重复打开多个窗口。"""
     global _MUTEX_HANDLE
     try:
-        # 64 位进程里 HANDLE 是指针；不设 restype 会被 ctypes 截成 c_int。
-        ctypes.windll.kernel32.CreateMutexW.restype = ctypes.c_void_p
-        _MUTEX_HANDLE = ctypes.windll.kernel32.CreateMutexW(
-            None, False, "Global\\PowerFocusDesktop_v1")
-        return ctypes.windll.kernel32.GetLastError() != 183  # ERROR_ALREADY_EXISTS
+        # WinDLL(use_last_error=True) 把 LastError 存进线程私有槽，
+        # 不会被两次 FFI 调用之间的其它 ctypes 操作覆盖。
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateMutexW.restype = ctypes.c_void_p
+        k32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
+        h = k32.CreateMutexW(None, False, "Global\\PowerFocusDesktop_v1")
+        if not h:
+            # 创建失败不等于「首个实例」，必须按失败处理。
+            return False
+        _MUTEX_HANDLE = h
+        return ctypes.get_last_error() != 183  # ERROR_ALREADY_EXISTS
     except Exception:
         return True
 
@@ -107,25 +122,35 @@ def bind_port(start: int = 18080, tries: int = 40):
     raise RuntimeError("回环端口 %d~%d 均被占用" % (start, start + tries - 1))
 
 
-def wait_ready(port: int, timeout: float = 12.0) -> bool:
-    """等待 HTTP 层真正就绪，而不是「端口能连上」。
+def wait_ready(port: int, timeout: float = 12.0, require_kernel: bool = False) -> bool:
+    """等待 HTTP 层真正就绪；桌面入口还要求内核心跳已上线。
 
     socket 由调用方预先 listen，TCP 探测会立刻成功却可能还没有 HTTP 服务，
-    因此改为直连 /api/health（http.client 不走系统代理）。
+    因此改为直连 /api/health（http.client 不走系统代理），并读 ``ready`` 字段。
     """
     import http.client
     deadline = time.time() + timeout
     while time.time() < deadline:
+        c = None
+        status, body = 0, b""
         try:
             c = http.client.HTTPConnection("127.0.0.1", port, timeout=0.4)
             c.request("GET", "/api/health")
             r = c.getresponse()
-            r.read()
-            c.close()
-            if r.status == 200:
-                return True
+            body = r.read()
+            status = r.status
         except Exception:
             pass
+        finally:
+            if c is not None:
+                c.close()
+        if status == 200:
+            try:
+                if not require_kernel or json.loads(body or b"{}").get("ready") is True:
+                    return True
+            except (ValueError, TypeError):
+                if not require_kernel:
+                    return True
         time.sleep(0.2)
     return False
 
@@ -206,13 +231,15 @@ def main():
 
     server.start_background()
     threading.Thread(target=log_bootstrap, daemon=True).start()
+    # B28：先拉内核，再等「服务 + 内核」双就绪，窗口打开时不再是空壳。
+    threading.Thread(target=ensure_kernel, daemon=True).start()
     port, sock = bind_port()
     threading.Thread(target=lambda: server.serve(port, sock), daemon=True).start()
-    if not wait_ready(port):
-        log("本地服务启动失败")
-        raise SystemExit(1)
+    if not wait_ready(port, timeout=20.0, require_kernel=True):
+        # 内核未就绪不阻断界面：health 如实回报 ready=false，用户仍能看到状态，
+        # 避免「双击没反应」；但桌面启动日志必须留下告警。
+        log("警告：20 秒内内核未就绪，界面仍将打开（health.ready=false）")
     log("服务已就绪: http://127.0.0.1:%d" % port)
-    threading.Thread(target=ensure_kernel, daemon=True).start()
 
     webview.create_window(
         "电脑算力调度中心 v1.00",

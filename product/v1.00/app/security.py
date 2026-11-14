@@ -96,11 +96,23 @@ class RateLimiter:
         self.window = float(window)
         self._hits = defaultdict(deque)
         self._lock = threading.Lock()
+        self._last_sweep = 0.0
 
     def allow(self, key: str) -> bool:
         now = time.monotonic()
         with self._lock:
-            q = self._hits[key]
+            # B22：每个来过的 key 都会建桶。本机服务长期驻留，若过期桶不删，
+            # 内存随历史 key 无界增长——每个窗口期顺带清扫一次整桶过期的 key
+            # （以桶内最新时间戳判断；空 deque 一并删除）。
+            if now - self._last_sweep > self.window:
+                self._hits = defaultdict(
+                    deque, {k: q for k, q in self._hits.items()
+                            if q and now - q[-1] <= self.window})
+                self._last_sweep = now
+            q = self._hits.get(key)
+            if q is None:
+                q = deque()
+                self._hits[key] = q
             while q and now - q[0] > self.window:
                 q.popleft()
             if len(q) >= self.limit:
@@ -158,8 +170,32 @@ def audit_path() -> Path:
     env = os.environ.get("PF_SECURITY_LOG")
     if env:
         return Path(env)
-    base = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "PowerFocus" / "logs"
-    return base / "security.log"
+    # 与桌面日志共用 app_paths.log_dir()，不再维护第三套日志目录。
+    try:
+        import app_paths
+        return app_paths.log_dir() / "security.log"
+    except Exception:
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "PowerFocus" / "logs"
+        return base / "security.log"
+
+
+def protect_file(path: Path, writable: bool = False) -> bool:
+    """收回继承并只授权当前用户（F14：令牌文件不得被其他本机账户读取）。
+
+    如实说明边界：同一 Windows 用户下的进程仍可读取，这不是沙箱隔离；
+    它消除的是「共享目录继承 / 其他账户可读」这一类泄露。
+    """
+    try:
+        import subprocess
+        user = os.environ.get("USERNAME") or ""
+        if not user:
+            return False
+        right = "%s:(R,W)" % user if writable else "%s:(R)" % user
+        r = subprocess.run(["icacls", str(path), "/inheritance:r", "/grant:r", right],
+                           capture_output=True, timeout=10)
+        return r.returncode == 0
+    except Exception:
+        return False
 
 
 def audit(event: str, **fields) -> None:
@@ -390,7 +426,9 @@ class SecurityMiddleware:
         if self.failures.blocked(addr):
             audit("fail_guard", path=path, client=addr)
             return await self._deny(send, 429, "too many auth failures")
-        if path.startswith(self.api_prefix) and path not in self.exempt:
+        # health 免鉴权，但不能免限流：否则未认证来源可以无限打 /api/health，
+        # 而它内部还要读心跳并解析时间，足以拖住事件循环。
+        if path.startswith(self.api_prefix):
             if not self.limiter.allow(addr):
                 audit("rate_limited", path=path, client=addr)
                 return await self._deny(send, 429, "rate limit exceeded")
@@ -467,6 +505,10 @@ class BodyLimitMiddleware:
                 await send({"type": "http.response.start", "status": 413,
                             "headers": headers + SECURITY_HEADERS})
                 await send({"type": "http.response.body", "body": body})
+            else:
+                # 响应已 start 时改不了状态码，但必须把流收尾，
+                # 否则客户端会一直等一个永远不来的 body。
+                await send({"type": "http.response.body", "body": b"", "more_body": False})
 
 
 class _BodyTooLarge(Exception):

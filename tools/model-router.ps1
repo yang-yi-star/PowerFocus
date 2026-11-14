@@ -161,12 +161,70 @@ function Read-PresetSections {
     return [pscustomobject]@{ globals = $globals; sections = $sections }
 }
 
+function Get-PresetSource {
+    # 通用化（任何电脑/服务器可用）：内置 models-preset.ini 只是模板，
+    # 本机实际模型清单可能完全不同。查找顺序：
+    #   1. <仓库根>\models-preset.local.ini   （本机私有，gitignore，优先）
+    #   2. <内核目录>\models-preset.local.ini （数据目录侧本机私有）
+    #   3. <内核目录>\models-preset.ini       （内置模板）
+    $candidates = @(
+        (Join-Path $Root 'models-preset.local.ini'),
+        (Join-Path $KernelDir 'models-preset.local.ini'),
+        $Preset
+    )
+    $src = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if (-not $src) { throw "找不到模型预设：$Preset（也可在仓库根创建 models-preset.local.ini）" }
+    return $src
+}
+
+function New-EffectivePreset {
+    # 存在性过滤：只把 model 文件真实存在的条目写进运行时 ini。
+    # 换机后缺失的条目自动跳过而不是让 llama-server 启动失败；
+    # 全部缺失时给出可操作的配置指引。全部可用时直接复用原文件（零开销）。
+    param($Parsed, [string]$Source)
+    $keep = @()
+    foreach ($name in $Parsed.sections.Keys) {
+        $mp = [string]$Parsed.sections[$name]['model']
+        if ($mp -and (Test-Path -LiteralPath $mp)) { $keep += $name }
+    }
+    if (-not $keep) {
+        throw ("预设 {0} 里的模型文件在本机都不存在。" -f $Source) +
+              "请在仓库根创建 models-preset.local.ini（参照 models-preset.ini 格式），把 model 指向本机 gguf 路径。"
+    }
+    if (@($keep).Count -eq @($Parsed.sections.Keys).Count) { return $Source }
+
+    $dir = Join-Path $Root 'out'
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $path = Join-Path $dir 'router-preset-effective.ini'
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.AppendLine("; 运行时 preset（model-router.ps1 按本机文件存在性过滤生成，勿手改）")
+    [void]$sb.AppendLine("version = 1")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("[*]")
+    foreach ($k in $Parsed.globals.Keys) { [void]$sb.AppendLine("$k = $($Parsed.globals[$k])") }
+    foreach ($name in $keep) {
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("[$name]")
+        foreach ($k in $Parsed.sections[$name].Keys) { [void]$sb.AppendLine("$k = $($Parsed.sections[$name][$k])") }
+    }
+    [System.IO.File]::WriteAllText($path, $sb.ToString(), [System.Text.UTF8Encoding]::new($false))
+    # 诊断信息走 Host（Information 流），不污染返回值——否则 $usePreset 会变成数组，
+    # --models-preset 参数会被传坏（冒烟测试实证过）。
+    $skipped = @($Parsed.sections.Keys) | Where-Object { $keep -notcontains $_ }
+    Write-Host ("NOTE: 已跳过本机不存在的模型条目: " + ($skipped -join ', '))
+    return $path
+}
+
 function New-SinglePreset {
     # 由完整 preset 派生「只含一个模型」的临时 preset（用于小模型验证，不动主配置）
     param([string]$SectionName, $Parsed)
     if (-not $Parsed.sections.Contains($SectionName)) {
         $avail = (@($Parsed.sections.Keys) -join ', ')
         throw "preset 中不存在模型 '$SectionName'。可用: $avail"
+    }
+    $mp = [string]$Parsed.sections[$SectionName]['model']
+    if ($mp -and -not (Test-Path -LiteralPath $mp)) {
+        throw "模型文件在本机不存在: $mp（请编辑 models-preset.local.ini 指向本机 gguf 路径）"
     }
     $dir = Join-Path $Root 'out'
     if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
@@ -256,10 +314,13 @@ function Start-Router {
         throw "端口 $Port 已被 PID $($st.port_owner) 占用（不是本脚本启动的 router）。请先停掉占用者，本脚本不会杀无关进程"
     }
 
-    $usePreset = $Preset
+    # 通用化：预设源三层查找 + 存在性过滤（换机后缺失条目自动跳过）
+    $presetSource = Get-PresetSource
+    $parsed = Read-PresetSections -Path $presetSource
     if ($Model) {
-        $parsed = Read-PresetSections -Path $Preset
         $usePreset = New-SinglePreset -SectionName $Model -Parsed $parsed
+    } else {
+        $usePreset = New-EffectivePreset -Parsed $parsed -Source $presetSource
     }
 
     if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }

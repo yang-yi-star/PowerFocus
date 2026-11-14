@@ -1,12 +1,24 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
-$Exe      = 'E:\Program Files\llama.cpp\bin\llama-server.exe'
-$BaseIni  = 'E:\PowerFocus\v3\models-preset.ini'
-$CalibIni = 'E:\PowerFocus\v3\logs\calib-preset.ini'
-$LogFile  = 'E:\PowerFocus\v3\logs\vram-calib.log'
-$CsvFile  = 'E:\PowerFocus\v3\logs\vram-calib.csv'
-$Maint    = 'E:\PowerFocus\v3\.maintenance'
+# 通用化：路径相对仓库根解析，llama-server 支持环境变量/常见安装位覆盖。
+# 换机使用：把本脚本放到任意仓库检出里，或用 $env:LLAMA_SERVER_EXE 指向本机 llama-server.exe。
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$KernelDir = Join-Path $Root 'versions\v0.10'
+if ($env:LLAMA_SERVER_EXE) { $Exe = $env:LLAMA_SERVER_EXE }
+else {
+    $cands = @(
+        (Join-Path $Root '.venv\llama.cpp\bin\llama-server.exe'),
+        'C:\Program Files\llama.cpp\bin\llama-server.exe'
+    )
+    $Exe = $cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if (-not $Exe) { $Exe = 'llama-server.exe' }  # 交给 PATH，失败时报错清晰
+}
+$BaseIni  = Join-Path $KernelDir 'models-preset.ini'
+$CalibIni = Join-Path $KernelDir 'logs\calib-preset.ini'
+$LogFile  = Join-Path $KernelDir 'logs\vram-calib.log'
+$CsvFile  = Join-Path $KernelDir 'logs\vram-calib.csv'
+$Maint    = Join-Path $KernelDir '.maintenance'
 $CalibPort = 8099
 $MainPort  = 8080
 
@@ -217,7 +229,7 @@ Set-Content -LiteralPath $BaseIni -Value $final -Encoding utf8
 Log "正式预设已更新: $BaseIni"
 
 # ---------------------------------------------------------------- 恢复正式服务
-$routerCmd = '"E:\Program Files\llama.cpp\bin\llama-server.exe" --models-preset "E:\PowerFocus\v3\models-preset.ini" --models-max 1 --sleep-idle-seconds 600 --host 127.0.0.1 --port 8080 --parallel 1'
+$routerCmd = ('"{0}" --models-preset "{1}" --models-max 1 --sleep-idle-seconds 600 --host 127.0.0.1 --port 8080 --parallel 1' -f $Exe, $BaseIni)
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $routerCmd } | Out-Null
 
 if (Wait-Health $MainPort 120) {

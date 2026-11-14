@@ -414,16 +414,26 @@ def build_scan_args(req: ScanRequest) -> List[str]:
 
 
 def run_scan(req: ScanRequest) -> Dict[str, Any]:
-    """应用内真实拉起 KVRT 并等待结束。返回退出码、耗时与产出文件清单。"""
+    """应用内真实拉起 KVRT 并等待结束。返回退出码、耗时与产出文件清单。
+
+    F7：status() 只读 engine.json 缓存，同尺寸替换可绕过；执行前必须在
+    同一个路径对象上重跑 WinVerifyTrust、重算 SHA256，并与已验签记录比对。
+    """
     info = status()
     if not info.get("ready"):
         raise RuntimeError("引擎未通过验签，拒绝运行。请先执行 --download + --verify")
     if not is_admin():
         raise RuntimeError("KVRT 需要管理员权限；请以管理员身份启动本应用")
+    exe = Path(str(info["path"]))
+    cached = info.get("signature") or {}
+    fresh = verify(exe)
+    if (not fresh.get("ok") or not cached.get("sha256")
+            or str(fresh.get("sha256")) != str(cached.get("sha256"))):
+        raise RuntimeError("执行前复验未通过（签名链或 SHA256 已变化），拒绝运行")
     Path(req.data_dir).mkdir(parents=True, exist_ok=True)
     args = build_scan_args(req)
-    # 用 status() 给出的真实路径：可能是历史数据目录里的只读回退引擎。
-    cmd = [str(info["path"])] + args
+    # 复用刚复验过的同一个路径，避免 status() 与执行之间被换文件。
+    cmd = [str(exe)] + args
     started = time.time()
     result: Dict[str, Any] = {"executed": True, "command": cmd,
                               "started": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}

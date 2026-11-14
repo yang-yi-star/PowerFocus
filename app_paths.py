@@ -39,7 +39,13 @@ from typing import List
 ENV_OVERRIDE = "POWERFOCUS_DATA_DIR"
 ENV_ROOT_OVERRIDE = "POWERFOCUS_ROOT"
 APP_NAME = "PowerFocus"
-VERSION_SLOT = "v0.10"
+
+# 契约：DATA_SLOT 只是 %LOCALAPPDATA% 下应用数据的隔离目录名，
+# 与 versions/current.json（发布内核指针）刻意解耦，不随内核版本切换，
+# 避免升级 / 回滚导致用户配置、凭据库、审计日志「漂移」到另一个目录。
+# v0.10 的 MANIFEST 标 stage=dev，不是发布槽；current.json 指向 v0.09 是产品决策。
+DATA_SLOT = "v0.10"
+VERSION_SLOT = DATA_SLOT  # 兼容旧引用，deprecated：勿用于版本判断
 
 REPO_ROOT = Path(__file__).resolve().parent
 
@@ -122,3 +128,8 @@ def describe() -> dict:
         "writes_to_program_dir": False,
         "policy": "写一律走 data_root；读优先 data_root，历史目录只读回退，不自动搬迁",
     }
+
+
+def log_dir() -> Path:
+    """统一日志目录：桌面日志与安全审计共用同一根，消除三套路径分叉。"""
+    return ensure(data_root() / "logs")

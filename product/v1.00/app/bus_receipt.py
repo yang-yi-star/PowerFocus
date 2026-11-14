@@ -43,8 +43,15 @@ def atomic_write(path: Path, text: str, encoding: str = "utf-8") -> None:
     """
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding=encoding)
-    os.replace(tmp, path)
+    try:
+        tmp.write_text(text, encoding=encoding)
+        os.replace(tmp, path)
+    finally:
+        # os.replace 失败时不要留半成品：下一次同 id 写入可能覆盖到错误内容。
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def dumps_command(cmd: dict) -> str:

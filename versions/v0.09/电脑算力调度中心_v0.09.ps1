@@ -69,7 +69,15 @@ public static extern bool CloseHandle(System.IntPtr h);
 '@
 
 # 不可终止的系统关键进程（杀之会导致蓝屏/重启，任何情况下都拒绝）
+# F9：与 Python 服务端共用同一份名单真源；文件缺失时用内置兜底。
 $script:UnkillableProcesses = @('System','Registry','Idle','Memory Compression','smss','csrss','wininit','services','lsass','winlogon','fontdrvhost','WUDFHost','dwm','MsMpEng')
+$criticalFile = Join-Path $PSScriptRoot 'critical_processes.json'
+if (Test-Path -LiteralPath $criticalFile) {
+    try {
+        $names = (Get-Content -LiteralPath $criticalFile -Raw -Encoding utf8 | ConvertFrom-Json).names
+        if ($names -and @($names).Count -gt 0) { $script:UnkillableProcesses = @($names) }
+    } catch { Write-Warning "关键进程名单读取失败，使用内置兜底: $_" }
+}
 
 # ---------- 全局状态 ----------
 $script:TargetPid              = $null
@@ -913,6 +921,13 @@ function Initialize-SecurityArtifacts {
             [guid]::NewGuid().ToString("N") | Set-Content -LiteralPath $script:TokenFile -Encoding ascii
             Write-Log "INFO" "已生成本机授权密钥 .auth_token"
         }
+        # F14：令牌文件收回继承，只留当前用户可读（其他本机账户不可读）。
+        # 如实说明：同一用户下的进程仍可读，这不是沙箱隔离。
+        try {
+            if ($env:USERNAME) {
+                & icacls $script:TokenFile /inheritance:r /grant:r "$env:USERNAME:(R)" | Out-Null
+            }
+        } catch { Write-Warning "授权密钥 ACL 加固失败（不阻塞启动）: $_" }
         if (-not (Test-Path -LiteralPath $script:AuthFile)) {
             @{ apps = @() } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $script:AuthFile -Encoding utf8
             Write-Log "INFO" "已创建授权清单 authorized_apps.json"
@@ -1749,7 +1764,15 @@ function Invoke-CommandBusTick {
             try {
                 $raw = Get-Content -LiteralPath $f.FullName -Raw -Encoding utf8
                 $cmdObj = $raw | ConvertFrom-Json
-                $resultText = Invoke-CommandObject $cmdObj
+                # F4：命令总线全局鉴权。任何能写 commands/in 的本地进程
+                # 都必须持有本机 .auth_token；内核内部直接调用
+                # Invoke-CommandObject 不经过这里，行为不变。
+                $expected = Get-AuthToken
+                if (-not $expected -or [string]$cmdObj.token -ne $expected) {
+                    $resultText = "ERROR: 命令总线认证失败：缺少或错误的内核授权令牌"
+                } else {
+                    $resultText = Invoke-CommandObject $cmdObj
+                }
             } catch {
                 $resultText = "ERROR: 命令解析/执行异常: $_"
                 Write-Log "ERROR" "命令文件 $($f.Name) 执行异常: $_"

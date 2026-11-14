@@ -46,6 +46,70 @@
 
 ## 仓库发布（唯一对外版本真源）
 
+### [0.11.1] - 2026-11-14
+
+按 `docs/VERSION_POLICY.md` 判定为 **PATCH**：无新功能，纯缺陷修复 + 通用化加固。
+定位升级：从「开发机定制品」正式转向**通用应用**——任何电脑 / 服务器加载即可用。
+
+### 修复（红队 F / Bug 猎手 B 编号延续 v0.11.0 审计）
+
+- **F4 命令总线认证**：v0.09（stable）与 v0.10（dev）两代内核消费命令前校验
+  `token == Get-AuthToken`，未认证命令回 `ERROR: 命令总线认证失败`；服务端 `BusClient`
+  统一注入内核令牌，前端与 MCP 无感知。
+- **F7 KVRT 验签 TOCTOU**：`run_scan()` 执行前在同一路径对象上重跑 `WinVerifyTrust`
+  并重算 SHA256，与已验签记录比对，不通过即拒绝运行（换文件攻击闭环）。
+- **F8 硬编码同意令牌**：删除源码可读常量，改为 `mint_consent(scope)` / `check_consent()`
+  一次性令牌（TTL 120s、scope 绑定、用后即焚、错误 scope 尝试直接烧毁令牌）；
+  服务端在 POST 内部现场签发并消费，令牌不出服务端、不进浏览器。
+- **F3 health 限流**：`/api/health` 免鉴权但不再免限流，限流判定移到鉴权之前。
+- **B21 chunked 绕过**：`BodyLimitMiddleware` 对无 `Content-Length` 请求按实际字节累计，
+  超限直接 413（回归测试模拟 chunked 全链路）。
+- **B22 限流器内存**：`RateLimiter` 每窗口期清扫整桶过期的 key，长期驻留不再无界增长。
+- **B11** `/api/chat` `messages` 强制对象数组（≤50 条、每条 ≤32k），非法输入 400 不再 500。
+- **B12** `/api/models` 对烂 `profiles`（list / 非 dict）容错，返回空列表不 500。
+- **B13 超时契约**：前端 `runCommand` HTTP 预算按 `_timeout` 动态放大
+  （`budgetMs = max(90s, _timeout+10s)`），180s 的 `start_router` 不再 90s 断连留孤儿回执。
+- **B24** 云端测试失败不再回显上游响应正文。
+- **B27** 云端 BASE_URL / 模型地址强制 loopback / https 白名单（`_cloud_url_ok`），
+  堵 SSRF 与凭据外送面。
+- **B7** 桌面日志 handler 竞态消除（启动时一次性挂 handler）；改 2MB×5 轮转。
+- **B8** `wait_ready()` 连接在 finally 中关闭。
+- **B9** `_maybe_gc()` 异常不再吞进静默，纳入审计。
+- **B19/B20** `OpenProcess` 补 restype/argtypes（64 位句柄截断）；互斥量用
+  `use_last_error=True` 正确判定 `ERROR_ALREADY_EXISTS`。
+- **B23** 三套日志目录归一：`%LOCALAPPDATA%\PowerFocus\<槽>\logs\`。
+- **B26** 配置路径回退统一走 `app_paths` 规则。
+- **B28** `/api/health` 的 `kernel_alive` 现在反映内核回执通道真实探活。
+- **B29** 删除第二条启动路径：`app/server.py` 开发入口统一走产品版 `serve_only()`。
+- **B30 版本槽语义**：`app_paths` 的引擎槽常量与发布版本解耦并写明契约；
+  `build.ps1` 的 pyinstaller 路径改为仓库相对解析；spec 文件绝对路径全部相对化。
+
+### 通用化（新目标：任何电脑 / 服务器加载即可用）
+
+- **模型预设三层查找**：`models-preset.local.ini`（本机私有，gitignore）→
+  内核目录 local → 内置 `models-preset.ini`（模板）。
+- **存在性过滤**：`model-router.ps1` 启动前按本机文件存在性过滤模型条目，
+  换机后缺失条目自动跳过并提示，全部缺失时给出配置指引，而不是让 llama-server 启动失败。
+- `tools/calibrate-vram.ps1` 去除全部 `E:\` 硬编码，支持 `LLAMA_SERVER_EXE` 环境变量覆盖。
+- 全仓盘符扫描：项目代码（py / ps1 / ini / json / js / yml）零本机绝对路径残留。
+
+### 验证
+
+`pytest` **106 passed**（新增 17 例 v0.11.1 回归：F8 令牌 5 例 + B22 2 例 +
+B21 2 例 + B11/B12/B13/B29/F3 守卫等）；`ruff` 0 错误；`py_compile` 10 目标；
+pwsh 7 全仓 `.ps1` 语法 0 错误（含新增的 model-router 过滤逻辑四场景冒烟：
+预设源查找 / 全存在复用 / 模拟换机全缺失报错 / 部分缺失过滤生成）。
+
+**实机验证（新打包 exe）**：`frozen=true / kernel_alive=true / ready=true`；
+F4 双向冒烟通过——带令牌命令 `ok=true`，直投无令牌命令回执
+`ERROR: 命令总线认证失败：缺少或错误的内核授权令牌`。
+
+### 发行物
+
+- `PowerFocus-v0.11.1-x64.exe` — 20,457,037 字节，
+  SHA256 `7dd5e1e7923e22378ff0cb1de7e14b7ec9e87eed35591cdc2f1f2ef8ebdf9c0b`
+- `PowerFocus-MCP-v0.11.1.zip` — 15,919 字节（版本对齐 0.11.1）
+
 ### [0.11.0] - 2026-11-14
 
 按 `docs/VERSION_POLICY.md` 判定为 **MINOR**：新增向后兼容能力（MCP）并附带安全加固，

@@ -58,7 +58,7 @@ def _call_tool(name, arguments, policy=None, rt=None, **kw):
 
 def test_version_aligned_with_app_release():
     info = version_info()
-    assert info["mcp_version"] == __version__ == "0.11.0"
+    assert info["mcp_version"] == __version__ == "0.11.1"
     assert info["target_app_version"] == __version__
     assert info["default_protocol_version"] == "2026-07-28"
     assert "2024-11-05" in info["protocol_versions"]

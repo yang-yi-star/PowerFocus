@@ -6,8 +6,8 @@
 import json
 from pathlib import Path
 
-__version__ = "0.11.0"
-APP_VERSION = "0.11.0"
+__version__ = "0.11.1"
+APP_VERSION = "0.11.1"
 SERVER_NAME = "powerfocus-mcp"
 
 # 协议版本是兼容声明，不是产品版本号。

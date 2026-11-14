@@ -381,7 +381,11 @@
     }
     const body = Object.assign({ action: action }, extra || {});
     if (action === 'kill_process' || action === 'stress_process') body.confirm = true;
-    const r = await api('/api/command', { method: 'POST', body: body, timeout: 90000 });
+    // 后端把 _timeout 夹紧到 [1,600] 秒；前端必须留足余量，否则
+    // start_router 这类 180 秒命令会在 90 秒先断开、留下孤儿回执。
+    const backendSec = Number((extra && extra._timeout) || 0);
+    const budgetMs = Math.max(90000, backendSec > 0 ? backendSec * 1000 + 10000 : 0);
+    const r = await api('/api/command', { method: 'POST', body: body, timeout: budgetMs });
     if (!r || r.ok === false) {
       throw new Error((r && r.text) || '内核没有返回结果（可能已离线）');
     }
@@ -715,14 +719,14 @@
       '\n\n下载只落应用数据目录，不会自动安装；验签不过一律标记不可用。',
       '同意下载', false);
     if (!ok) return;
-    const token = (bootstrapData.policy || {}).consent_token || '';
-    if (!token) { toast('未取得同意令牌，已取消', 'err'); return; }
+    // 用户已通过上面的确认框表达同意；一次性同意令牌由服务端在处理该请求时
+    // 签发并立即消费，不下发浏览器、不再是源码里可读的硬编码常量。
     const btn = $('bs-install');
     btn.disabled = true;
     btn.textContent = '下载与验签中…';
     try {
       const out = await api('/api/bootstrap/install',
-        { method: 'POST', body: { component_id: target.id, consent: token }, timeout: 300000 });
+        { method: 'POST', body: { component_id: target.id, consent: 'yes' }, timeout: 300000 });
       bsOut(out);
       toast(out.executed ? ('「' + target.name + '」处理完成') : ('未执行：' + (out.reason || '原因见输出区')),
         out.executed ? 'ok' : 'err');
@@ -745,13 +749,12 @@
       '向导中的一切选项由你亲自决定。',
       '启动向导', true);
     if (!ok) return;
-    const token = (kf.system_impact || {}).second_consent_token || '';
-    if (!token) { toast('未取得系统安装同意令牌，已取消', 'err'); return; }
+    // 第二道同意同样只传意图；一次性令牌由服务端签发并消费。
     const btn = $('bs-wizard');
     btn.disabled = true;
     try {
       const out = await api('/api/bootstrap/wizard',
-        { method: 'POST', body: { component_id: 'kaspersky_free', install_consent: token }, timeout: 60000 });
+        { method: 'POST', body: { component_id: 'kaspersky_free', install_consent: 'yes' }, timeout: 60000 });
       bsOut(out);
       toast(out.launched ? '官方安装向导已启动，请在向导中完成安装' : ('未启动：' + (out.reason || '')),
         out.launched ? 'ok' : 'err');

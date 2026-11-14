@@ -36,11 +36,15 @@ class BusClient:
             int(time.time() * 1000), next(self._seq), uuid.uuid4().hex[:6])
 
     def _maybe_gc(self):
+        """过期回执回收：失败不影响命令写入，且不推进节流窗口。"""
         now = time.time()
         if now - self._gc_last < _GC_INTERVAL:
             return
+        try:
+            bus_receipt.gc_done(self.done_dir)
+        except Exception:
+            return
         self._gc_last = now
-        bus_receipt.gc_done(self.done_dir)
 
     def _consume(self, name: str, done_path: Path):
         """回执与内核移入 done 的命令副本一起清理。"""

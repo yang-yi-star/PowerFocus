@@ -1,9 +1,9 @@
-# PowerFocus MCP Server 0.11.0
+# PowerFocus MCP Server 0.11.1
 
 让任意支持 MCP 的 AI 客户端（Claude、Cursor、VS Code、ChatGPT、各类 Agent）把
 PowerFocus 识别为一个 MCP Server 并加载使用。
 
-- **产品版本**：`0.11.0`，与主应用 Release `v0.11.0` 一致（规则见 `docs/VERSION_POLICY.md`）
+- **产品版本**：`0.11.1`，与主应用 Release `v0.11.1` 一致（规则见 `docs/VERSION_POLICY.md`）
 - **协议版本**：默认 `2026-07-28`（无状态核心），兼容 `2025-06-18` / `2025-03-26` / `2024-11-05`
 - **传输**：`stdio`，逐行 JSON-RPC 2.0
 - **依赖**：**零第三方依赖**，仅 Python 3.10+ 标准库
@@ -118,4 +118,4 @@ mcp/
     └── server.py                # MCP Server 主体
 ```
 
-发版时整个 `mcp/` 打成 `PowerFocus-MCP-v0.11.0.zip`，作为该 tag Release 的独立附件。
+发版时整个 `mcp/` 打成 `PowerFocus-MCP-v0.11.1.zip`，作为该 tag Release 的独立附件。

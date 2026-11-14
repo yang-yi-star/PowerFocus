@@ -29,6 +29,5 @@ _spec.loader.exec_module(_mod)
 sys.modules[__name__] = _mod
 
 if __name__ == "__main__":
-    _mod.start_background()
-    _mod.uvicorn.run(_mod.app, host=_mod.HOST, port=_mod.PORT, log_level="info",
-                     server_header=False, date_header=False)
+    # B29：不再维护第二条固定端口启动路径，统一走产品版 serve_only()。
+    _mod.serve_only()

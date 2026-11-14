@@ -1,9 +1,11 @@
 # v0.06 破坏性 action 实测：kill / suspend / resume / stress / 保护名单
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$kernel = Join-Path $root 'versions\v0.09'
 $token = ''
-try { $token = (Get-Content 'E:\PowerFocus\v3\.auth_token' -Raw).Trim() } catch {}
-if (-not $token) { 'ERROR: token 文件读取失败'; exit 1 }
-$cmdIn = 'E:\PowerFocus\v3\commands\in'
-$cmdDone = 'E:\PowerFocus\v3\commands\done'
+try { $token = (Get-Content (Join-Path $kernel '.auth_token') -Raw).Trim() } catch {}
+if (-not $token) { 'ERROR: token 文件读取失败（请先启动一次内核）'; exit 1 }
+$cmdIn = Join-Path $kernel 'commands\in'
+$cmdDone = Join-Path $kernel 'commands\done'
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 function Send-Cmd([string]$name, [hashtable]$body) {

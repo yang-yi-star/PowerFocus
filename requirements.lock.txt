@@ -1,6 +1,8 @@
-# PowerFocus 完整依赖锁定（constraints 文件，不用于直接安装）
+# PowerFocus 完整依赖锁定（本机重建专用，CI 不加载）
 # 采集：E:\PowerFocus\.venv / Python 3.13 / 2026-11-14
 # 用法：python -m pip install -r requirements.txt -c requirements.lock.txt
+#        （仅用于本机精确重建打包环境；CI 走 requirements-ci.txt，不加载本文件，
+#          否则顶层依赖升级会被传递依赖约束卡死，详见 requirements-ci.txt 注释）
 # 更新：升级依赖后重新执行 `pip freeze > requirements.lock.txt` 并提交，
 #       同时同步 requirements.txt / requirements-dev.txt / requirements-ci.txt 的顶层版本。
 altgraph==0.17.5

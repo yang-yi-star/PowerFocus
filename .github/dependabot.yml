@@ -8,6 +8,16 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    # 2026-11-14：pydantic 与 pydantic-core 是强绑定版本对，拆成两个 PR
+    # 会导致单独合并任一个都装不上；按组升级，再由 CI 判断兼容性。
+    groups:
+      pydantic:
+        patterns:
+          - "pydantic"
+          - "pydantic-core"
+      python-runtime:
+        patterns:
+          - "*"
     labels:
       - "dependencies"
     commit-message:

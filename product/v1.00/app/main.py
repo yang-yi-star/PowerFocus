@@ -90,24 +90,42 @@ def single_instance() -> bool:
         return True
 
 
-def find_port(start: int = 18080, tries: int = 40) -> int:
+def bind_port(start: int = 18080, tries: int = 40):
+    """绑定并 listen 回环端口，把 socket 直接交给 uvicorn。
+
+    旧实现 bind 后立刻由 with 释放、再由 uvicorn 重新 bind，中间存在
+    TOCTOU 窗口；现在 socket 全程持有，不再二次绑定。
+    """
     for p in range(start, start + tries):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("127.0.0.1", p))
-                return p
-            except OSError:
-                continue
-    return start
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", p))
+            s.listen(128)
+            return p, s
+        except OSError:
+            s.close()
+    raise RuntimeError("回环端口 %d~%d 均被占用" % (start, start + tries - 1))
 
 
 def wait_ready(port: int, timeout: float = 12.0) -> bool:
+    """等待 HTTP 层真正就绪，而不是「端口能连上」。
+
+    socket 由调用方预先 listen，TCP 探测会立刻成功却可能还没有 HTTP 服务，
+    因此改为直连 /api/health（http.client 不走系统代理）。
+    """
+    import http.client
     deadline = time.time() + timeout
     while time.time() < deadline:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.4)
-            if s.connect_ex(("127.0.0.1", port)) == 0:
+        try:
+            c = http.client.HTTPConnection("127.0.0.1", port, timeout=0.4)
+            c.request("GET", "/api/health")
+            r = c.getresponse()
+            r.read()
+            c.close()
+            if r.status == 200:
                 return True
+        except Exception:
+            pass
         time.sleep(0.2)
     return False
 
@@ -188,8 +206,8 @@ def main():
 
     server.start_background()
     threading.Thread(target=log_bootstrap, daemon=True).start()
-    port = find_port()
-    threading.Thread(target=lambda: server.serve(port), daemon=True).start()
+    port, sock = bind_port()
+    threading.Thread(target=lambda: server.serve(port, sock), daemon=True).start()
     if not wait_ready(port):
         log("本地服务启动失败")
         raise SystemExit(1)

@@ -108,6 +108,27 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
 
 ---
 
+## 5.1 第二批（阶段一）已落地与验证
+
+| 类别 | 改动 | 证据 |
+|---|---|---|
+| 分层 | 新增 `product/v1.00/app/bus.py` 的 `BusClient`，承接目录 / 超时 / 轮询 / 幂等 id / 消费 / 撤回 / GC；`bus_receipt.py` 保持零依赖纯协议层 | `server.py` 的 `bus_call()` 由约 40 行降为 `return await BUS.call(cmd, timeout)` |
+| 幂等 | 命令默认写入 `idempotency_id`；内核忽略未知字段，行为不变 | `tests/py/test_bus.py::test_command_has_idempotency_id_and_no_tmp_left` |
+| 端口 | `find_port()`（bind 后释放 → uvicorn 重绑，存在 TOCTOU）改为 `bind_port()`，socket 全程持有并 `listen(128)` | `main.py:93-107`；`server.serve(port, sock)` 走 `uv_server.run(sockets=[sock])` |
+| 就绪 | `wait_ready()` 由 TCP `connect_ex()` 改为 HTTP `GET /api/health` 等 200 | `main.py:110-130`；避免已 listen 但 ASGI 未启动就开窗口 |
+| 测试 | 新增 `tests/py/test_bus.py` 6 例；pytest 42 → **48** | 覆盖成功 / ERROR / 幂等 / 原子写 / 消费即清理 / 超时撤回 / 200 id 不碰撞 |
+| 门禁 | `ci.yml` 的 `py_compile` 目标补 `bus.py` | 新模块此前不进编译清单，已修正 |
+
+**验证记录（全部实测）**：`pytest tests/py -q` → 48 passed；`ruff check product/v1.00/app tests/py app_paths.py` → All checks passed；
+4 个模块 `py_compile` 通过；pwsh 7 全仓 **149 个 `.ps1`** `Parser::ParseFile` → 0 错误；
+源码实机起服务：`bind_port=18091` → `wait_ready=True` → `GET /api/health` 200
+（`{"app":"ok","frozen":false,"kernel_alive":true,...}`）。
+
+**本阶段明确未做**（不虚报完成）：`processes.py` / `nlp.py` / `llm_proxy.py` 三个模块尚未拆出，
+`server.py` 仍在 1100 行上下未达 900 行目标；结构化回执、模型路径相对化、端口集中注入未动。
+
+---
+
 ## 6. 明确未擅自改动的高风险项（需产品决策）
 
 1. **`versions/current.json` 保持 v0.09**：`versions/v0.10/MANIFEST.json:6` 标 `stage: "dev"`，
@@ -123,9 +144,14 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
 
 ## 7. 路线图（每批独立可验证）
 
-- **第二批 · 架构收敛**：`server.py` 抽 `bus.py` / `processes.py` / `nlp.py` / `llm_proxy.py`，降到 900 行内；
-  回执升级为结构化 `{ok, ts, payload}`（保留旧格式兼容）；命令带幂等 id；`find_port` 改由 uvicorn 直接占用；
-  模型路径改 `${DATA_DIR}/models` 相对解析；端口集中注入。验证：新增纯函数单测 + CI 全绿 + 源码启动实测。
+- **第二批 · 架构收敛（阶段一已完成，见 5.1）**：已落地 `bus.py` 分层、命令幂等 id、`bind_port` 消除 TOCTOU、
+  `wait_ready` 升级为 HTTP 就绪判定、6 例新单测与 CI 目标补全。
+  **剩余**：`server.py` 再抽 `processes.py` / `nlp.py` / `llm_proxy.py` 并降到 900 行内；
+  回执升级为结构化 `{ok, ts, payload}`（保留旧格式兼容）；模型路径改 `${DATA_DIR}/models` 相对解析；端口集中注入。
+- **第二批 · 发行与供应链（本轮新增，来自开源合规审查）**：Release 补 `LICENSE` + 全量 `THIRD_PARTY_NOTICES`、
+  开启 Private vulnerability reporting、CI action 改 commit SHA pin、`pip-audit` 门禁、
+  tag 触发的 build job 与 `actions/attest-build-provenance`（SLSA L0 → L2）。
+  本轮已落地前两项与 PVR；SHA pin / provenance / 自托管 runner 需先决定构建策略再动，未擅自改 CI 行为。
 - **第三批 · 质量门禁**：覆盖率门槛（≥60% 起步）、`server.py` 路由集成测试、exe 冒烟（启动 → `/api/health` → 关闭）、
   发布 Go/No-Go 检查单与回滚演练、构建元数据（commit / built_at / sha256）写入 MANIFEST 并由 CI 校验。
 - **第四批 · 公司化收尾**：自托管构建 runner、exe 签名与 SBOM、依赖 CVE SLA、
@@ -136,5 +162,7 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
 ## 8. 一句话结论
 
 这个项目的**功能密度与安全边界意识超出典型个人项目**，但工程可重复性（依赖、版本、门禁、构建）
-还停在「一个人能跑通」的阶段。本轮把它推进到「换一台机器也能复现、改错了会被门禁挡下」的起点；
-真正决定它能否像公司产品一样长期演进的，是第二批的架构收敛与第三批的质量门禁。
+还停在「一个人能跑通」的阶段。第一批把它推进到「换一台机器也能复现、改错了会被门禁挡下」的起点；
+第二批阶段一已把命令总线的职责边界、端口竞态与就绪判定这三处真实缺陷收掉并留下可独立运行的单测。
+真正决定它能否像公司产品一样长期演进的，仍是 `server.py` 剩余拆分、第三批质量门禁，
+以及发行链路的许可证随附与构建溯源 —— 后者由本轮开源合规审查给出了具体证据与修复顺序。

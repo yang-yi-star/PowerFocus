@@ -17,13 +17,41 @@
 
 ## [Unreleased]
 
+### 第二批 · 架构收敛（阶段一，2026-11-14，**尚未发版**）
+
+> 本段改动只在源码：未重新打包 exe、未创建 tag，`latest` 仍是 0.10.2。
+> 路线图见 `docs/engineering-audit.md`；本批只完成其中可独立验证的一段，剩余项如实列在下方待办。
+
+#### 改动
+
+- **总线分层**：新增 `product/v1.00/app/bus.py` 的 `BusClient`（目录、超时、轮询、幂等 id、回执消费、超时撤回、GC 编排），`bus_receipt.py` 保持纯协议层；`server.py` 的 `bus_call()` 收敛为一行兼容包装，路由枢纽不再直接操作命令文件。
+- **幂等 id**：命令默认携带 `idempotency_id`；当前内核忽略未知字段、行为不变，后续内核实现去重无需改服务端。
+- **端口 TOCTOU 修复**：`main.find_port()` 改为 `bind_port()`，绑定并 `listen` 后全程持有 socket，交给 `uvicorn.Server.run(sockets=[sock])`，不再「先探测、再释放、再重绑」。
+- **就绪判定升级**：`wait_ready()` 从「TCP 能连上」改为 HTTP `GET /api/health` 返回 200，避免 socket 已 listen 但 ASGI 未起来就开窗口。
+- **测试**：新增 `tests/py/test_bus.py` 6 例，pytest 42 → **48**。
+- **CI**：`py_compile` 目标补 `bus.py`，修正过时的依赖注释。
+
+#### 验证
+
+- pytest **48/48**；`ruff check` 0 错误；4 个 Python 模块 `py_compile` 通过；pwsh 7 全仓 **149 个 `.ps1`** 语法 0 错误。
+- 源码实机链路：`bind_port` → 预绑定 socket → `serve(port, sock)` → `wait_ready=True` → `/api/health` 200（`kernel_alive=true`）。
+
+#### 开源治理（同批，来自开源合规与冷启动审查）
+
+- 6 个 `mem-guard.state.json` 历史副本从 git 索引移除（工作区文件原样保留），`.gitignore` 补运行态与本机诊断快照规则。
+- `THIRD_PARTY_NOTICES.md` 修正与事实不符的「不随打包产物分发第三方程序」表述，补齐 `requirements.lock.txt` 全部 37 个包的许可证归因。
+- `v0.10.2` Release 补传 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`；开启 GitHub Private vulnerability reporting。
+- 新增 `README_EN.md`；仓库补齐 topics 与 homepage。
+
 ### 已知待办（如实列出，避免误判完成度）
 
 - 应用内每日自动扫描调度器（`run_scheduled_loop()`）已实现，但尚未随主进程常驻启动。
 - 前端「立即扫描」按钮仍是模拟进度条，真实扫描走 CLI / 后端路由。
 - 部分安全态势 API 仍为接口契约占位，未在后端实装。
 - KVRT 下载源为 `latest` 直链（未锁定具体版本）；Node.js 已锁定版本 + SHA256。
-- `server.py` 上帝对象拆分、文件总线幂等 id、exe 冒烟测试与覆盖率门槛（见 `docs/engineering-audit.md` 路线图）。
+- `server.py` 剩余模块拆分（`processes.py` / `nlp.py` / `llm_proxy.py`，目标 900 行内）、
+  结构化回执 `{ok, ts, payload}`、模型路径改相对解析、端口集中注入、exe 冒烟测试与覆盖率门槛
+  （见 `docs/engineering-audit.md` 路线图；第二批只完成总线分层、幂等 id、端口与就绪判定）。
 - `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.09`，与发布 tag 0.10.x 语义不同；
   是否对外统一由产品决策，本轮未擅自改动运行行为。
 

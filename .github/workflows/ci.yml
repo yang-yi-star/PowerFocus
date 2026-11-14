@@ -43,7 +43,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install test dependencies
-        # 版本由 requirements-ci.txt 锁定，传递依赖由 requirements.lock.txt 约束；
+        # 顶层版本由 requirements-ci.txt 锁定；传递依赖交给 pip 解析
+        # （刻意不加载 requirements.lock.txt，避免 dependabot 升级 PR 假红）。
         # 不装 pywebview / pythonnet / pyinstaller（CI 无 WebView2 与 .NET 本机工具链）。
         run: python -m pip install --disable-pip-version-check -r requirements-ci.txt
 
@@ -61,7 +62,8 @@ jobs:
             'product/v1.00/app/server.py',
             'product/v1.00/app/security.py',
             'product/v1.00/app/main.py',
-            'product/v1.00/app/bus_receipt.py'
+            'product/v1.00/app/bus_receipt.py',
+            'product/v1.00/app/bus.py'
           )
           $bad = @()
           foreach ($rel in $targets) {

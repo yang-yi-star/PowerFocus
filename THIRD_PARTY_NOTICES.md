@@ -3,9 +3,20 @@
 本仓库的源代码（Python / PowerShell / HTML / Markdown）为 PowerFocus 项目原创，
 以 Apache License 2.0 发布（见 [LICENSE](LICENSE)）。
 
-**本仓库不包含任何第三方二进制文件。**下文所列的第三方软件要么是本项目的运行/构建依赖
-（由用户按各组件自己的许可获取），要么由应用在用户明确同意后从官方源下载到用户本机——
-任何第三方程序都不随本仓库、也不随本项目打包产物分发。
+**本仓库不包含任何第三方二进制文件。**但「源码仓库」与「单文件 exe」是两种不同的分发形态，
+必须分开说明：
+
+- **源码仓库**：只含本项目原创代码与其许可证，不含任何第三方二进制。
+- **Release 的单文件 exe**：由 PyInstaller 打包，内部**确实包含** CPython 运行时与
+  `requirements.lock.txt` 所列的第三方 Python 包。它们各自保留原许可与版权声明，
+  完整清单见下文第二节；`LICENSE` 与本文件作为独立附件随每个 Release 一同提供。
+- 下文第一节的组件（KVRT / 卡巴斯基在线安装器 / Node.js）**既不入仓库、也不进 exe**，
+  由应用在用户明确同意后从官方源下载到用户本机。
+
+> 更正记录（2026-11-14，开源合规审查）：本文件此前称「任何第三方程序都不随本项目打包产物分发」，
+> 与打包 spec 中 `collect_all('uvicorn' / 'webview' / 'pythonnet' / 'clr_loader')` 的事实不符，
+> 也导致原第二节只列 7 个组件、遗漏 lock 中的 37 个包。现按 Apache-2.0 §4(a)(c)
+> 及各依赖许可「分发时保留版权与许可声明」的要求如实更正。
 
 ---
 
@@ -48,18 +59,65 @@
 
 ---
 
-## 二、运行时依赖（从源码运行时由用户自行安装，不随仓库分发）
+## 二、单文件 exe 内含的第三方依赖（随 Release 分发）
 
-| 组件 | 许可 | 来源 | 本项目使用方式 |
-|---|---|---|---|
-| Python 3.13+ | Python Software Foundation License 2.0（PSF-2.0） | python.org | 后端运行时 |
-| FastAPI | MIT License | pypi.org/project/fastapi | HTTP API 框架 |
-| uvicorn | BSD 3-Clause License | pypi.org/project/uvicorn | ASGI 服务器 |
-| httpx | BSD 3-Clause License | pypi.org/project/httpx | HTTP 客户端（模型通道 / 下载） |
-| psutil | BSD 3-Clause License | pypi.org/project/psutil | 进程 / 系统信息读取 |
-| pywebview | BSD 3-Clause License | pypi.org/project/pywebview | 桌面窗口容器（承载 WebView2） |
-| PowerShell 7（pwsh） | MIT License | github.com/PowerShell/PowerShell | 调度内核运行时 |
-| Microsoft Edge WebView2 Runtime | 专有（Microsoft 免费分发系统组件） | Microsoft 官方 | 前端渲染内核；系统级组件，本项目不重分发 |
+### 2.1 平台级组件
+
+| 组件 | 许可 | 本项目使用方式 |
+|---|---|---|
+| CPython 3.13 | Python Software Foundation License 2.0（PSF-2.0） | PyInstaller 内嵌的 Python 运行时 |
+| Microsoft Edge WebView2 Runtime | 专有（Microsoft 免费分发的系统组件） | 前端渲染内核；系统级组件，本项目不重分发 |
+| PowerShell 7（pwsh） | MIT License | 调度内核运行时；需用户本机已安装，不随 exe 分发 |
+| FastAPI | MIT License | HTTP API 框架 |
+| uvicorn | BSD 3-Clause License | ASGI 服务器 |
+| httpx | BSD 3-Clause License | HTTP 客户端（模型通道 / 下载） |
+| psutil | BSD 3-Clause License | 进程 / 系统信息读取 |
+| pywebview | BSD 3-Clause License | 桌面窗口容器（承载 WebView2） |
+
+### 2.2 Python 包全量清单（`requirements.lock.txt`，37 项）
+
+下表为本机 `.venv` 中 `importlib.metadata` 的实测结果，覆盖 lock 文件全部条目。
+元数据未声明许可证的，以该分发包内随附的 LICENSE 文件为准。
+
+| 包 | 版本 | 许可证 |
+|---|---|---|
+| altgraph | 0.17.5 | MIT |
+| annotated-doc | 0.0.5 | MIT |
+| annotated-types | 0.8.0 | MIT |
+| anyio | 4.16.0 | MIT |
+| bottle | 0.13.4 | MIT |
+| certifi | 2026.10.23 | MPL-2.0 |
+| cffi | 2.1.1 | MIT-0 |
+| click | 8.5.0 | BSD-3-Clause |
+| clr_loader | 0.3.1 | 元数据未声明，见分发包内 LICENSE |
+| colorama | 0.4.6 | BSD License |
+| fastapi | 0.162.0 | MIT |
+| h11 | 0.16.0 | MIT |
+| httpcore | 1.0.9 | BSD-3-Clause |
+| httpx | 0.28.1 | BSD-3-Clause |
+| idna | 3.20 | BSD-3-Clause |
+| iniconfig | 2.3.1 | MIT |
+| opentelemetry-api | 1.45.2 | Apache-2.0 |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
+| pefile | 2024.8.26 | MIT |
+| pluggy | 1.7.0 | MIT |
+| proxy_tools | 0.1.0 | MIT |
+| psutil | 7.2.2 | BSD-3-Clause |
+| pycparser | 3.12 | BSD-3-Clause |
+| pydantic | 2.14.2 | MIT |
+| pydantic_core | 2.50.2 | MIT |
+| Pygments | 2.21.0 | BSD-2-Clause |
+| pyinstaller | 6.22.3 | GPL-2.0-or-later WITH Bootloader-exception（见第三节） |
+| pyinstaller-hooks-contrib | 2026.9 | Apache Software License |
+| pytest | 9.2.0 | MIT |
+| pythonnet | 3.2.1 | MIT |
+| pywin32-ctypes | 0.2.3 | BSD-3-Clause |
+| ruff | 0.17.3 | MIT |
+| setuptools | 84.2.1 | MIT |
+| starlette | 1.10.0 | BSD-3-Clause |
+| typing-inspection | 0.4.5 | MIT |
+| typing_extensions | 4.16.0 | PSF-2.0 |
+| uvicorn | 0.54.0 | BSD-3-Clause |
 
 ## 三、构建工具（仅开发时使用，不进入运行产物）
 

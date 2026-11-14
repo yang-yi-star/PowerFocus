@@ -4,7 +4,7 @@ PowerFocus is a **single-machine** Windows desktop console that treats process p
 memory headroom and local LLM inference as one resource pool. It is not a cluster
 scheduler and it does not manage remote machines.
 
-> Maintained by one developer, at the 0.x stage. Source code in this repository is
+> Maintained by one developer, still at the 0.x stage. Source code in this repository is
 > original work licensed under Apache-2.0. The downloadable single-file `.exe`
 > additionally bundles the CPython runtime and Python packages; see
 > [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
@@ -25,10 +25,11 @@ scheduler and it does not manage remote machines.
   PowerFocus does **not** depend on Ollama.
 - **Component self-check** — seven components are probed at startup; anything missing
   is reported, and installing a component requires explicit user consent.
-- **Optional third-party capability** — optional on-demand scan via a user-downloaded
-  third-party tool (KVRT), detection aid only, not an antivirus and no real-time
-  protection. The tool is never bundled: after explicit consent it is downloaded from
-  the vendor's official source, signature-verified, and its official report is parsed.
+- **Optional third-party capability** — an optional on-demand scan via a
+  user-downloaded third-party tool (KVRT). It is a detection aid, not an antivirus,
+  and it offers no real-time protection. The tool is never bundled: after explicit
+  consent it is downloaded from the vendor's official source, signature-verified,
+  and its official report is parsed.
   This project has no affiliation with, endorsement from, or partnership with the vendor.
 
 ## Architecture
@@ -41,15 +42,15 @@ scheduler and it does not manage remote machines.
 | Local inference | `llama-server` (llama.cpp) | OpenAI-compatible endpoint configured in Settings |
 | Frontend | Static HTML / CSS / JS | Light and dark themes, token-based design system |
 
-The service holds a pre-bound loopback socket, waits for an HTTP 200 from
-`/api/health` before opening the window, and holds a named mutex so a second
-launch shows a message instead of failing silently.
+The service holds a pre-bound loopback socket and waits for an HTTP 200 from
+`/api/health` before opening the window; a named mutex makes a second launch
+show a message instead of failing silently.
 
 ## Install
 
 1. Download `PowerFocus-v0.11.1-x64.exe` from
    [Releases](https://github.com/yang-yi-star/PowerFocus/releases).
-   The same Release also carries `LICENSE` and `THIRD_PARTY_NOTICES.md` — please keep
+   The same Release also carries `LICENSE` and `THIRD_PARTY_NOTICES.md` — keep
    them alongside the binary.
 2. Run it. Normal use does not require administrator rights.
 3. For local model inference, start `llama-server` separately and set its endpoint
@@ -87,7 +88,7 @@ Release tags (`v0.10.x`) are the only public version numbers.
 
 ## Scope and limits
 
-- Personal open-source project; expect rough edges. No telemetry is collected.
+- A personal open-source project, so expect some rough edges. No telemetry is collected.
 - Windows only — the code uses `%LOCALAPPDATA%`, DPAPI and `ctypes.wintypes`.
 - The optional scan is a one-shot detection aid, not protection software.
 - Some API contracts are still placeholders; they are listed under "Known todos"

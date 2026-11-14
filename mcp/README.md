@@ -1,7 +1,7 @@
 # PowerFocus MCP Server 0.11.1
 
-让任意支持 MCP 的 AI 客户端（Claude、Cursor、VS Code、ChatGPT、各类 Agent）把
-PowerFocus 识别为一个 MCP Server 并加载使用。
+让任何支持 MCP 的 AI 客户端（Claude、Cursor、VS Code、ChatGPT、各类 Agent）把
+PowerFocus 识别成 MCP Server 并加载使用。
 
 - **产品版本**：`0.11.1`，与主应用 Release `v0.11.1` 一致（规则见 `docs/VERSION_POLICY.md`）
 - **协议版本**：默认 `2026-07-28`（无状态核心），兼容 `2025-06-18` / `2025-03-26` / `2024-11-05`
@@ -27,7 +27,7 @@ PowerFocus 识别为一个 MCP Server 并加载使用。
 }
 ```
 
-客户端会以子进程方式拉起本文件。可先手工验证：
+客户端会以子进程方式拉起这个 server。不放心的话可以先手工验证：
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python mcp/powerfocus_mcp/server.py
@@ -35,7 +35,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python mcp/powerfocus_mc
 
 ## 2. 与根目录旧 `mcp-server.py` 的区别
 
-旧文件（2026-11-05，协议 `2024-11-05`）**保留但已标记弃用**，不再建议对外使用。
+旧文件（2026-11-05，协议 `2024-11-05`）**保留但已标记弃用**，别再拿它对外用。
 
 | 维度 | 旧 `mcp-server.py` | 本发行物 `mcp/` |
 |---|---|---|
@@ -64,8 +64,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python mcp/powerfocus_mc
 ## 4. 写操作的一次性确认（两步）
 
 开启写权限后，调用写工具**第一次不会执行**，而是返回 `resultType: "input_required"`
-并附一个短 TTL 的一次性 nonce（绑定具体工具与参数摘要）。客户端带
-`_mcp_confirm: "<nonce>"`（或 2026-07-28 的 `inputResponses`）重试才会真正执行。
+并附一个短 TTL 的一次性 nonce（绑定具体工具与参数摘要）。客户端带上
+`_mcp_confirm: "<nonce>"`（或 2026-07-28 的 `inputResponses`）重试，才会真正执行。
 nonce 用后即失效、不可复用、不可跨工具/跨参数使用。
 
 这对应 MCP 2026-07-28「显式句柄传递状态」的做法，也避免了用静态常量当确认令牌
@@ -93,7 +93,7 @@ elicitation / sampling 等完整 MRTR 能力。列表缓存提示按 SEP-2549 �
 - 本发行物**不新增 HTTP 监听端口**，因此不会引入 DNS rebinding / CORS / CSRF 面。
   若将来要加 HTTP 传输，必须先完成「HTTP 令牌与内核授权令牌解耦」，并复用
   `SecurityMiddleware` 全套，禁止宽松 CORS。
-- 审计日志不记录参数值、令牌或用户输入内容，避免日志本身成为泄露面。
+- 审计日志不记录参数值、令牌或用户输入内容——日志本身不该成为泄露面。
 - 所有工具只作用于本机已授权进程；不操作外部系统。
 
 ## 7. 排错

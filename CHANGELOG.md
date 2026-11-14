@@ -6,7 +6,7 @@
 版本号语义遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
 > **版本真源（2026-11-14 定，工程审计 P0）**
-> 唯一对外版本号 = **GitHub Release tag（当前 0.10.x）**，遵循 SemVer 2.0.0。
+> 唯一对外版本号 = **GitHub Release tag（当前 0.10.2）**，遵循 SemVer 2.0.0。
 > 仓库里另有两类数字，只是「代码目录 / 内核迭代槽」，不是发布版本，不得当作 tag 引用：
 > - `product/v1.00` — 桌面端代码目录名与数据目录版本槽；
 > - `versions/current.json` → `v0.09`（stable）；`versions/v0.10` 的 MANIFEST 标 `stage=dev`，
@@ -24,35 +24,46 @@
 - 部分安全态势 API 仍为接口契约占位，未在后端实装。
 - KVRT 下载源为 `latest` 直链（未锁定具体版本）；Node.js 已锁定版本 + SHA256。
 - `server.py` 上帝对象拆分、文件总线幂等 id、exe 冒烟测试与覆盖率门槛（见 `docs/engineering-audit.md` 路线图）。
+- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.09`，与发布 tag 0.10.x 语义不同；
+  是否对外统一由产品决策，本轮未擅自改动运行行为。
 
 ## 仓库发布（唯一对外版本真源）
 
+### [0.10.2] - 2026-11-14
+
+四视角工程审计的第一批落地，详见 `docs/engineering-audit.md`。**本版本重新打包了 exe**
+（20,446,612 字节，SHA256 `b110e829bc1074649f0239a551ebc1d98cfdb97286c488f913d2ee92cb2d3429`）。
+
+#### 修复
+
+- **P0 · 失败回执被当成功**：新增 `product/v1.00/app/bus_receipt.py` 协议层，`parse_receipt()` 识别 `ERROR:` 前缀并兼容旧版时间戳首行；内核回执改为纯正文，`/api/router` 的 `data` 不再因时间戳而恒为 `None`。
+- **P0 · 文件总线可靠性**：命令改为 `.tmp` → `os.replace` 原子发布（内核 `-Filter *.json` 看不到半成品）；回执消费后立即清理，另加 10 分钟节流的过期回收（实测残留 72 个文件）。
+- **P1 · 单实例静默退出**：第二个实例被互斥量挡下时弹出系统消息框；`CreateMutexW.restype` 设为 `c_void_p`，避免 64 位句柄被 ctypes 截断。
+- **P1 · 版本真源**：本文件重写为单一真源，消除 `v1.00.0` 死链与前导零违规，明确 stable / dev 分期；`SECURITY.md` 私密报告渠道占位注释补实。
+
+#### 工程
+
+- **测试防线**：新增 `tests/py/test_bus_receipt.py`（9 例），pytest 总用例 33 → 42；另有端到端伪内核实证（ERROR → `ok=False`、回执清理、旧格式 JSON 可解析）。
+- **CI 门禁**：新增 `ruff check`（此前只有 pyproject 配置没有强制），依赖改由 `requirements-ci.txt` + `requirements.lock.txt` 锁定，`on` 增加 `tags: ['v*']`，`py_compile` 目标补新模块。
+- **依赖与治理**：新增 requirements 四件套、CODEOWNERS、dependabot、PR / Issue 模板。
+- **验证**：pytest 42/42、ruff 0 错误、96 个 PowerShell 文件语法 0 错误、YAML 合法、新 exe 启动 `frozen=true / kernel_alive=true`。
+
 ### [0.10.1] - 2026-11-14
 
-#### 界面 v3「暖木工作台」
+界面 v3「暖木工作台」。附件 20,442,721 字节，SHA256 `543c429ad225e07d6ec434ce41981c7e84d1ef65ec51cfe518a52fd5bc530cb8`。
 
 - **深浅双主题**：token 化 94 个 `--pf-*` 变量，顶栏一键切换并持久化；浅色暖米白 `#FAF6F0`、深色 hue 32° 暖棕灰 `#221E19`、陶土橙单一强调色。
 - **无障碍**：全部文字与状态色经 WCAG 2.1 AA 双人独立计算校验；状态色拆「图形轨 3:1 / 文字轨 4.5:1」；焦点环改 2px 实色 accent。
 - **清退 v2 违规项**：渐变 logo、紫色第二强调色、10px 小字、无限呼吸动画。
 - 新增 `design-tokens.css` / `theme-init.js`；`style.css` 全量改为 token 引用，类名体系不变，前端逻辑零结构改动。
-- 重新打包 `dist/电脑算力调度中心.exe`（20,442,721 字节，SHA256 `543c429ad225e07d6ec434ce41981c7e84d1ef65ec51cfe518a52fd5bc530cb8`）；旧版 exe 仅留本地备份（`dist-v3/`，不入库）。
 - 设计系统规范与实机截图归档于 `docs/design-v3/`、`marketing/v3_live_*.png`。
-
-#### 工程加固（2026-11-14 工程审计第一批）
-
-- **修复 P0 · 失败回执被当成功**：新增 `product/v1.00/app/bus_receipt.py` 协议层，`parse_receipt()` 识别 `ERROR:` 前缀并兼容旧版时间戳首行；内核回执改为纯正文，`/api/router` 的 `data` 不再恒为 `None`。
-- **修复 P0 · 文件总线可靠性**：命令改为 `.tmp` → `os.replace` 原子发布（内核 `-Filter *.json` 看不到半成品）；回执消费后立即清理，另加 10 分钟节流的过期回收（实测残留 72 个文件）。
-- **修复 P1 · 单实例静默退出**：第二个实例被互斥量挡下时弹出系统消息框；`CreateMutexW.restype` 设为 `c_void_p`，避免 64 位句柄被 ctypes 截断。
-- **测试防线**：新增 `tests/py/test_bus_receipt.py`（9 例），pytest 总用例 33 → 42。
-- **CI 门禁**：新增 `ruff check`（此前只有 pyproject 配置没有强制），依赖改由 `requirements-ci.txt` + `requirements.lock.txt` 锁定，`on` 增加 `tags: ['v*']`。
-- **依赖与治理**：新增 requirements 四件套、CODEOWNERS、dependabot、PR / Issue 模板；`SECURITY.md` 私密报告渠道占位注释补实。
-- **归档**：四视角工程审计报告 `docs/engineering-audit.md`。
+- 本 tag 指向包含全部 v3 源码的 `5d98516`，是首个「源码与附件对齐」的发布版本。
 
 ### [0.10.0] - 2026-11-13
 
 首个公开发布版本：界面 v2（Linear 风）、7 组件自检、KVRT 合规接入、用户手册与法律合规审查。
 Release 附件于 11-14 同步替换为 v3 界面 exe，但该 tag 仍指向首次发布时的源码快照；
-**源码与附件对齐的版本是 0.10.1**。
+**源码与附件对齐的版本是 0.10.1 及其后版本**。
 
 ## 桌面端产品（代码目录 `product/v1.00`，非 SemVer 版本）
 
@@ -108,6 +119,7 @@ Release 附件于 11-14 同步替换为 v3 界面 exe，但该 tag 仍指向首�
   历史目录只读兼容，不再写入程序目录。
 - KVRT 报告解析按官方 stdout 与 XML 字段校准（修复把 `Detected: 0` 误报为 1 条威胁的问题）；
   修正 `-d` 参数连写触发帮助窗口挂起、下载进度污染 stdout、幂等跳过误判失败等问题。
+- 2026-11-14：命令回执不再前置时间戳（服务端据此正确解析 JSON 与失败状态）。
 
 ### 内核 v0.09（stable，current.json 当前指向）及更早
 
@@ -117,5 +129,6 @@ Release 附件于 11-14 同步替换为 v3 界面 exe，但该 tag 仍指向首�
 [Unreleased]: #unreleased
 [0.10.0]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.0
 [0.10.1]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.1
+[0.10.2]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.2
 
 <!-- 仓库：yang-yi-star/PowerFocus（2026-11-13 上线） -->

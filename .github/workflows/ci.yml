@@ -27,6 +27,12 @@ jobs:
   test:
     name: test (py${{ matrix.python-version }})
     runs-on: windows-latest
+    # Windows runner 默认 locale 是 cp1252：pip-audit 解析含中文注释的
+    # requirements*.txt 时 UnicodeDecodeError 崩溃（v0.11.1 首跑实证）。
+    # 强制 Python 全局 UTF-8，requirements 文件按 UTF-8 读取。
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
     strategy:
       fail-fast: false
       matrix:

@@ -1,4 +1,0 @@
-﻿manually demoted -> Normal
-after 14s watchdog -> High
-after stop-focus -> High
-

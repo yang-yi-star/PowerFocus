@@ -1,7 +1,0 @@
-﻿size=18739 meta=in-progress
-216.38.374.785 I slot print_timing: id  0 | task 6835 | n_gen =   5483, tg =   0.98 t/s, tg_3s =   0.83 t/s
-216.41.954.347 I slot print_timing: id  0 | task 6835 | n_gen =   5486, tg =   0.98 t/s, tg_3s =   0.84 t/s
-216.45.559.478 I slot print_timing: id  0 | task 6835 | n_gen =   5489, tg =   0.98 t/s, tg_3s =   0.83 t/s
-216.48.986.299 I slot print_timing: id  0 | task 6835 | n_gen =   5492, tg =   0.98 t/s, tg_3s =   0.88 t/s
-216.52.553.598 I slot print_timing: id  0 | task 6835 | n_gen =   5495, tg =   0.98 t/s, tg_3s =   0.84 t/s
-216.55.985.525 I slot print_timing: id  0 | task 6835 | n_gen =   5498, tg =   0.98 t/s, tg_3s =   0.87 t/s

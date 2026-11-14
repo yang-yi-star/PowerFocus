@@ -1,8 +1,0 @@
-===== phase1: MTP 版测速（8080 PID=19636, --spec-type draft-mtp --spec-draft-n-max 8） =====
-速度轮1 : 0.7 t/s (predicted=181, wall=296.1s)
-速度轮2 : 1.08 t/s (predicted=242, wall=226.3s)
-速度轮3 : 2.6 t/s (predicted=254, wall=99.5s)
-速度轮4 : 2.82 t/s (predicted=256, wall=93.2s)
-速度轮5 : 2.59 t/s (predicted=232, wall=91.4s)
-翻译: predicted=512, wall=119.4s
-===== phase1 完成 =====

@@ -1,5 +1,0 @@
-﻿---
-336.12.371.686 I slot print_timing: id  0 | task 14421 | n_gen =   4024, tg =   1.10 t/s, tg_3s =   0.87 t/s
-336.15.907.962 I slot print_timing: id  0 | task 14421 | n_gen =   4027, tg =   1.10 t/s, tg_3s =   0.85 t/s
-336.19.295.661 I slot print_timing: id  0 | task 14421 | n_gen =   4030, tg =   1.10 t/s, tg_3s =   0.89 t/s
-336.22.706.006 I slot print_timing: id  0 | task 14421 | n_gen =   4033, tg =   1.10 t/s, tg_3s =   0.88 t/s

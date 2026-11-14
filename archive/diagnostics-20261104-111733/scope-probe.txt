@@ -1,4 +1,0 @@
-LlamaHost = [127.0.0.1]
-LlamaPort = [8080]
-URL = [http://127.0.0.1:8080/slots]
-OK slots=4

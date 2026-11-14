@@ -10,6 +10,14 @@
 > 项目**不包含任何第三方二进制**——卡巴斯基 KVRT、Node.js 等第三方组件均由应用在用户明确同意后
 > 从官方源下载到本机，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+## 界面预览
+
+总览页实机运行截图（深色 / 浅色主题，数据为真实采样）：
+
+![界面预览 · 深色主题](docs/images/ui-overview-dark.png)
+
+![界面预览 · 浅色主题](docs/images/ui-overview-light.png)
+
 ## 核心特性
 
 - **进程调度**：聚焦三档（温和 / 强制 / 极限）、优先级调整、内存回收、冻结恢复、终止（二次确认）。

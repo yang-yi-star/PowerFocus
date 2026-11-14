@@ -1,5 +1,0 @@
-﻿源脚本存在: True
-桌面路径: C:\Users\Administrator.医院\Desktop
-pwsh 路径: C:\Users\Administrator.医院\AppData\Local\Microsoft\WindowsApps\pwsh.exe
-快捷方式已创建: C:\Users\Administrator.医院\Desktop\电脑算力调度中心.lnk
-快捷方式存在: True

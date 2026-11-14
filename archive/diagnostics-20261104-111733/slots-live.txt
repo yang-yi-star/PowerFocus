@@ -1,2 +1,0 @@
-﻿t0: is_processing=False n_prompt=0 n_decoded=0 n_remain=-1
-t3: is_processing=False n_prompt=0 n_decoded=0 n_remain=-1

@@ -1,5 +1,0 @@
-类型=System.Collections.Hashtable Count=4
-哈希表键: TotalMB,UsedMB,FreeMB,Index
-TotalMB=8151 FreeMB=661
-花括号URL=[http://127.0.0.1:8080/slots]
-访问 OK slots=4

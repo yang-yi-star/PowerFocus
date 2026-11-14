@@ -1,3 +1,0 @@
-﻿E:\PowerFocus\统一内存模式.ps1 : 语法错误 0 个
-E:\PowerFocus\Test-UnifiedMemoryPerf.ps1 : 语法错误 0 个
-dot-source 异常: The script '统一内存模式.ps1' cannot be run because it contained a "#requires" statement for Windows PowerShell 7.0. The version of Windows PowerShell that is required by the script does not match the currently running version of Windows PowerShell 5.1.26100.9711.

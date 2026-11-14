@@ -1,3 +1,0 @@
-v2 Parser 错误数: 0
-Python 存在: True
-mcp: mcp-server.py 语法: OK

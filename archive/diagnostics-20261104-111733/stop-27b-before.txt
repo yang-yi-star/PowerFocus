@@ -1,5 +1,0 @@
-﻿=== 监听端口定位 ===
-端口 8080 -> PID 41460 :: llama-server :: E:\Program Files\llama.cpp\bin\llama-server.exe
-
-=== 内存占用（8080 进程）===
-PID 41460 WorkingSet: 9.81 GB, Private: 9.79 GB

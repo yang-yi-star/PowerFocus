@@ -1,5 +1,0 @@
-﻿out=gentle focused pid=38352 priority=High
-priority=Normal
-plan=电源方案 GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (高性能)
-
-log=2026-11-02 12:53:37 [INFO] 电脑算力调度中心已启动 (默认建议目标: llama-server) | 2026-11-02 13:07:13 [INFO] 温和聚焦: llama-server (PID 38352) 优先级设为 High | 2026-11-02 13:07:13 [INFO] 原电源计划 GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c | 2026-11-02 13:07:13 [INFO] 电源计划已切换为高性能

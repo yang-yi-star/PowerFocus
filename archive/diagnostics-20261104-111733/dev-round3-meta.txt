@@ -1,5 +1,0 @@
-请求发送: 00:40:47
-响应到达: 01:00:30
-finish_reason: stop
-usage: {"completion_tokens":3273,"prompt_tokens":1136,"total_tokens":4409,"prompt_tokens_details":{"cached_tokens":0}}
-输出长度: 8594 字符

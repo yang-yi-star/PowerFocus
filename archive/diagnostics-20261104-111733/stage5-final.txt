@@ -1,8 +1,0 @@
-已清理: s5-request.json.result.txt, s5-status.json.result.txt, s5b-status.json.result.txt, s5c-list.json.result.txt
-in 目录剩余: 0 个
-v2 运行: PID 8916 优先级=Normal
-规则引擎: running=True 心跳=2026-11-03 10:29:35
-mcp-server.py: 12639 字节，修改 11/03/2026 10:16:48
-index.md 含 mcp-server.py: True
-manifest.json programs 数: 12（含 mcp-server.py: True）
-DEV log 行数: 213

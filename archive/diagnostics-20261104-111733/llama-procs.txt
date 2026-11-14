@@ -1,4 +1,0 @@
-﻿pid=5328 cpu=25.6 prio=Normal path=C:\Users\Administrator.医院\AppData\Local\LocModel\engines\b12032-cuda-12.4\llama-server.exe
-pid=38352 cpu=9465.7 prio=High path=E:\Program Files\llama.cpp\bin\llama-server.exe
----8080---
-  TCP    127.0.0.1:8080         0.0.0.0:0              LISTENING       38352

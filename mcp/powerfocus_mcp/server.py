@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# PowerFocus MCP Server 0.11.0 · 独立发行物（mcp/powerfocus_mcp/server.py）
+# PowerFocus MCP Server 0.11.1 · 独立发行物（mcp/powerfocus_mcp/server.py）
 #
 # 目标：让任意 AI 客户端按 MCP 协议发现并加载 PowerFocus 的能力。
 # 形态：stdio 传输 + JSON-RPC 2.0（逐行），零第三方依赖，只用标准库。

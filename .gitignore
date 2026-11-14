@@ -103,3 +103,6 @@ archive/diagnostics-*/
 # 各机器自己的模型路径写在这里，绝不提交私有绝对路径。
 models-preset.local.ini
 **/models-preset.local.ini
+
+# 开发机诊断归档仅保留本地，不入库（含本机路径，勿提交）
+archive/

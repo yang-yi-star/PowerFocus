@@ -1,7 +1,0 @@
-pwsh 版本: 7.6.9
-E:\PowerFocus\统一内存模式.ps1 : 语法错误 0 个
-E:\PowerFocus\Test-UnifiedMemoryPerf.ps1 : 语法错误 0 个
-dot-source: OK，9 个关键函数全部加载
-GGUF 层数解析: 65
-GPU[0] 总=8151MB 已用=6132MB 空闲=1768MB
-内存 总=31968.3MB 可用=4426.7MB

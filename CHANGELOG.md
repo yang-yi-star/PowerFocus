@@ -7,7 +7,7 @@
 版本递增规则（小更新 / 功能版本 / 全面更新）见 [`docs/VERSION_POLICY.md`](docs/VERSION_POLICY.md)。
 
 > **版本真源（2026-11-14 定，工程审计 P0）**
-> 唯一对外版本号 = **GitHub Release tag（当前 0.11.0）**，遵循 SemVer 2.0.0。
+> 唯一对外版本号 = **GitHub Release tag（当前 0.11.1）**，遵循 SemVer 2.0.0。
 > 仓库里另有两类数字，只是「代码目录 / 内核迭代槽」，不是发布版本，不得当作 tag 引用：
 > - `product/v1.00` — 桌面端代码目录名与数据目录版本槽；
 > - `versions/current.json` → `v0.09`（stable）；`versions/v0.10` 的 MANIFEST 标 `stage=dev`，
@@ -95,7 +95,7 @@
 
 ### 验证
 
-`pytest` **106 passed**（新增 17 例 v0.11.1 回归：F8 令牌 5 例 + B22 2 例 +
+`pytest` **104 passed**（新增 15 例 v0.11.1 回归：F8 令牌 5 例 + B22 2 例 +
 B21 2 例 + B11/B12/B13/B29/F3 守卫等）；`ruff` 0 错误；`py_compile` 10 目标；
 pwsh 7 全仓 `.ps1` 语法 0 错误（含新增的 model-router 过滤逻辑四场景冒烟：
 预设源查找 / 全存在复用 / 模拟换机全缺失报错 / 部分缺失过滤生成）。
@@ -107,8 +107,14 @@ F4 双向冒烟通过——带令牌命令 `ok=true`，直投无令牌命令回�
 ### 发行物
 
 - `PowerFocus-v0.11.1-x64.exe` — 20,457,037 字节，
-  SHA256 `7dd5e1e7923e22378ff0cb1de7e14b7ec9e87eed35591cdc2f1f2ef8ebdf9c0b`
-- `PowerFocus-MCP-v0.11.1.zip` — 15,919 字节（版本对齐 0.11.1）
+  SHA256 `7dd5e1e7923e22378ff0cb1de7e14b7ec9e87eed35591cdc2f1f2ef8ebdf9c0b`。
+  注意：投稿目录中的 `电脑算力调度中心.exe` 与本 Release 资产是**同一构建的不同文件名**
+  （SHA256 完全一致，仅按发布渠道分别命名）。
+- `PowerFocus-MCP-v0.11.1.zip` — 19,970 字节（版本对齐 0.11.1，包内 6 个文件：
+  `VERSION.json` / `config.example.json` / `README.md` / `LICENSE` /
+  `powerfocus_mcp/__init__.py` / `powerfocus_mcp/server.py`），
+  SHA256 `8da64b985fef87d6cf5dc8858d0f5d95afff5610babeb5263c901400a4daf166`；
+  相比首发包补入了随包 LICENSE（Apache-2.0）并修正包内版本字符串残留。
 
 ### [0.11.0] - 2026-11-14
 

@@ -2,11 +2,16 @@
 
 ## 支持的版本
 
-| 版本 | 位置 | 是否接收安全报告 |
+> 说明：本项目存在两套数字——**发布版本**（GitHub Release tag，如 v0.11.1）
+> 与**内核槽 / 代码目录**（如 `versions/v0.09`、`product/v1.00`），二者不是一回事。
+> 内核槽是否接收安全报告以 `versions/current.json` 的 stable 指针为准。
+
+| 组件 | 位置 | 是否接收安全报告 |
 |---|---|---|
-| 内核 0.10.x | `versions/v0.10` | 是 |
-| 桌面端 1.00.x | `product/v1.00` | 是 |
-| 更早版本（v0.05–v0.09） | `versions/` | 否，请先升级 |
+| 当前 stable 内核（`versions/current.json` 指向 **v0.09**） | `versions/v0.09` | 是 |
+| dev 槽内核 | `versions/v0.10` | 是 |
+| 桌面端（随当前 Release 发布） | `product/v1.00` | 是 |
+| 更早的内核槽与发布版本 | — | 否，请先升级到最新 Release |
 
 ## 如何报告漏洞
 

@@ -1,0 +1,82 @@
+name: release
+# tag 驱动自动发版：push 一个 v* tag 即自动创建 GitHub Release。
+# - mcp-zip：始终执行，从仓库 mcp/ 目录打包并挂为附件（先清理 __pycache__）
+# - exe-build：尽力而为，在 Windows runner 上尝试 PyInstaller 构建，成功则上传 exe；
+#   失败不阻塞发布（continue-on-error），此时需本机构构建作后手动上传。
+# 人工步骤仍按 docs/VERSION_POLICY.md 的 8 步发布闭环：本机改版本号、更新 CHANGELOG、
+# 本机构建 exe 并校验 SHA256 之后，再 push tag；workflow 负责「对外可见的 Latest」一键成形。
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  mcp-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build MCP zip from repo
+        run: |
+          find mcp -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+          VER="${GITHUB_REF_NAME#v}"
+          python3 -m zipfile -c "PowerFocus-MCP-v${VER}.zip" mcp/
+          ls -la "PowerFocus-MCP-v${VER}.zip"
+          sha256sum "PowerFocus-MCP-v${VER}.zip"
+
+      - name: Create release and upload MCP zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          # Release 已存在（如手工先建了）则只补附件
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            && gh release upload "$GITHUB_REF_NAME" "PowerFocus-MCP-v${VER}.zip" --clobber \
+            || gh release create "$GITHUB_REF_NAME" "PowerFocus-MCP-v${VER}.zip" \
+                 --title "PowerFocus ${GITHUB_REF_NAME}" --generate-notes --latest
+
+  exe-build:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.13'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+
+      - name: Build exe with PyInstaller
+        shell: pwsh
+        run: |
+          if (Test-Path "product/v1.00/build/build.ps1") {
+            pwsh -File "product/v1.00/build/build.ps1"
+          } elseif (Test-Path "电脑算力调度中心.spec") {
+            pyinstaller "电脑算力调度中心.spec" --noconfirm
+          } else {
+            Write-Error "未找到构建脚本或 spec 文件"
+          }
+
+      - name: Upload exe artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter "电脑算力调度中心.exe" |
+            Where-Object { $_.FullName -notmatch 'base_library' } |
+            Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $exe) { Write-Error "构建产物中未找到 exe"; exit 1 }
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          Write-Host "exe: $($exe.FullName) ($($exe.Length) bytes) SHA256=$hash"
+          gh release upload "$($env:GITHUB_REF_NAME)" "$($exe.FullName)" --clobber --repo "${{ github.repository }}"

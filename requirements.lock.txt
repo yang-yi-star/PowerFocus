@@ -4,7 +4,7 @@
 # 更新：升级依赖后重新执行 `pip freeze > requirements.lock.txt` 并提交，
 #       同时同步 requirements.txt / requirements-dev.txt / requirements-ci.txt 的顶层版本。
 altgraph==0.17.5
-annotated-doc==0.0.5
+annotated-doc==0.0.6
 annotated-types==0.8.0
 anyio==4.16.0
 bottle==0.13.4

@@ -10,11 +10,11 @@
 # ResolutionImpossible —— 门禁就变成让所有升级 PR 假红。lock 只用于本机
 # 精确重建 .venv；CI 锁顶层即可，传递依赖交给 pip 解析。
 
-fastapi==0.162.0
+fastapi==0.162.4
 starlette==1.10.0
 pydantic==2.14.2
 uvicorn==0.54.0
 httpx==0.28.1
 psutil==7.2.2
 pytest==9.2.0
-ruff==0.17.3
+ruff==0.17.4

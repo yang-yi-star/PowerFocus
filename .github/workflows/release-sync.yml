@@ -1,0 +1,38 @@
+name: release-notes-sync
+# 一次性同步：push 到 sync/** 时触发，用 GITHUB_TOKEN 更正 Release notes 并替换 MCP zip 附件。
+# sync/ 目录删除后本 workflow 不再有触发源，可在下一个清理提交中删除本文件。
+on:
+  push:
+    paths: ['sync/**']
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Guard (skip when sync files removed)
+        run: |
+          if [ ! -f sync/release-notes-v0.11.1.md ] || [ ! -f sync/PowerFocus-MCP-v0.11.1.zip.b64 ]; then
+            echo "sync files removed, nothing to do"
+            exit 0
+          fi
+
+      - name: Decode zip from base64
+        run: base64 -d sync/PowerFocus-MCP-v0.11.1.zip.b64 > /tmp/PowerFocus-MCP-v0.11.1.zip
+
+      - name: Verify zip checksum
+        run: |
+          echo "8da64b985fef87d6cf5dc8858d0f5d95afff5610babeb5263c901400a4daf166  /tmp/PowerFocus-MCP-v0.11.1.zip" | sha256sum -c -
+
+      - name: Update release notes and zip asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit v0.11.1 --repo "${{ github.repository }}" --notes-file sync/release-notes-v0.11.1.md
+          gh release delete-asset v0.11.1 PowerFocus-MCP-v0.11.1.zip --repo "${{ github.repository }}" --yes || true
+          gh release upload v0.11.1 /tmp/PowerFocus-MCP-v0.11.1.zip --repo "${{ github.repository }}" --clobber

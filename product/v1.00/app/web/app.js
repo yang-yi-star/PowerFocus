@@ -68,6 +68,14 @@
     if (v === '1') document.body.classList.add('sb-min');
   }
 
+  /* 主题切换（v3：浅色/深色双主题；theme-init.js 已在渲染前设置初始值） */
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('pf_theme', next); } catch (_) { /* 隐私模式忽略 */ }
+  }
+
   /* 键盘：1-8 切换视图、[ 折叠侧栏；输入控件聚焦或弹窗打开时不劫持 */
   const VIEW_ORDER = ['overview', 'processes', 'scenes', 'models',
     'security', 'bootstrap', 'settings', 'logs'];
@@ -863,6 +871,8 @@
     }
     const sbt = $('sb-toggle');
     if (sbt) sbt.addEventListener('click', toggleSidebar);
+    const tht = $('theme-toggle');
+    if (tht) tht.addEventListener('click', toggleTheme);
     document.addEventListener('keydown', onKeydown);
 
     $('proc-search').addEventListener('input', () => renderProcessTable(snapshot));

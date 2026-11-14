@@ -87,3 +87,6 @@ versions/**/scan_settings.json
 
 # PyInstaller 打包日志（本地构建留档，不入库）
 product/v1.00/build/pack-log-*.txt
+
+# ---- 2026-11-14 补：v3 重新打包前的旧版 exe 本地备份（20 MB 二进制，不入库） ----
+product/**/dist-v3/

@@ -1,0 +1,260 @@
+/* ============================================================
+   PowerFocus v3 · Design Tokens（暖木工作台）
+   依据：视觉规范 v1（visual-architect-2 Phase 1）
+         + 体验规范 v1（Phase 2）经 team-lead 独立复算仲裁后的终值
+         （本文件全部数值为裁定终值，直接落盘，不再使用 Phase 2 过渡值）
+   结构：:root = 浅色主题（默认）
+         [data-theme="dark"] = 深色主题（仅覆盖同名变量）
+   命名：--pf-<类别>-<名称>
+   约束：本文件只含 token 与兼容别名层，不含组件规则；
+         组件规则放 style.css，一律引用 var(--pf-*)
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ---------- 表面阶（三层，暖米白基调 hue≈35°） ---------- */
+  --pf-bg-page: #faf6f0;        /* 页面底层（米白，非冷白） */
+  --pf-bg-panel: #ffffff;       /* 卡片 / 面板 */
+  --pf-bg-elevated: #ffffff;    /* 悬浮层 dialog / popover（靠阴影分层） */
+
+  /* 导航比内容暗一档（暖化版 Linear 原则：米白导航 < 白色卡片） */
+  --pf-nav-bg: var(--pf-bg-page);
+
+  /* ---------- 文字阶 ---------- */
+  --pf-text-primary: #2e2a25;   /* 13.2:1 AAA */
+  --pf-text-secondary: #6e655b; /* 5.3:1 AA */
+  --pf-text-tertiary: #7a6f62;  /* 仲裁终值 4.91 on white / 4.56 on page，全过 AA */
+  --pf-text-ghost: #a69c90;     /* 更弱装饰字（不承载信息），禁用于正文 */
+
+  /* ---------- 边框 ---------- */
+  /* 用法原则：交互组件（输入框/按钮/下拉）边框一律 border-strong；
+     border-default 仅用于装饰性分隔与卡片描边 */
+  --pf-border-default: #e9e1d7;
+  --pf-border-strong: #d8cdbf;  /* hover、输入框未聚焦 */
+
+  /* ---------- 强调色（全局唯一，陶土橙） ---------- */
+  --pf-accent: #b4531f;              /* 白字 5.0:1；作文字 4.65:1 AA */
+  --pf-accent-hover: #a34a1b;
+  --pf-accent-fg: #ffffff;           /* accent 实底上的文字 */
+  --pf-accent-dim: rgba(180, 83, 31, .10);   /* 选中底 / 用户气泡底 */
+  --pf-accent-line: rgba(180, 83, 31, .38);  /* accent 边框 */
+
+  /* ---------- 状态色（双轨：graphic ≥3:1 用于圆点/边框；text ≥4.5:1 用于文字） ---------- */
+  --pf-status-success-graphic: #3e8e62;
+  --pf-status-success-text: #2e6b4a;
+  --pf-status-warning-graphic: #9e7210;   /* 修订：原 #c98a1e 低于非文本 3:1 */
+  --pf-status-warning-text: #7e5c0f;
+  --pf-status-danger-graphic: #c24b40;
+  --pf-status-danger-text: #b04338;
+  --pf-status-info-graphic: #4e7e9e;
+  --pf-status-info-text: #3e6b87;
+
+  /* 状态容器底（判定条 / 徽章），已按 WCAG 实测配对文字 */
+  --pf-status-success-bg: #e7f1eb;
+  --pf-status-warning-bg: #f7edda;
+  --pf-status-danger-bg: #f6e4e1;
+  --pf-status-info-bg: #e4edf3;
+
+  /* ---------- 判定条（verdict，calm tech 核心） ---------- */
+  --pf-verdict-ok-bg: var(--pf-status-success-bg);
+  --pf-verdict-warn-bg: var(--pf-status-warning-bg);
+  --pf-verdict-bad-bg: var(--pf-status-danger-bg);
+  --pf-verdict-border: transparent;   /* 三态靠底色分层，不加深边框 */
+  --pf-verdict-text: var(--pf-text-secondary);
+  --pf-verdict-text-strong: var(--pf-text-primary);
+
+  /* ---------- 事件徽章（navbadge / check badge） ---------- */
+  --pf-badge-danger-bg: var(--pf-status-danger-bg);
+  --pf-badge-danger-text: var(--pf-status-danger-text);
+  --pf-badge-warning-bg: var(--pf-status-warning-bg);
+  --pf-badge-warning-text: var(--pf-status-warning-text);
+  --pf-badge-success-bg: var(--pf-status-success-bg);
+  --pf-badge-success-text: var(--pf-status-success-text);
+  --pf-badge-info-bg: var(--pf-status-info-bg);
+  --pf-badge-info-text: var(--pf-status-info-text);
+
+  /* ---------- 按钮层级 ---------- */
+  --pf-btn-primary-bg: var(--pf-accent);
+  --pf-btn-primary-fg: #ffffff;
+  --pf-btn-primary-bg-hover: var(--pf-accent-hover);
+  --pf-btn-secondary-bg: transparent;
+  --pf-btn-secondary-border: var(--pf-border-strong);
+  --pf-btn-secondary-fg: var(--pf-text-primary);
+  --pf-btn-secondary-bg-hover: rgba(180, 83, 31, .06);   /* 暖化 hover，非冷灰 */
+  /* 危险按钮：常态长得像次按钮，hover 才转 danger（防误触 + 无常驻红） */
+  --pf-btn-danger-hover-bg: var(--pf-status-danger-graphic);
+  --pf-btn-danger-hover-fg: #ffffff;
+  --pf-btn-danger-border: var(--pf-border-strong);
+
+  /* ---------- 输入控件 ---------- */
+  --pf-input-bg: var(--pf-bg-panel);
+  --pf-input-border: var(--pf-border-strong);
+  --pf-input-bg-focus: var(--pf-bg-panel);
+  --pf-input-border-focus: var(--pf-accent);
+  --pf-input-placeholder: var(--pf-text-tertiary);
+
+  /* ---------- 进度条 / 滚动条 / 遮罩 ---------- */
+  --pf-track-bg: #efe7dc;               /* gauge / topitem 轨道（暖） */
+  --pf-scrollbar-thumb: #d8cdbf;
+  --pf-scrollbar-thumb-hover: #c9bcab;
+  --pf-backdrop: rgba(46, 42, 37, .35); /* dialog 遮罩（暖棕黑） */
+
+  /* ---------- 聊天气泡 ---------- */
+  --pf-msg-user-bg: var(--pf-accent-dim);
+  --pf-msg-user-border: var(--pf-accent-line);
+  --pf-msg-model-bg: var(--pf-bg-panel);
+  --pf-msg-model-border: var(--pf-border-default);
+
+  /* ---------- 形状 ---------- */
+  --pf-radius-xs: 4px;      /* 行 hover 底、logo */
+  --pf-radius-sm: 8px;      /* 按钮 / 输入框 / 导航项 */
+  --pf-radius-md: 12px;     /* 卡片 / 面板 / dialog（圆角封顶 12px） */
+  --pf-radius-full: 999px;  /* 徽章 / 判定条 / 开关 / 进度条 */
+
+  /* ---------- 间距（4px 网格） ---------- */
+  --pf-space-1: 4px;
+  --pf-space-2: 8px;
+  --pf-space-3: 12px;
+  --pf-space-4: 16px;
+  --pf-space-5: 20px;
+  --pf-space-6: 24px;
+
+  /* ---------- 字体与数字 ---------- */
+  --pf-font:
+    "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+    "PingFang SC", "Source Han Sans SC", sans-serif;
+  --pf-font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  --pf-fs-12: 12px;  --pf-lh-12: 1.34;   /* 徽章 / 表格密集列 */
+  --pf-fs-13: 13px;  --pf-lh-13: 1.4;    /* 表格正文 / 表单标签 */
+  --pf-fs-14: 14px;  --pf-lh-14: 1.45;   /* 默认正文 / 按钮 / 导航 */
+  --pf-fs-15: 15px;  --pf-lh-15: 1.47;   /* 聊天正文（唯一放宽处） */
+  --pf-fs-16: 16px;  --pf-lh-16: 1.5;    /* KPI 标签 / 小节标题 */
+  --pf-fs-22: 22px;  --pf-lh-22: 1.36;   /* KPI 大数字 / 页面标题 */
+
+  /* ---------- 阴影（浅色：暖色阴影，禁冷黑） ---------- */
+  --pf-shadow-card: 0 1px 3px rgba(64, 48, 32, .06);
+  --pf-shadow-elevated: 0 4px 16px rgba(64, 48, 32, .10);
+  --pf-shadow-modal: 0 8px 24px rgba(64, 48, 32, .16);
+  --pf-shadow-none: none;
+
+  /* ---------- 焦点环（全应用唯一焦点样式，仲裁终值规格） ----------
+     2px 实色 accent 外环 + 1px 间隙；不用透明度环（混底后实测约 2:1，
+     不达 WCAG 1.4.11 非文本 3:1）。accent 两主题实测均 ≥4.6:1 */
+
+  /* ---------- 微交互 ---------- */
+  --pf-transition: color .15s ease, background-color .15s ease,
+                   border-color .15s ease, opacity .15s ease;
+  --pf-transition-fast: color .1s ease, background-color .1s ease;
+}
+
+/* ============================================================
+   深色主题（暖棕灰基调，所有中性色 hue 30-34°，禁冷蓝灰）
+   ============================================================ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --pf-bg-page: #221e19;        /* 深咖啡灰 */
+  --pf-bg-panel: #2b2620;
+  --pf-bg-elevated: #353029;    /* 三层递进靠明度，不靠阴影 */
+
+  --pf-nav-bg: var(--pf-bg-page);
+
+  --pf-text-primary: #f2ede6;   /* 14.2:1 AAA */
+  --pf-text-secondary: #ada296; /* 6.6:1 AA */
+  --pf-text-tertiary: #a39889;  /* 仲裁终值 4.61 on elevated / 5.84 on page，全过 AA */
+  --pf-text-ghost: #7a7065;
+
+  --pf-border-default: #3b352e; /* 深色主题的"影子"，承担浅色阴影职责 */
+  --pf-border-strong: #4c453c;
+
+  --pf-accent: #e08850;         /* 提亮杏橙；深字 6.2:1 AA */
+  --pf-accent-hover: #e99a68;
+  --pf-accent-fg: #221e19;      /* accent 实底上用深字 */
+  --pf-accent-dim: rgba(224, 136, 80, .12);
+  --pf-accent-line: rgba(224, 136, 80, .40);
+
+  /* 深色状态色：graphic 与 text 共用同一值（均同时满足 3:1 与 4.5:1） */
+  --pf-status-success-graphic: #5db486;
+  --pf-status-success-text: #5db486;
+  --pf-status-warning-graphic: #e0ac4a;
+  --pf-status-warning-text: #e0ac4a;
+  --pf-status-danger-graphic: #e3796e;
+  --pf-status-danger-text: #e3796e;
+  --pf-status-info-graphic: #7ba8c4;
+  --pf-status-info-text: #7ba8c4;
+
+  --pf-status-success-bg: #2b3630;
+  --pf-status-warning-bg: #3a3226;
+  --pf-status-danger-bg: #3b2c29;
+  --pf-status-info-bg: #2c353c;
+
+  --pf-btn-primary-bg-hover: var(--pf-accent-hover);
+  --pf-btn-secondary-bg-hover: rgba(224, 136, 80, .08);
+  --pf-btn-danger-hover-bg: var(--pf-status-danger-graphic);
+  --pf-btn-danger-hover-fg: #221e19;
+
+  --pf-input-bg: var(--pf-bg-panel);
+  --pf-input-bg-focus: var(--pf-bg-elevated);
+
+  --pf-track-bg: #191512;
+  --pf-scrollbar-thumb: #3b352e;
+  --pf-scrollbar-thumb-hover: #4c453c;
+  --pf-backdrop: rgba(10, 8, 6, .60);
+
+  --pf-msg-model-bg: var(--pf-bg-elevated);
+
+  /* 深色阴影策略：border 代替 shadow，仅 modal 保留极弱环境阴影 */
+  --pf-shadow-card: none;
+  --pf-shadow-elevated: none;
+  --pf-shadow-modal: 0 8px 24px rgba(0, 0, 0, .35);
+}
+
+/* ============================================================
+   迁移期兼容别名层（旧变量名 → 新 token）
+   用途：引入本文件后，现有 style.css 零改动即可获得 v3 换肤。
+   迁移完成后（见 migration-map.md 第三步）整块删除。
+   注意：旧状态色单值 → 映射到 graphic 版；旧按钮 primary 是
+   「浅底+彩字」，别名层先近似映射，属「需改结构」项。
+   ============================================================ */
+:root {
+  /* 表面阶 */
+  --bg: var(--pf-bg-page);
+  --bg-nav: var(--pf-nav-bg);
+  --surface: var(--pf-bg-panel);
+  --surface2: var(--pf-bg-panel);       /* 旧输入/hover 底 → 并入 panel */
+  --surface3: var(--pf-bg-elevated);
+  /* 边框 */
+  --line: var(--pf-border-default);
+  --line-strong: var(--pf-border-strong);
+  /* 文字阶 */
+  --txt: var(--pf-text-primary);
+  --dim: var(--pf-text-secondary);
+  --faint: var(--pf-text-tertiary);
+  --ghost: var(--pf-text-ghost);
+  /* 强调色 */
+  --accent: var(--pf-accent);
+  --accent-dim: var(--pf-accent-dim);
+  --accent-line: var(--pf-accent-line);
+  /* 状态色（graphic 版；文字处应改用 status-*-text） */
+  --green: var(--pf-status-success-graphic);
+  --amber: var(--pf-status-warning-graphic);
+  --red: var(--pf-status-danger-graphic);
+  /* 几何（旧阶梯 → 新阶梯） */
+  --r1: var(--pf-radius-xs);
+  --r2: var(--pf-radius-sm);
+  --r3: var(--pf-radius-md);
+  /* 字体 */
+  --font: var(--pf-font);
+  --mono: var(--pf-font-mono);
+}
+
+/* ============================================================
+   焦点环全局规则（建议移入 style.css 时保留此定义）
+   仲裁终值规格：2px 实色 accent 外环 + 1px 间隙
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--pf-accent);
+  outline-offset: 1px;
+}

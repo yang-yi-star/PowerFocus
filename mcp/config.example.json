@@ -1,0 +1,39 @@
+{
+  "_comment": "PowerFocus MCP 0.11.0 客户端配置样例。把 <...> 换成本机实际路径后，复制到你的 AI 客户端 MCP 配置文件里。只读是默认策略，无需任何开关。",
+  "mcpServers": {
+    "powerfocus": {
+      "command": "python",
+      "args": ["<PowerFocus 安装目录或源码目录>/mcp/powerfocus_mcp/server.py"],
+      "env": {
+        "POWERFOCUS_ROOT": "<PowerFocus 安装目录或源码目录>"
+      }
+    }
+  },
+  "_optional_write_mode": {
+    "_warning": "仅在确实需要让 AI 执行调度/安装操作时开启。开启后写工具会出现在 tools/list，且每次调用仍需一次性确认 nonce。",
+    "mcpServers": {
+      "powerfocus": {
+        "command": "python",
+        "args": ["<目录>/mcp/powerfocus_mcp/server.py"],
+        "env": {
+          "POWERFOCUS_ROOT": "<目录>",
+          "POWERFOCUS_MCP_ALLOW_WRITE": "1"
+        }
+      }
+    }
+  },
+  "_optional_install_mode": {
+    "_warning": "额外开放组件下载/安装，风险最高。需同时开启 ALLOW_WRITE 与 ALLOW_INSTALL。",
+    "env": {
+      "POWERFOCUS_MCP_ALLOW_WRITE": "1",
+      "POWERFOCUS_MCP_ALLOW_INSTALL": "1"
+    }
+  },
+  "_environment_variables": {
+    "POWERFOCUS_ROOT": "应用根目录，用于定位 versions/*/.auth_token；不填则自动从本文件位置与 %LOCALAPPDATA%\\PowerFocus 查找",
+    "POWERFOCUS_MCP_TOKEN": "直接指定本机 X-PF-Token（可选，优先级最高）",
+    "POWERFOCUS_MCP_PORT": "指定服务端口（可选，默认自动探测 18080~18119）",
+    "POWERFOCUS_MCP_ALLOW_WRITE": "设为 1 才暴露写工具",
+    "POWERFOCUS_MCP_ALLOW_INSTALL": "设为 1 才暴露安装类高危工具"
+  }
+}

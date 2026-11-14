@@ -1755,10 +1755,14 @@ function Invoke-CommandBusTick {
                 Write-Log "ERROR" "命令文件 $($f.Name) 执行异常: $_"
             }
             # 写结果 + 移入 done
+            # 回执只写结果正文：首行时间戳会让服务端 json.loads 恒失败。
+            # 先写 .tmp 再原子替换，避免服务端读到「已创建但尚未写完」的空文件，
+            # 把内核 ERROR 误判成执行成功（当前 stable 内核必须同步此修复）。
             try {
                 $resultPath = Join-Path $script:CmdDone ($f.Name + ".result.txt")
-                $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                "$stamp`n$resultText" | Set-Content -LiteralPath $resultPath -Encoding utf8
+                $tmpPath = $resultPath + ".tmp"
+                $resultText | Set-Content -LiteralPath $tmpPath -Encoding utf8
+                Move-Item -LiteralPath $tmpPath -Destination $resultPath -Force
                 Move-Item -LiteralPath $f.FullName -Destination (Join-Path $script:CmdDone $f.Name) -Force
             } catch { Write-Log "ERROR" "结果落盘失败: $_" }
             Write-Log "INFO" "命令 $($f.Name) 完成: $resultText"

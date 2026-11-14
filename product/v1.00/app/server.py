@@ -16,6 +16,7 @@ import itertools
 import json
 import os
 import re
+import secrets
 import sys
 import threading
 import time
@@ -79,7 +80,13 @@ def resolve_pf_root() -> Path:
     for cand in [start] + list(start.parents):
         if (cand / "versions").is_dir():
             return cand
-    return Path(r"E:\PowerFocus")
+    # 不再回退到开发机绝对路径：换机后它不存在，会把内核解析到错误目录。
+    la = os.environ.get("LOCALAPPDATA")
+    if la:
+        d = Path(la) / "PowerFocus"
+        if (d / "versions").is_dir():
+            return d
+    return start  # 由 resolve_kernel 走明确的降级分支
 
 
 def _ver_key(name: str):
@@ -124,6 +131,12 @@ BUS_IN = KERNEL_DIR / "commands" / "in"
 BUS_OUT = KERNEL_DIR / "commands" / "out"
 BUS_DONE = KERNEL_DIR / "commands" / "done"
 TOKEN_FILE = KERNEL_DIR / ".auth_token"
+# HTTP/UI 令牌与内核授权令牌解耦：免鉴权的首页会把 HTTP 令牌注入 meta，
+# 同机任意本地进程都能读到它，因此它绝不能等同于内核授权令牌。
+# 放在运行态数据目录，不写程序目录，也不进任何 HTTP 响应体。
+_HTTP_TOKEN_FILE = (Path(os.environ.get("LOCALAPPDATA") or os.environ.get("TEMP") or ".")
+                    / "PowerFocus" / "http.token")
+_TOKEN_LOCK = threading.Lock()
 PROFILES = KERNEL_DIR / "model-profiles.json"
 SCENES = KERNEL_DIR / "scenes.json"
 
@@ -475,22 +488,41 @@ def _pwsh() -> str:
     return shutil.which("pwsh") or shutil.which("powershell") or "pwsh.exe"
 
 
-def _token() -> str:
-    try:
-        tok = TOKEN_FILE.read_text(encoding="utf-8-sig").strip()
-        if tok:
-            return tok
-    except Exception:
-        pass
-    # 内核尚未生成时由后端补一份：首次启动不会因为缺 token 直接 503。
-    try:
-        import secrets as _secrets
-        TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tok = _secrets.token_hex(16)
-        TOKEN_FILE.write_text(tok, encoding="utf-8")
-        security.audit("token_bootstrapped", path=str(TOKEN_FILE))
+def _atomic_token(path: Path) -> str:
+    """进程内加锁 + .tmp/os.replace 原子写：并发首次启动不会产出多个不同令牌。"""
+    with _TOKEN_LOCK:
+        try:
+            tok = path.read_text(encoding="utf-8-sig").strip()
+            if tok:
+                return tok
+        except OSError:
+            pass
+        tok = secrets.token_hex(16)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(path.name + ".tmp")
+            tmp.write_text(tok, encoding="utf-8")
+            os.replace(tmp, path)
+            security.audit("http_token_bootstrapped", path=str(path))
+        except OSError:
+            return ""
         return tok
-    except Exception:
+
+
+def _token() -> str:
+    """HTTP/UI 令牌：供中间件鉴权与首页 meta 注入。
+
+    免鉴权的首页会注入它，同机任意本地进程都能读到，因此它只用于访问本机
+    HTTP API，**不具备内核授权效力**，与 TOKEN_FILE 是完全不同的两个密钥。
+    """
+    return _atomic_token(_HTTP_TOKEN_FILE)
+
+
+def _kernel_token() -> str:
+    """内核授权令牌：只在服务端内部注入命令对象，绝不进入任何 HTTP 响应。"""
+    try:
+        return TOKEN_FILE.read_text(encoding="utf-8-sig").strip()
+    except OSError:
         return ""
 
 
@@ -701,6 +733,10 @@ async def command(req: Request):
     if action not in ALLOWED_ACTIONS and action not in DESTRUCTIVE_ACTIONS:
         raise HTTPException(400, "action 不在白名单: %s" % action)
     cmd = {k: v for k, v in body.items() if not k.startswith("_")}
+    # 客户端不得注入内核授权令牌，也不得指定幂等键：
+    # 前者绕过「令牌只由后端注入」的边界，后者会让命令重放被误判为同一条。
+    cmd.pop("token", None)
+    cmd.pop("idempotency_id", None)
     cmd["action"] = action
     # 统一目标名格式：内核用 Get-Process -Name，需去掉 .exe 后缀
     if "process_name" in cmd and cmd["process_name"]:
@@ -712,14 +748,14 @@ async def command(req: Request):
         timeout = 30.0
     timeout = max(1.0, min(timeout, 600.0))
     if action in TOKEN_ACTIONS:
-        tok = _token()
+        tok = _kernel_token()
         if not tok:
             raise HTTPException(400, "本机 token 缺失，无法修改授权清单")
         cmd["token"] = tok
     if action in DESTRUCTIVE_ACTIONS:
         if not body.get("confirm"):
             raise HTTPException(400, "破坏性操作必须带 confirm=true")
-        tok = _token()
+        tok = _kernel_token()
         if not tok:
             raise HTTPException(400, "本机 token 缺失，无法执行破坏性操作")
         cmd["token"] = tok

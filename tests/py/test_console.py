@@ -148,11 +148,18 @@ def test_vault_roundtrip(monkeypatch, tmp_path):
     assert security.vault_get() == {}
 
 
-def test_bus_call_timeout_cleans_input(monkeypatch, tmp_path):
-    monkeypatch.setattr(server, "BUS_IN", tmp_path / "in")
-    monkeypatch.setattr(server, "BUS_DONE", tmp_path / "done")
-    (tmp_path / "done").mkdir()
-    ok, text = asyncio.run(server.bus_call({"action": "status"}, timeout=0.6))
+def test_bus_client_timeout_cleans_input(tmp_path):
+    """直接测 BusClient，并断言它真的写进了隔离的临时目录。
+
+    旧测试 monkeypatch 的是 server.BUS_IN / BUS_DONE，但 BUS 实例在模块导入时
+    就已绑定真实目录，命令仍写进 versions/*/commands/in；而 tmp_path/in 从未
+    被创建，glob 恒为空 —— 断言是假阳性且污染生产目录。
+    """
+    in_dir, done_dir = tmp_path / "in", tmp_path / "done"
+    done_dir.mkdir()
+    cli = server.bus.BusClient(in_dir, done_dir, "test-kernel")
+    ok, text = asyncio.run(cli.call({"action": "status"}, timeout=0.6))
     assert ok is False
     assert "超时" in text
-    assert not list((tmp_path / "in").glob("*.json")), "超时后必须清理 in 文件"
+    assert in_dir.is_dir(), "BusClient 必须在目标目录创建 in/"
+    assert not list(in_dir.glob("*.json")), "超时后必须撤回 in 里的命令"

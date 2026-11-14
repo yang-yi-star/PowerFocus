@@ -70,12 +70,21 @@ class BusClient:
             return False, "命令总线写入失败: %s" % e
 
         deadline = time.time() + timeout
+        empty_seen = 0
         while time.time() < deadline:
             if done_path.exists():
                 try:
                     raw = done_path.read_text(encoding="utf-8-sig")
                 except Exception as e:
                     return False, "读取结果失败: %s" % e
+                # 兼容尚未升级的旧内核：它用 Set-Content 非原子直写，服务端可能
+                # 读到「已创建但还没写正文」的空文件，把稍后的 ERROR 当成成功。
+                # 空文件最多再等 3 轮；升级为原子写后这个分支不会再触发。
+                if not raw.strip():
+                    empty_seen += 1
+                    if empty_seen < 3:
+                        await asyncio.sleep(_POLL_INTERVAL)
+                        continue
                 ok, text = bus_receipt.parse_receipt(raw)
                 self._consume(name, done_path)
                 return ok, text

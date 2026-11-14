@@ -1,0 +1,11 @@
+{
+  "mcp_version": "0.11.0",
+  "target_app_version": "0.11.0",
+  "tested_app_versions": ["0.10.2", "0.11.0"],
+  "protocol_versions": ["2026-07-28", "2025-06-18", "2025-03-26", "2024-11-05"],
+  "default_protocol_version": "2026-07-28",
+  "transport": "stdio",
+  "stateless_core": true,
+  "requires_running_app": true,
+  "notes": "MCP 发行物版本始终与所对齐的主应用 Release 版本相同；协议版本只是兼容声明，不是产品版本号。详见 docs/VERSION_POLICY.md。"
+}

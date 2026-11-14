@@ -1,6 +1,6 @@
 # PowerFocus · 电脑算力调度中心
 
-[English README](README_EN.md) · [更新日志](CHANGELOG.md) · [使用教程](docs/user-guide.md)
+[English README](README_EN.md) · [MCP 接入](mcp/README.md) · [版本规则](docs/VERSION_POLICY.md) · [更新日志](CHANGELOG.md) · [使用教程](docs/user-guide.md)
 
 一个 Windows 桌面算力调度工具：把「任务管理器 + 调度台 + 对话控制」装进一个窗口。
 选中任何进程，就能给它让路、提优先级、回收内存、冻结恢复；也可以直接对输入框说人话，

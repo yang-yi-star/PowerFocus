@@ -129,6 +129,38 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
 
 ---
 
+## 5.2 第三批（v0.11.0）MCP 发行物与双专家 P0 加固
+
+本轮由两个只读专职角色并行审查：网络攻防 / 红队视角（`general-purpose-1`）与
+缺陷挖掘 / 质量审计（`general-purpose-2`）。红队给出 F1–F14 攻击面清单与《MCP 对外暴露前
+必须满足的安全红线》，Bug 猎手给出 27 项缺陷（P0×5 / P1×5 / P2×17）与复现路径。
+主理人对每条结论都做了代码实证复核后才决定是否落地，未把报告结论直接当事实使用。
+
+| 类别 | 改动 | 证据 |
+|---|---|---|
+| 版本治理 | 新增 `docs/VERSION_POLICY.md`：唯一对外版本号 = GitHub Release tag；PATCH 小更新 / MINOR 功能版本 / MAJOR 全面更新；每次开发完固定 8 步发布闭环 | `CHANGELOG.md` 的 `[0.11.0]` 按 MINOR 判定 |
+| MCP 发行物 | 新建独立 `mcp/`，协议 `2026-07-28` 无状态核心、stdio JSON-RPC、零第三方依赖；不直写命令总线，改走本机 HTTP API 复用 `X-PF-Token` 与动作白名单 | `mcp/powerfocus_mcp/server.py`；`mcp/VERSION.json` 对齐 `0.11.0` |
+| MCP 安全 | 默认只读 10 工具；写工具需 `POWERFOCUS_MCP_ALLOW_WRITE` + 一次性 nonce（`input_required` → `inputResponses`）；参数声明即白名单；审计只记键名；不暴露 REA 229 项代理 | `tests/py/test_mcp_server.py` 31 例 |
+| 旧入口 | `mcp-server.py` 标记 `[DEPRECATED since v0.11.0]`，不随 Release 分发 | 原因：绕过鉴权 / 无审计 / 强制握手 / 硬编码 `E:\PowerFocus` |
+| F1 令牌解耦 | HTTP/UI token 移至 `%LOCALAPPDATA%\PowerFocus\http.token`；内核授权 token 仅服务端内部注入，绝不进入 HTTP 响应 | `server.py::_token()` / `_kernel_token()`；`test_p0_hardening.py` |
+| F2 / B5 参数注入 | `/api/command` 丢弃 `_` 前缀字段与客户端 `token` / `idempotency_id` | `server.py` 命令构造段 |
+| B1 / B2 原子性 | token 并发原子写（`_TOKEN_LOCK` + `.tmp` → `os.replace`）；`BusClient` 空回执再等最多 3 轮，避免把后续 `ERROR:` 误判成功 | 12 线程并发用例 |
+| B1 内核回执 | 当前 stable 内核 v0.09 与 dev 内核 v0.10 回执一律纯正文 + `.tmp` → `Move-Item -Force` 原子替换 | 两处 `电脑算力调度中心_v0.0*.ps1` |
+| B6 / B10 | `resolve_pf_root()` 去除 `E:\PowerFocus` 硬编码；修复「断言恒真且污染生产目录」的假绿测试并加守卫 | 5 个历史孤儿回执已清理 |
+
+**验证记录（全部实测）**：`pytest tests/py -q` → **89 passed**；`ruff check`（含 `mcp/powerfocus_mcp`）→ 0 错误；
+6 模块 `py_compile` 通过；pwsh 7 全仓 **150 个 `.ps1`** → 0 错误；
+v0.09 / v0.10 内核分别 13208 / 13206 token、0 errors；
+重新打包 exe **20,450,312 B**，SHA256 `72f6bc871d79e1451ba21d170544df4493847b9315a151c7bb7dd02ee0e78a74`；
+实机 `frozen=true / kernel_alive=true / port=18080`。
+
+**本轮明确未修**（不虚报完成，留待排期）：F3 `/api/health` 限流豁免、F4 命令总线无认证、
+F7 KVRT 验签 TOCTOU、F8 硬编码同意令牌、F10 无统一写审计、F13 CI 供应链加固、F14 路径 ACL；
+以及 B7–B13、B19–B30（含版本槽 `v0.10` / `current.json=v0.09` 不一致与 `build.ps1` 硬编码 pyinstaller 路径）。
+这些项要么涉及产品 Go/No-Go 决策，要么需要独立构建链改造，本轮未擅自改行为。
+
+---
+
 ## 6. 明确未擅自改动的高风险项（需产品决策）
 
 1. **`versions/current.json` 保持 v0.09**：`versions/v0.10/MANIFEST.json:6` 标 `stage: "dev"`，
@@ -156,6 +188,9 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
   发布 Go/No-Go 检查单与回滚演练、构建元数据（commit / built_at / sha256）写入 MANIFEST 并由 CI 校验。
 - **第四批 · 公司化收尾**：自托管构建 runner、exe 签名与 SBOM、依赖 CVE SLA、
   本地 SLI 指标（启动耗时 / 总线超时率 / 自检通过率）、SLO 与发布冻结阈值。
+- **第五批 · 双专家遗留缺陷排期（v0.11.0 后）**：先收 F3 / F4 / F7 / F8 / F10 四项认证与验签边界，
+  再收 B7 / B8 / B13 / B28 / B29 / B30 六项启动与契约一致性；F13 / F14 与 B19–B27 归入
+  「CI 供应链 + 路径 ACL」专项。每项须带可独立运行的回归用例，避免再次出现假绿测试。
 
 ---
 
@@ -163,6 +198,8 @@ Python 侧主要承担采集、协议适配与 Web 呈现。「AI 算力调度�
 
 这个项目的**功能密度与安全边界意识超出典型个人项目**，但工程可重复性（依赖、版本、门禁、构建）
 还停在「一个人能跑通」的阶段。第一批把它推进到「换一台机器也能复现、改错了会被门禁挡下」的起点；
-第二批阶段一已把命令总线的职责边界、端口竞态与就绪判定这三处真实缺陷收掉并留下可独立运行的单测。
-真正决定它能否像公司产品一样长期演进的，仍是 `server.py` 剩余拆分、第三批质量门禁，
-以及发行链路的许可证随附与构建溯源 —— 后者由本轮开源合规审查给出了具体证据与修复顺序。
+第二批阶段一已把命令总线的职责边界、端口竞态与就绪判定这三处真实缺陷收掉并留下可独立运行的单测；
+第三批（v0.11.0）在两个专职审查角色的证据清单上收掉 7 项 P0，并把 MCP 从「无鉴权直写总线的旧脚本」
+换成「默认只读、显式授权、一次性确认、版本对标 Release 的独立发行物」。
+真正决定它能否像公司产品一样长期演进的，仍是 `server.py` 剩余拆分、双专家遗留缺陷的分批收口，
+以及发行链路的构建溯源 —— 后者由本轮开源合规审查给出了具体证据与修复顺序。

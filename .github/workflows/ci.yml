@@ -50,7 +50,7 @@ jobs:
 
       - name: Lint (ruff)
         # pyproject.toml 早已配置 select=["F","E9"]，此前只有配置没有门禁。
-        run: python -m ruff check product/v1.00/app tests/py app_paths.py
+        run: python -m ruff check product/v1.00/app tests/py mcp/powerfocus_mcp app_paths.py
 
       - name: Python syntax check (py_compile)
         shell: pwsh
@@ -63,7 +63,9 @@ jobs:
             'product/v1.00/app/security.py',
             'product/v1.00/app/main.py',
             'product/v1.00/app/bus_receipt.py',
-            'product/v1.00/app/bus.py'
+            'product/v1.00/app/bus.py',
+            'mcp/powerfocus_mcp/__init__.py',
+            'mcp/powerfocus_mcp/server.py'
           )
           $bad = @()
           foreach ($rel in $targets) {

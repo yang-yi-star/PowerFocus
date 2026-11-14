@@ -4,9 +4,10 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号语义遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+版本递增规则（小更新 / 功能版本 / 全面更新）见 [`docs/VERSION_POLICY.md`](docs/VERSION_POLICY.md)。
 
 > **版本真源（2026-11-14 定，工程审计 P0）**
-> 唯一对外版本号 = **GitHub Release tag（当前 0.10.2）**，遵循 SemVer 2.0.0。
+> 唯一对外版本号 = **GitHub Release tag（当前 0.11.0）**，遵循 SemVer 2.0.0。
 > 仓库里另有两类数字，只是「代码目录 / 内核迭代槽」，不是发布版本，不得当作 tag 引用：
 > - `product/v1.00` — 桌面端代码目录名与数据目录版本槽；
 > - `versions/current.json` → `v0.09`（stable）；`versions/v0.10` 的 MANIFEST 标 `stage=dev`，
@@ -17,32 +18,6 @@
 
 ## [Unreleased]
 
-### 第二批 · 架构收敛（阶段一，2026-11-14，**尚未发版**）
-
-> 本段改动只在源码：未重新打包 exe、未创建 tag，`latest` 仍是 0.10.2。
-> 路线图见 `docs/engineering-audit.md`；本批只完成其中可独立验证的一段，剩余项如实列在下方待办。
-
-#### 改动
-
-- **总线分层**：新增 `product/v1.00/app/bus.py` 的 `BusClient`（目录、超时、轮询、幂等 id、回执消费、超时撤回、GC 编排），`bus_receipt.py` 保持纯协议层；`server.py` 的 `bus_call()` 收敛为一行兼容包装，路由枢纽不再直接操作命令文件。
-- **幂等 id**：命令默认携带 `idempotency_id`；当前内核忽略未知字段、行为不变，后续内核实现去重无需改服务端。
-- **端口 TOCTOU 修复**：`main.find_port()` 改为 `bind_port()`，绑定并 `listen` 后全程持有 socket，交给 `uvicorn.Server.run(sockets=[sock])`，不再「先探测、再释放、再重绑」。
-- **就绪判定升级**：`wait_ready()` 从「TCP 能连上」改为 HTTP `GET /api/health` 返回 200，避免 socket 已 listen 但 ASGI 未起来就开窗口。
-- **测试**：新增 `tests/py/test_bus.py` 6 例，pytest 42 → **48**。
-- **CI**：`py_compile` 目标补 `bus.py`，修正过时的依赖注释。
-
-#### 验证
-
-- pytest **48/48**；`ruff check` 0 错误；4 个 Python 模块 `py_compile` 通过；pwsh 7 全仓 **149 个 `.ps1`** 语法 0 错误。
-- 源码实机链路：`bind_port` → 预绑定 socket → `serve(port, sock)` → `wait_ready=True` → `/api/health` 200（`kernel_alive=true`）。
-
-#### 开源治理（同批，来自开源合规与冷启动审查）
-
-- 6 个 `mem-guard.state.json` 历史副本从 git 索引移除（工作区文件原样保留），`.gitignore` 补运行态与本机诊断快照规则。
-- `THIRD_PARTY_NOTICES.md` 修正与事实不符的「不随打包产物分发第三方程序」表述，补齐 `requirements.lock.txt` 全部 37 个包的许可证归因。
-- `v0.10.2` Release 补传 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`；开启 GitHub Private vulnerability reporting。
-- 新增 `README_EN.md`；仓库补齐 topics 与 homepage。
-
 ### 已知待办（如实列出，避免误判完成度）
 
 - 应用内每日自动扫描调度器（`run_scheduled_loop()`）已实现，但尚未随主进程常驻启动。
@@ -52,10 +27,111 @@
 - `server.py` 剩余模块拆分（`processes.py` / `nlp.py` / `llm_proxy.py`，目标 900 行内）、
   结构化回执 `{ok, ts, payload}`、模型路径改相对解析、端口集中注入、exe 冒烟测试与覆盖率门槛
   （见 `docs/engineering-audit.md` 路线图；第二批只完成总线分层、幂等 id、端口与就绪判定）。
-- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.09`，与发布 tag 0.10.x 语义不同；
+- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.09`，与发布 tag 0.11.x 语义不同；
   是否对外统一由产品决策，本轮未擅自改动运行行为。
 
+### 双专家审查后明确未修的安全项（本轮不假装完成）
+
+红队视角攻防审计与 Bug 猎手共提交 14 + 30 条发现，本轮只落地与 MCP 发行物直接相关的 P0。
+以下保持开放状态，需单独排期或产品授权：
+
+- **F4**：内核命令总线本身无认证，任何能写 `commands/in` 的本地进程都能驱动内核
+  （需改约 2000 行 PowerShell 内核，且涉及 stable 指针，不擅自切）。
+- **F3**：`/api/health` 在限流豁免集合内；**F7**：KVRT 验签与执行之间存在 TOCTOU，执行前应重验并重算 SHA256。
+- **F8**：`dependency_bootstrap.py` 的同意令牌是源码可读的硬编码常量。
+- **F10**：部分写操作未进审计日志；**F13**：exe 未做 Authenticode 签名（需证书决策）。
+- **B29/B30**：第二条独立启动路径绕过端口顺延、`_ACTIVE` 不更新；`app_paths.VERSION_SLOT=v0.10`
+  与 `current.json=v0.09`、`main.py` 日志槽 `v1.00` 三处版本槽不一致，尚未统一。
+- **B7/B8/B9/B11/B12/B13** 等 P1/P2 级并发与参数校验细节，见审查记录。
+
 ## 仓库发布（唯一对外版本真源）
+
+### [0.11.0] - 2026-11-14
+
+按 `docs/VERSION_POLICY.md` 判定为 **MINOR**：新增向后兼容能力（MCP）并附带安全加固，
+原有桌面端用法、配置与 API 不变。上一轮 `cfe0ffd`（第二批阶段一 + 开源治理）未单独发版，
+其内容并入本版本，保证 tag 与 exe 源码一一对应。**本版本重新打包了 exe**
+（20,450,312 字节，SHA256 `72f6bc871d79e1451ba21d170544df4493847b9315a151c7bb7dd02ee0e78a74`，
+实机启动 `frozen=true / kernel_alive=true / port=18080`）。
+
+#### 新增 · 可对标最新版本独立加载的 MCP 发行物
+
+- 新增 `mcp/` 独立发行物：`VERSION.json`、`config.example.json`、`README.md`、
+  `powerfocus_mcp/__init__.py` 与 `powerfocus_mcp/server.py`。零第三方依赖，
+  仅 Python 3.10+ 标准库 + stdio JSON-RPC，任意 MCP 客户端加一段 `mcpServers` 配置即可加载。
+- 协议默认 **MCP `2026-07-28`** 无状态核心：不要求握手、支持 `server/discover`、
+  `tools/list` 按名排序并带 `ttlMs`/`cacheScope`；同时兼容 `2024-11-05`~`2025-06-18` 的
+  `initialize` 握手（官方 12 个月弃用窗口）。
+- **默认只读**：只暴露 10 个只读工具；写工具与安装类高危工具默认不出现在 `tools/list`，
+  分别需 `POWERFOCUS_MCP_ALLOW_WRITE` / `POWERFOCUS_MCP_ALLOW_INSTALL` 显式开启。
+- **一次性确认**：写工具首次调用返回 `resultType: "input_required"` 与短 TTL nonce，
+  nonce 绑定工具与参数摘要、用后即失效，支持 `inputResponses` 重试；静态 `true` 不可用。
+- **声明即白名单**：只转发 `inputSchema` 显式声明的参数，`token` / `idempotency_id`
+  等字段无法从 AI 侧注入后端命令；所有调用写审计日志（只记参数键名，不记值/令牌）。
+- 不再转发旧实现的 229 项 REA 逆向引擎能力；根目录旧 `mcp-server.py` 已标记
+  `[DEPRECATED since v0.11.0]`，保留仅为历史兼容，不随 Release 分发。
+- 每个 Release 附带独立的 `PowerFocus-MCP-v0.11.0.zip`，版本与主应用 tag 严格对齐。
+
+#### 新增 · 版本规则
+
+- `docs/VERSION_POLICY.md` 固化「小版本 = 小更新（PATCH）/ 功能版本（MINOR）/
+  大版本 = 全面更新（MAJOR）」判定表、每次开发完成的 8 步发布闭环、
+  MCP 发行物与主版本对齐规则、已发布版本索引。
+
+#### P0 安全加固（代码实证，双专家审查交叉确认）
+
+- **F1 · 令牌解耦**：`GET /` 免鉴权却把令牌注入首页 meta，而该令牌原本就是内核授权令牌
+  `.auth_token`。现拆为 `_token()`（HTTP/UI 令牌，存 `%LOCALAPPDATA%\PowerFocus\http.token`）
+  与 `_kernel_token()`（仅服务端内部注入命令对象，绝不进入 HTTP 响应）；
+  `/api/command` 的授权/破坏性动作改注入内核令牌。
+- **B2 · 并发首启**：`_token()` 改为进程内加锁 + `.tmp` → `os.replace` 原子写，
+  12 线程并发不再产出多个不同令牌。
+- **F2/F5 · 参数注入**：`/api/command` 主动丢弃客户端传入的 `token` 与 `idempotency_id`，
+  幂等键一律由 `BusClient` 服务端生成。
+- **B1 · 回执误判**：`versions/current.json` 指向的 **v0.09 stable** 此前仍是
+  「时间戳首行 + `Set-Content` 非原子直写」，第一批只改了 dev 的 v0.10。
+  现两代内核统一为「纯正文 + `.tmp` → `Move-Item -Force` 原子替换」；
+  `BusClient.call()` 对空回执再等最多 3 轮，避免把稍后写入的 `ERROR` 判成成功。
+- **B10 · 假绿测试**：`test_bus_call_timeout_cleans_input` 的 monkeypatch 打在
+  `server.BUS_IN` 上，但 `BUS` 实例导入时已绑定真实目录，`tmp_path/in` 从未创建，
+  断言恒真且每次跑测试都往 `versions/v0.09/commands/done/` 写孤儿回执。
+  已改为隔离的 `BusClient` 实例 + 有效断言，并清理了 5 个历史孤儿回执。
+- **B6 · 硬编码**：`resolve_pf_root()` 删除开发机绝对路径 `E:\PowerFocus` 兜底，
+  改为环境变量 → 向上探测 → `%LOCALAPPDATA%` 回退。
+- **畸形消息免疫**：新 MCP 对 `params` 非对象、空 method、非字典消息一律安全退化，
+  主循环包异常且 `emit()` 可序列化兜底，不再出现旧实现「打崩 stdio 进程」的情况。
+
+#### 第二批 · 架构收敛（阶段一）
+
+- 新增 `product/v1.00/app/bus.py` 的 `BusClient`（目录/超时/轮询/幂等 id/回执消费/
+  超时撤回/GC），`bus_receipt.py` 保持纯协议层，`server.bus_call()` 收敛为一行兼容包装。
+- `main.find_port()` → `bind_port()`：socket 绑定并 listen 后全程持有，交给
+  `uvicorn.Server.run(sockets=[sock])`，消除 TOCTOU；`wait_ready()` 改为 HTTP
+  `GET /api/health` 等 200，而非 TCP 能连。
+- 新增 `tests/py/test_bus.py` 6 例；`ci.yml` 的 `py_compile` 目标补 `bus.py` 与两个 MCP 模块。
+
+#### 开源治理（并入本版本）
+
+- 6 个运行态 `mem-guard.state.json` 从 git 索引移除（本地文件原样保留），`.gitignore` 补规则。
+- `THIRD_PARTY_NOTICES.md` 更正与 exe 事实不符的表述，补齐 `requirements.lock.txt` 全部 37 项许可证归因。
+- `v0.10.2` Release 补传 `LICENSE` 与 `THIRD_PARTY_NOTICES.md`；开启 GitHub 私密漏洞报告。
+- 新增 `README_EN.md`；仓库补齐 12 个中性合规 topics 与 homepage。
+
+#### 验证
+
+- pytest **89 passed**（0.10.2 为 42；本版新增 `test_mcp_server.py` 31 例、
+  `test_p0_hardening.py` 10 例、`test_bus.py` 6 例）。
+- `ruff check` 0 错误；CI 清单的 10 个 Python 目标 `py_compile` 全部通过；
+  pwsh 7 全仓 **150 个 `.ps1`** 语法 0 错误，两代内核分别 13208 / 13206 token、0 错误。
+- 源码实机链路：`bind_port` → 预绑定 socket → `serve(port, sock)` → `wait_ready=True`
+  → `/api/health` 200（`kernel_alive=true`）。
+- MCP 端到端：无握手 `tools/call`、`server/discover`、确定性工具列表、
+  nonce 两步确认与重放拒绝、参数白名单、畸形消息免疫均有用例覆盖。
+
+#### 附件
+
+`PowerFocus-v0.11.0-x64.exe`、`LICENSE`、`THIRD_PARTY_NOTICES.md`、
+`PowerFocus-MCP-v0.11.0.zip`。
 
 ### [0.10.2] - 2026-11-14
 
@@ -116,6 +192,7 @@ Release 附件于 11-14 同步替换为 v3 界面 exe，但该 tag 仍指向首�
 - 安全基线：服务仅监听 `127.0.0.1`，接口需令牌访问；写操作全部走白名单动作，
   不允许任意命令透传；不操作 PPL 保护的系统进程。
 - 模型凭据经 DPAPI 加密存储；破坏性操作二次确认且需本机 token。
+- 0.11.0 起 HTTP/UI 令牌与内核授权令牌解耦，详见上文。
 
 #### 修复
 
@@ -148,15 +225,19 @@ Release 附件于 11-14 同步替换为 v3 界面 exe，但该 tag 仍指向首�
 - KVRT 报告解析按官方 stdout 与 XML 字段校准（修复把 `Detected: 0` 误报为 1 条威胁的问题）；
   修正 `-d` 参数连写触发帮助窗口挂起、下载进度污染 stdout、幂等跳过误判失败等问题。
 - 2026-11-14：命令回执不再前置时间戳（服务端据此正确解析 JSON 与失败状态）。
+- 2026-11-14（0.11.0）：回执改为 `.tmp` → 原子替换，避免服务端读到半截空文件。
 
 ### 内核 v0.09（stable，current.json 当前指向）及更早
 
-见 `versions/` 各版本目录内的 `README.md` / `MANIFEST.json`，以及根目录
-`DEVELOPMENT_LOG.md` 对应日期条目（2026-11-03 起）。
+- 2026-11-14（0.11.0）：同步修复回执格式 —— 去掉时间戳首行、改为原子替换。
+  此前第一批只改了 dev 的 v0.10，本版本补齐当前真正生效的 stable 内核。
+- 其余见 `versions/` 各版本目录内的 `README.md` / `MANIFEST.json`，以及根目录
+  `DEVELOPMENT_LOG.md` 对应日期条目（2026-11-03 起）。
 
 [Unreleased]: #unreleased
 [0.10.0]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.0
 [0.10.1]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.1
 [0.10.2]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.10.2
+[0.11.0]: https://github.com/yang-yi-star/PowerFocus/releases/tag/v0.11.0
 
 <!-- 仓库：yang-yi-star/PowerFocus（2026-11-13 上线） -->

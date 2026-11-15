@@ -28,15 +28,17 @@ jobs:
           ls -la "PowerFocus-MCP-v${VER}.zip"
           sha256sum "PowerFocus-MCP-v${VER}.zip"
 
-      - name: Create release and upload MCP zip
+      - name: Create release and upload MCP zip + license files
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER="${GITHUB_REF_NAME#v}"
           # Release 已存在（如手工先建了）则只补附件
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
-            && gh release upload "$GITHUB_REF_NAME" "PowerFocus-MCP-v${VER}.zip" --clobber \
-            || gh release create "$GITHUB_REF_NAME" "PowerFocus-MCP-v${VER}.zip" \
+            && gh release upload "$GITHUB_REF_NAME" \
+                 "PowerFocus-MCP-v${VER}.zip" LICENSE THIRD_PARTY_NOTICES.md --clobber \
+            || gh release create "$GITHUB_REF_NAME" \
+                 "PowerFocus-MCP-v${VER}.zip" LICENSE THIRD_PARTY_NOTICES.md \
                  --title "PowerFocus ${GITHUB_REF_NAME}" --generate-notes --latest
 
       - name: Publish draft and clean mis-named assets
@@ -97,8 +99,15 @@ jobs:
           if (-not $exe) { Write-Error "构建产物中未找到 exe"; exit 1 }
           $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
           Write-Host "exe: $($exe.FullName) ($($exe.Length) bytes) SHA256=$hash"
-          # 与历史 Release 附件命名对齐：PowerFocus-vX.Y.Z-x64.exe
-          $relName = "PowerFocus-$($env:GITHUB_REF_NAME.TrimStart('v'))-x64.exe"
+          # 与历史 Release 附件命名对齐：PowerFocus-vX.Y.Z-x64.exe（保留 v 前缀）
+          $relName = "PowerFocus-$($env:GITHUB_REF_NAME)-x64.exe"
           $relPath = Join-Path (Split-Path $exe.FullName) $relName
           Copy-Item -LiteralPath $exe.FullName -Destination $relPath -Force
           gh release upload "$($env:GITHUB_REF_NAME)" "$relPath" --clobber --repo "${{ github.repository }}"
+
+          # CI 构建的 exe 与本机构建副本不是同一二进制（PyInstaller 非可复现构建），
+          # 把 CI exe 的 SHA256 写进 Release 说明供下载者校验。
+          $name = "PowerFocus-$($env:GITHUB_REF_NAME)-x64.exe"
+          $body = gh release view "$($env:GITHUB_REF_NAME)" --json body -q .body
+          $newBody = $body + "`n`n**$name**（CI windows-latest 构建）：SHA256 ``$hash``"
+          gh release edit "$($env:GITHUB_REF_NAME)" --notes $newBody --repo "${{ github.repository }}"

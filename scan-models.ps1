@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'SilentlyContinue'
+﻿$ErrorActionPreference = 'SilentlyContinue'
 $out = 'E:\PowerFocus\_model-scan.json'
 $roots = @('C:\Users\Administrator.医院', 'D:\', 'E:\')
 $exts = @('.gguf', '.safetensors', '.ckpt', '.pth', '.onnx', '.msgpack')

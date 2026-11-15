@@ -1,4 +1,4 @@
-# stop-stress.ps1 - 停止 node.exe CPU 竞争负载（按 stress-pids.txt）
+﻿# stop-stress.ps1 - 停止 node.exe CPU 竞争负载（按 stress-pids.txt）
 $ErrorActionPreference = 'Continue'
 $f = 'E:\PowerFocus\stress-pids.txt'
 if (Test-Path -LiteralPath $f) {

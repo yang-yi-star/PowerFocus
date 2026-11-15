@@ -1,4 +1,4 @@
-# 构建 E:\AI 调度中心：索引 + manifest + 全盘目录 AI 画像
+﻿# 构建 E:\AI 调度中心：索引 + manifest + 全盘目录 AI 画像
 $ErrorActionPreference = 'SilentlyContinue'
 $center = 'E:\AI 调度中心'
 if (-not (Test-Path -LiteralPath $center)) { New-Item -ItemType Directory -Path $center | Out-Null }

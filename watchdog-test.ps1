@@ -1,4 +1,4 @@
-# watchdog-test.ps1 - 验证看门狗：聚焦+监管启动后，手动降级目标，10 秒内应被拉回 High
+﻿# watchdog-test.ps1 - 验证看门狗：聚焦+监管启动后，手动降级目标，10 秒内应被拉回 High
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 . 'E:\PowerFocus\电脑算力调度中心.ps1'
 

@@ -1,4 +1,4 @@
-# start-stress.ps1 - 启动 node.exe CPU 竞争负载（24 个进程，独立 js 文件）
+﻿# start-stress.ps1 - 启动 node.exe CPU 竞争负载（24 个进程，独立 js 文件）
 $ErrorActionPreference = 'Stop'
 $node = (Get-Command node -ErrorAction Stop).Source
 $js = 'E:\PowerFocus\stress.js'

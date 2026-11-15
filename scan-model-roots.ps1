@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'SilentlyContinue'
+﻿$ErrorActionPreference = 'SilentlyContinue'
 $roots = @(
  'D:\AI-Models','D:\heita_models','D:\Models','D:\Model_Zone','D:\AI\models','D:\AI\tts',
  'D:\Aurabot\rvc\models','D:\DSH共享','D:\双模型对话实验','E:\LocModel','E:\Models','E:\Model_Zone',

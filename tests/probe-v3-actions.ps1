@@ -1,4 +1,4 @@
-# v0.06 破坏性 action 实测：kill / suspend / resume / stress / 保护名单
+﻿# v0.06 破坏性 action 实测：kill / suspend / resume / stress / 保护名单
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $kernel = Join-Path $root 'versions\v0.09'
 $token = ''

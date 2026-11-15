@@ -1,4 +1,4 @@
-# 测试：开机自启开关（pwsh 7）
+﻿# 测试：开机自启开关（pwsh 7）
 $p = 'E:\PowerFocus\PowerFocus.ps1'
 . $p
 Write-Output ("pwsh=" + $PSVersionTable.PSVersion)

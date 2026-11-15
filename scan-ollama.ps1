@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'SilentlyContinue'
+﻿$ErrorActionPreference = 'SilentlyContinue'
 # 1) ollama 各模型体积（按 manifest 层大小汇总）
 $mroot = 'D:\Models\ollama\manifests'
 $rows = New-Object System.Collections.ArrayList

@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # 电脑算力调度中心 v2 · 阶段四：规则引擎（rules-engine.ps1）
 # 基于全网备料（Process Lasso ProBalance / Process Governor /
 # Microsoft RulesEngine / Windows EcoQoS 官方 API）设计：

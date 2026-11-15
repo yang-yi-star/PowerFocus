@@ -1,4 +1,4 @@
-# 还原运行时工具（一键回到删除前）
+﻿# 还原运行时工具（一键回到删除前）
 # 用法：pwsh -File E:\PowerFocus\tools\restore-runtime.ps1
 $bases = 'C:\Users\Administrator.医院\AppData\Local\DoubaoWork\User Data\sandbox_runtime\bases'
 foreach ($d in Get-ChildItem $bases -Directory) {

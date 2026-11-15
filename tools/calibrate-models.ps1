@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 <#
   calibrate-models.ps1 — 本地模型参数校准器（llama.cpp + CUDA）
   设计原则：

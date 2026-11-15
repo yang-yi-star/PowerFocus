@@ -1,4 +1,4 @@
-#requires -Version 7.0
+﻿#requires -Version 7.0
 <#  MemGuard 验证用例：覆盖 3 个场景
     A) 本地模型未运行 —— 必须零压制
     B) 本地模型运行中 + 后台大内存进程 —— 必须压制后台、绝不碰模型

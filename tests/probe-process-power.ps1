@@ -1,4 +1,4 @@
-# 进程控制能力实测：只针对自己创建的测试进程，不触碰真实业务程序
+﻿# 进程控制能力实测：只针对自己创建的测试进程，不触碰真实业务程序
 $ErrorCount = 0
 Add-Type @"
 using System;using System.Runtime.InteropServices;

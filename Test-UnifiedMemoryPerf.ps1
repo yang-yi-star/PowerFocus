@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 <#
 .SYNOPSIS
     对统一内存模式下的 llama-server 执行 5 轮生成性能测试。

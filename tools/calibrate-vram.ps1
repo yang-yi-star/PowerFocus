@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 # 通用化：路径相对仓库根解析，llama-server 支持环境变量/常见安装位覆盖。

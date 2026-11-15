@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 # ============================================================
 # model-router.ps1 — 本地模型路由（llama-server router 模式）启停器
 # 职责：以当前内核（versions\current.json 指向）的 models-preset.ini 为唯一参数源，

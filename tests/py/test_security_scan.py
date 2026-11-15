@@ -6,7 +6,6 @@
   - 正常参数在 mock 掉 worker 后返回 started=true（不真跑 KVRT）
 """
 import sys
-import time
 from pathlib import Path
 
 import pytest

@@ -622,7 +622,7 @@
 
 ### 三、验收（本机实跑）
 - `tests\run-tests.ps1`：**5/5 PASS，1.4s**，MCP 冒烟工具数 **240**（11 原生 + 229 REA），与 12:39 基线一致（此前为 218）。
-- `rea_status`：服务 **6.8.0**，可执行文件 `C:\Users\Administrator.医院\AppData\Roaming\npm\rea.cmd`，状态就绪。
+- `rea_status`：服务 **6.8.0**，可执行文件 `%USERPROFILE%\AppData\Roaming\npm\rea.cmd`，状态就绪。
 - PS 语法 35 个文件全通过；JSON 契约 5 个配置合法（含另一会话新增 4 个 `identity_only` 档案后的 `model-profiles.json`）。
 
 ### 四、观察（未修，留待定）
@@ -963,7 +963,7 @@
 
 - 开发版 18081：无 token `/api/models` → **401**；`GET /` token 注入成功、占位符 0 残留；带 token → **200**。
 - 产品版 18080（重新打包 19.3 MB，PID 52280）：无 token → **401**；带 token `/api/command status` → **200**。
-- ACL 复核：`E:\PowerFocus`、`product`、`tools`、`app`、`mcp-server.py` 仅剩 `YANG\Administrator` / `SYSTEM` / `Administrators`。
+- ACL 复核：`E:\PowerFocus`、`product`、`tools`、`app`、`mcp-server.py` 仅剩 `%COMPUTERNAME%\Administrator` / `SYSTEM` / `Administrators`。
 - `run-tests.ps1` → **PASS 8 / FAIL 0**（pytest 5 passed，新增 `test_api_requires_token` 防回归）。
 
 ## 2026-11-05 · 全面应用化改造（前端重做 + 安全基线对齐）
@@ -1020,7 +1020,7 @@
 | `/api/selfcheck` | **ok=true，8/8** |
 | 本地 8080 无 key | **401**；带 key → **200** |
 | 本地 8080 非白名单 Origin | 无 ACAO 应答 |
-| 云端密钥 vault | 378 字节，`cpk-` 明文零命中，ACL 仅 `YANG\Administrator:(R,W)` |
+| 云端密钥 vault | 378 字节，`cpk-` 明文零命中，ACL 仅 `%COMPUTERNAME%\Administrator:(R,W)` |
 | 云端连通性 | ok=true，status=200 |
 | 前端浏览器实测 | 七页可切换、仪表有数值、进程表有数据、控制台无 CSP/JS 报错 |
 | `run-tests.ps1` | **PASS 8 / FAIL 0**（pytest 16 passed） |
@@ -1261,3 +1261,27 @@
 **明确不入库**（.gitignore）：tools/lhm-lib（LHM 第三方库 7.6MB，用户官方源自取）、tools/ps1-bom-backup、.scan-test、pack-log*、marketing/douyin/video_hy4（59.7MB 工程）、marketing/submission（投稿草稿含本机路径）。
 
 **遗留**：本机正在运行的 exe 仍是旧构建（改名腾位保进程，未重启）；CI exe-build 产物与本机 SHA 不同属 PyInstaller 非可复现构建，已在 Release 说明与 CHANGELOG 双向注明；`/api/health` 版本槽语义统一仍待产品决策（Unreleased 如实保留）。
+---
+
+## 2026-11-15 22:20 · 事实性找茬轮（隐私脱敏 + 文档纠偏）
+
+针对「以专业找茬视角挑真问题」的实证普查，本轮只改确认属真的项，逐项留证。
+
+**隐私（P0，已改）**：33 个已跟踪文件含本机中文用户名与个人目录（`versions/v0.05–v0.13` 的 `model-profiles.json` / `lib/geek-bridge.ps1`、`docs` 4 篇、`DEVELOPMENT_LOG`、`lib/geek-bridge.ps1`、`scan-*.ps1`、`tools/*.ps1`、`hardcode-report.json`、`mcp-server.py`）。处理：代码侧改为 `${env:USERPROFILE}` / `os.environ["USERPROFILE"]`（顺带修好跨机器通用性，不再是写死路径）；文档与配置档改为 `%USERPROFILE%` 占位；`git grep Administrator.` 全仓复查归零。**边界如实说明**：历史提交里仍保留旧字符串，彻底清除需 filter-repo 重写历史并改写 tag，本轮未做。
+
+**文档失真（P1，已改）**：
+1. CHANGELOG「前端立即扫描仍模拟」→ 该模拟按钮只存在于 `versions/*/prototype` 演示页，产品版前端无此按钮（全量搜索 0 命中），安全扫描走 `/api/security/scan` 真实路由。
+2. CHANGELOG「部分安全态势 API 仍为占位」→ 实为 `/api/security`、`/api/security/scan`、`/api/security/scan/status` 均已实装，源码无 501 占位。
+3. CHANGELOG 版本槽描述 `v0.09 / tag 0.11.x` → 事实为 `v0.13 / tag 0.12.0`。
+
+**安装版本号（P1，已改）**：`product/v1.00/install.ps1` 的 `DisplayVersion` 由内部槽 `1.00` 改为对外 Release tag `0.12.0`，避免「添加或删除程序」与 GitHub 版本号打架。
+
+**仓库卫生（P2，已改）**：`tools/hardcode-report.json`（生成物，含 78 处本机路径）与 `docs/ollama-disable-backup.json`（一次性注册表备份）停止跟踪并加入 `.gitignore`（本地副本留在 `archive/local-backup/`）；`marketing/douyin/shots/*.mp4` 停止跟踪（本地保留）。根目录旧 `mcp-server.py` 迁入 `v2-archive/mcp-server-legacy.py`，同步改 `ci.yml` py_compile 清单与 `tests/run-tests.ps1` 的两处引用——避免与 `mcp/powerfocus_mcp` 混淆。
+
+**未改（如实挂账）**：
+- F4 内核命令总线无认证：需改约 2000 行内核并升版本槽，属架构决策，不在本轮擅动。
+- `/api/health` 回报内部槽 `version: 1.00` 与 Release tag 并存：产品决策项，CHANGELOG 已声明 tag 为唯一对外版本。
+- `versions/` 每版整份复制（9 份 ~2.8MB）：可回滚性换维护成本，属既定架构选择。
+- `.gitattributes` 要求 `*.ps1` CRLF 而工作区为 LF：只是 add 时噪声警告，索引规范化无副作用，未强改。
+
+**验证**：`tests/run-tests.ps1`（pwsh 7.6.9）8/8 PASS——PS 语法 177 个、JSON 契约 4 个、Python 编译 5 个、pytest 113 passed、MCP 冒烟 245 工具（走归档路径）、路由契约、仓库卫生、工具对齐；ruff `All checks passed`。

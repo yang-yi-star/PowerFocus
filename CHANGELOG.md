@@ -20,13 +20,13 @@
 ### 已知待办（如实列出，避免误判完成度）
 
 - 应用内每日自动扫描调度器（`run_scheduled_loop()`）已实现，但尚未随主进程常驻启动。
-- 前端「立即扫描」按钮仍是模拟进度条，真实扫描走 CLI / 后端路由。
-- 部分安全态势 API 仍为接口契约占位，未在后端实装。
+- 模拟进度条只存在于 `versions/*/prototype` 演示页（页面自标「仍是模拟」）；产品版前端无该按钮，安全扫描走 `/api/security/scan` 真实路由。
+- 安全态势 API 已实装 `/api/security`、`/api/security/scan`、`/api/security/scan/status`（无 501 占位）；剩余是前端展示细节未打磨。
 - KVRT 下载源为 `latest` 直链（未锁定具体版本）；Node.js 已锁定版本 + SHA256。
 - `server.py` 剩余模块拆分（`processes.py` / `nlp.py` / `llm_proxy.py`，目标 900 行内）、
   结构化回执 `{ok, ts, payload}`、模型路径改相对解析、端口集中注入、exe 冒烟测试与覆盖率门槛
   （见 `docs/engineering-audit.md` 路线图；第二批只完成总线分层、幂等 id、端口与就绪判定）。
-- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.09`，与发布 tag 0.11.x 语义不同；
+- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.13`，与发布 tag 0.12.0 语义不同；
   是否对外统一由产品决策，本轮未擅自改动运行行为。
 
 ### 双专家审查后明确未修的安全项（本轮不假装完成）

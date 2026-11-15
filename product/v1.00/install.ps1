@@ -88,7 +88,7 @@ if (Test-Path -LiteralPath $Exe) {
 }
 New-Item -Path $UninstallKey -Force | Out-Null
 Set-ItemProperty -Path $UninstallKey -Name 'DisplayName'    -Value '电脑算力调度中心' -Type String -Force
-Set-ItemProperty -Path $UninstallKey -Name 'DisplayVersion' -Value '1.00' -Type String -Force
+Set-ItemProperty -Path $UninstallKey -Name 'DisplayVersion' -Value '0.12.0' -Type String -Force   # 对外版本号跟 GitHub Release tag 走；内部版本槽 1.00 见 CHANGELOG「版本真源」
 Set-ItemProperty -Path $UninstallKey -Name 'Publisher'      -Value 'PowerFocus' -Type String -Force
 Set-ItemProperty -Path $UninstallKey -Name 'DisplayIcon'    -Value $Exe -Type String -Force
 Set-ItemProperty -Path $UninstallKey -Name 'InstallLocation' -Value $AppDir -Type String -Force

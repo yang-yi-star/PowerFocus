@@ -1242,3 +1242,22 @@
 **回归**：pytest 33 passed（16 原 + 17 新）；run-tests.ps1 → PASS 7 / FAIL 0；mem-guard 运行态文件还原；提交 `a1a196a`（19 文件，+1414/−14）。
 
 **留给用户的决策**：① LICENSE=Apache-2.0 如不合意可换（文本独立无依赖）；② GitHub 发布前需开 Private vulnerability reporting、替换 CHANGELOG/CoC 的 owner 占位；③ 签名路线（自签起步→OV）待定夺；④ 错误码规范仅提案未迁移。
+
+## 2026-11-15 21:00 · v0.12.0 发版轮（用户指令：应用版本 + MCP 版本全部更新到 GitHub）
+
+**版本判定**：按 docs/VERSION_POLICY.md 升 **MINOR → v0.12.0**（新增温度落盘 API、安全扫描 API + 2 个 MCP 工具、内核 v0.12/v0.13，均为向后兼容新增）。
+
+**发版闭环**：① 42 个 .ps1 BOM 统一（纯编码）单列提交；② 内核 v0.11/v0.12/v0.13 三槽入库，current.json → v0.13；③ 产品端 temp_log.py + /api/temp + /api/security/scan(+status)，build.ps1 修复「打包组件错位」（写死 v0.10 → 跟随 current.json），main.py 内核拉起竞态 10s→指数退避 90s；④ MCP __version__/VERSION.json 对齐 0.12.0，默认只读工具 10→11；⑤ 本机重打 exe（19.5MB，组件目录=v0.13，SHA256 bcbf0b40…8198 记入 CHANGELOG）；⑥ 提交 9 个（编码/内核/产品/MCP/工具文档/收口/lint/版本测试/CI 自愈），tag v0.12.0 → 190fb4d。
+
+**过程中抓出的三个真问题（均已闭环）**：
+1. HOME 环境变量为空 → git 自带 ssh 读不到 ~/.ssh/config，github-443 别名解析失败；仓库级 core.sshCommand 显式指定 -F/-i 修复。
+2. MCP 包 __version__ 漏改 0.11.1 → CI 门禁假红；test_version_aligned 改为不变量断言（__version__ == mcp_version == target_app_version == APP_VERSION），发版不再需要手改测试。
+3. CI lint 与本地验证口径不一致（本地只扫 mcp+app，CI 还扫 tests/py、app_paths.py）——已按 CI 同口径复扫修复。
+
+**发布流水线增强（release.yml）**：tag 删除重推时 GitHub 会把 Release 转回草稿并与 tag 脱钩——新增自愈步骤：按 tag_name 找回 Release、PATCH 关联并发布、删除错名 exe 附件（default.exe / 缺 v 前缀的旧名）；exe 统一改名 PowerFocus-vX.Y.Z-x64.exe 后上传（保留 v 前缀，首版实现误用 TrimStart 削掉 v，已修）；mcp-zip job 一并上传 LICENSE + THIRD_PARTY_NOTICES.md；CI 构建副本的 SHA256 写入 Release 说明（CI 与本机构建非同一二进制，PyInstaller 非可复现构建，CHANGELOG 分开记录）。
+
+**最终 Release 验证（api.github.com 实查）**：tag v0.12.0 已发布（draft=false，latest=v0.12.0），附件 4 件 = PowerFocus-v0.12.0-x64.exe（CI 构建，SHA256 b48a78aa…74c82 见 Release 说明）+ PowerFocus-MCP-v0.12.0.zip（20,742 字节）+ LICENSE + THIRD_PARTY_NOTICES.md，与 v0.11.1 惯例对齐。CI 全绿（190fb4d：release.yml 两 job + ci.yml 全 success）。
+
+**明确不入库**（.gitignore）：tools/lhm-lib（LHM 第三方库 7.6MB，用户官方源自取）、tools/ps1-bom-backup、.scan-test、pack-log*、marketing/douyin/video_hy4（59.7MB 工程）、marketing/submission（投稿草稿含本机路径）。
+
+**遗留**：本机正在运行的 exe 仍是旧构建（改名腾位保进程，未重启）；CI exe-build 产物与本机 SHA 不同属 PyInstaller 非可复现构建，已在 Release 说明与 CHANGELOG 双向注明；`/api/health` 版本槽语义统一仍待产品决策（Unreleased 如实保留）。

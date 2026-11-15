@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 <#
   版本创建工具 —— 按《VERSIONING.md》规范从既有版本派生新版本目录
   用法:
@@ -51,6 +51,18 @@ foreach ($f in @('rules-engine.ps1','rules.json','scenes.json','models-preset.in
 }
 if (Test-Path (Join-Path $SrcDir 'lib')) { Copy-Item (Join-Path $SrcDir 'lib\*') -Destination "$DstDir\lib" -Force }
 
+# 1b) 复制根目录 Python 运行时组件（v0.10 起引入；原白名单只覆盖纯 PowerShell 内核，会漏掉这些）
+foreach ($f in @('kvrt_bundle.py','security_scan.py','engine_adapters.py','dependency_bootstrap.py')) {
+    $p = Join-Path $SrcDir $f
+    if (Test-Path -LiteralPath $p) { Copy-Item -LiteralPath $p -Destination $DstDir -Force }
+}
+# 1c) 复制 prototype 界面（自包含产品界面，属代码资产而非运行时状态）
+if (Test-Path -LiteralPath (Join-Path $SrcDir 'prototype')) {
+    Copy-Item -LiteralPath (Join-Path $SrcDir 'prototype') -Destination $DstDir -Recurse -Force
+}
+# 1d) engines/ 明确不带：运行时引擎走 app_paths.data_root()（%LOCALAPPDATA%\PowerFocus\<slot>\engines），
+#     版本目录内的 engines 不参与运行，复制它只会带来数百 MB 的无用体积。
+
 # 2) 入口脚本改名 + 3) 改写版本标识
 $entryNew = $entryOld -replace [regex]::Escape("_v$oldVer"), "_v$newVer"
 if ($entryNew -eq $entryOld) { $entryNew = ($entryOld -replace '\.ps1$', '') + "_v$newVer.ps1" }
@@ -63,7 +75,7 @@ $content = $content -replace "PF_VersionLabel(\s*)=(\s*)'[^']*'", "PF_VersionLab
 $content = $content -replace "PF_BuildDate(\s*)=(\s*)'[^']*'", "PF_BuildDate`$1=`$2'$today'"
 $content = $content -replace "计算机算力调度中心 v[0-9]+\.[0-9]+", "电脑算力调度中心 v$newVer"
 $content = $content -replace "电脑算力调度中心 v[0-9]+\.[0-9]+", "电脑算力调度中心 v$newVer"
-Set-Content -LiteralPath $entryPath -Value $content -Encoding utf8 -NoNewline
+Set-Content -LiteralPath $entryPath -Value $content -Encoding utf8BOM -NoNewline
 
 # 4) 生成 MANIFEST
 $manifest = [ordered]@{
@@ -76,14 +88,16 @@ $manifest = [ordered]@{
     entry      = $entryNew
     lineage    = $From
     components = @(Get-ChildItem $DstDir -Filter '*.ps1' -File | ForEach-Object { $_.Name }) +
-                 @(Get-ChildItem "$DstDir\lib" -Filter '*.ps1' -File -ErrorAction SilentlyContinue | ForEach-Object { "lib/$($_.Name)" })
+                 @(Get-ChildItem $DstDir -Filter '*.py' -File | ForEach-Object { $_.Name }) +
+                 @(Get-ChildItem "$DstDir\lib" -Filter '*.ps1' -File -ErrorAction SilentlyContinue | ForEach-Object { "lib/$($_.Name)" }) +
+                 @(Get-ChildItem "$DstDir\prototype" -File -ErrorAction SilentlyContinue | ForEach-Object { "prototype/$($_.Name)" })
     configs    = @('rules.json','scenes.json','models-preset.ini','model-profiles.json','authorized_apps.json') |
                  Where-Object { Test-Path (Join-Path $DstDir $_) }
     runtime_isolated = @('logs/','commands/in|out|done','mem-guard.state.json','rules_state.json','v3_heartbeat.json','.v3.lock','.auth_token','router.pid')
     portable   = $true
     depends_on = @('PowerShell 7+','llama.cpp')
 }
-$manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $DstDir 'MANIFEST.json') -Encoding utf8
+$manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $DstDir 'MANIFEST.json') -Encoding utf8BOM
 
 Write-Host "已创建版本 $To" -ForegroundColor Green
 Write-Host "  目录: $DstDir"

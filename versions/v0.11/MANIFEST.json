@@ -1,0 +1,47 @@
+{
+    "name":  "电脑算力调度中心",
+    "version":  "0.11",
+    "version_label":  "v0.11",
+    "build_date":  "2026-11-15",
+    "stage":  "stable",
+    "note":  "v0.11 转正式版：统一内存接线 + KV cache 判据修正 + 硬编码清理 + 白名单补给放行",
+    "entry":  "电脑算力调度中心_v0.11.ps1",
+    "lineage":  "v0.10",
+    "components":  [
+                       "电脑算力调度中心_v0.11.ps1",
+                       "rules-engine.ps1",
+                       "dependency_bootstrap.py",
+                       "engine_adapters.py",
+                       "kvrt_bundle.py",
+                       "security_scan.py",
+                       "lib/app-purger.ps1",
+                       "lib/clean-recyclebin.ps1",
+                       "lib/geek-bridge.ps1",
+                       "lib/mem-guard.ps1",
+                       "lib/model-registry.ps1",
+                       "lib/rollback.ps1",
+                       "prototype/index.html"
+                   ],
+    "configs":  [
+                    "rules.json",
+                    "scenes.json",
+                    "models-preset.ini",
+                    "model-profiles.json",
+                    "authorized_apps.json"
+                ],
+    "runtime_isolated":  [
+                             "logs/",
+                             "commands/in|out|done",
+                             "mem-guard.state.json",
+                             "rules_state.json",
+                             "v3_heartbeat.json",
+                             ".v3.lock",
+                             ".auth_token",
+                             "router.pid"
+                         ],
+    "portable":  true,
+    "depends_on":  [
+                       "PowerShell 7+",
+                       "llama.cpp"
+                   ]
+}

@@ -1,0 +1,28 @@
+{
+  "avg_tg": 3.42,
+  "rows": [
+    {
+      "tokens": 39,
+      "prompt_per_s": 10.27,
+      "wall_s": 12.16,
+      "pred_per_s": 3.34,
+      "tg": 39.0
+    },
+    {
+      "tokens": 37,
+      "prompt_per_s": 8.67,
+      "wall_s": 11.08,
+      "pred_per_s": 3.42,
+      "tg": 37.0
+    },
+    {
+      "tokens": 37,
+      "prompt_per_s": 9.66,
+      "wall_s": 10.81,
+      "pred_per_s": 3.49,
+      "tg": 37.0
+    }
+  ],
+  "mode": "whole",
+  "ngl": 20
+}

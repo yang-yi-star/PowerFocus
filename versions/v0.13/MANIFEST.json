@@ -1,0 +1,48 @@
+{
+    "name":  "电脑算力调度中心",
+    "version":  "0.13",
+    "version_label":  "v0.13",
+    "build_date":  "2026-11-15",
+    "stage":  "stable",
+    "note":  "v0.13 转正式版：配套应用声明机制（companion-apps.json）。用户声明「正在使用」的应用整组不压不杀——依据是这台机器上 CPU/IO/TCP/窗口四个信号都判不准「在用」：QQ 收发消息时 CPU 仅 0.8%；Get-Process 的 IO 字段为空、Get-Counter 恒 0；TCP 只能证明「连着」（QQ 连腾讯、Edge 连 CDN 都连着）；窗口只能证明「点开过」（QQ 最小化照样收发）。所以「在用」必须由用户声明。清单内 QQ(24进程)/QQEX(5)/DSH(5) 共 41 个 PID 按父子链整组 protect。修 bug：foreach 循环变量不能叫 $pid（PowerShell 只读自动变量，赋值抛异常导致聚合静默失效）。 | 追加 IO 活动判据（2026-11-15）：GetProcessIoCounters P/Invoke 取 OtherOperationCount 速率，≥3/s 判 busy 不压。实测 QQ 20.7/6.7、DSH 88.8 命中；msedge 读op 181/s 但 Other=0（纯磁盘缓存）不命中，被正常压低。零杀进程，75 压 75 还原。见 docs\\IO判据-2026-11-15.md",
+    "entry":  "电脑算力调度中心_v0.13.ps1",
+    "lineage":  "v0.12",
+    "components":  [
+                       "电脑算力调度中心_v0.13.ps1",
+                       "rules-engine.ps1",
+                       "dependency_bootstrap.py",
+                       "engine_adapters.py",
+                       "kvrt_bundle.py",
+                       "security_scan.py",
+                       "lib/app-purger.ps1",
+                       "lib/clean-recyclebin.ps1",
+                       "lib/geek-bridge.ps1",
+                       "lib/mem-guard.ps1",
+                       "lib/model-registry.ps1",
+                       "lib/rollback.ps1",
+                       "prototype/index.html"
+                   ],
+    "configs":  [
+                    "rules.json",
+                    "scenes.json",
+                    "models-preset.ini",
+                    "model-profiles.json",
+                    "authorized_apps.json"
+                ],
+    "runtime_isolated":  [
+                             "logs/",
+                             "commands/in|out|done",
+                             "mem-guard.state.json",
+                             "rules_state.json",
+                             "v3_heartbeat.json",
+                             ".v3.lock",
+                             ".auth_token",
+                             "router.pid"
+                         ],
+    "portable":  true,
+    "depends_on":  [
+                       "PowerShell 7+",
+                       "llama.cpp"
+                   ],
+    "updated":  "2026-11-15 06:28:24"
+}

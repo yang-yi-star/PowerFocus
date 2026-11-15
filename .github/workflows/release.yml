@@ -39,6 +39,24 @@ jobs:
             || gh release create "$GITHUB_REF_NAME" "PowerFocus-MCP-v${VER}.zip" \
                  --title "PowerFocus ${GITHUB_REF_NAME}" --generate-notes --latest
 
+      - name: Publish draft and clean mis-named assets
+        # 自愈：tag 被删除重推时 GitHub 会把已发布 Release 转回草稿并与 tag 脱钩；
+        # 这里重新关联 tag、取消草稿状态发布，并清掉历史遗留的错误命名附件。
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          REL_ID=$(gh api "repos/$REPO/releases" --jq ".[] | select(.tag_name==\"$GITHUB_REF_NAME\") | .id" | head -1)
+          if [ -z "$REL_ID" ]; then echo "未找到 v* Release（不应发生）"; exit 1; fi
+          gh api -X PATCH "repos/$REPO/releases/$REL_ID" -f tag_name="$GITHUB_REF_NAME" -F draft=false >/dev/null
+          echo "Release $GITHUB_REF_NAME 已关联 tag 并发布"
+          gh api "repos/$REPO/releases/$REL_ID/assets" --jq '.[] | select(.name=="default.exe") | .id' |
+            while read -r AID; do
+              echo "删除遗留附件 asset $AID (default.exe)"
+              gh api -X DELETE "repos/$REPO/releases/assets/$AID"
+            done
+          gh api "repos/$REPO/releases/$REL_ID/assets" --jq '.[] | "\(.name)  \(.size)"'
+
   exe-build:
     runs-on: windows-latest
     continue-on-error: true

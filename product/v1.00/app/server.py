@@ -19,6 +19,7 @@ import os
 import re
 import secrets
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -34,6 +35,18 @@ import uvicorn
 
 import security
 import bus
+import temp_log
+
+# pythonnet 预加载（2026-11-15 修复）：CLR 首次导入要花时间，若后台温度采集线程
+# 与 pywebview 的 winforms 后端在同一时刻各自首次 import clr，后到的一方会拿到
+# 半初始化的 clr 模块，报 "module 'clr' has no attribute 'AddReference'" 并导致
+# 界面启动失败（实测 06:50:00 崩过一次）。这里在单线程导入阶段先把它载入，消除竞态。
+# 失败不致命：拿不到 CLR 只影响温度数据源，服务与界面照常。
+try:
+    import clr  # noqa: F401
+    _CLR_PRELOADED = True
+except Exception:
+    _CLR_PRELOADED = False
 
 # 统一数据目录（审计 S1）：运行态配置不再写程序目录。
 try:
@@ -132,7 +145,24 @@ def resolve_kernel() -> Path:
             continue
         if best_key is None or k > best_key:
             best, best_key = d, k
-    return best or (vers / "v0.07")
+    if best:
+        return best
+    # 全部非 stable（开发期）时不再静默回落某个写死版本——那会让应用悄悄跑在
+    # 一个过时内核上，出问题还以为是新版本。改为取最高版本并显式告警。
+    newest, newest_key = None, None
+    for d in vers.glob("v*"):
+        if not d.is_dir():
+            continue
+        k = _ver_key(d.name)
+        if not k:
+            continue
+        if newest_key is None or k > newest_key:
+            newest, newest_key = d, k
+    if newest:
+        sys.stderr.write("[PowerFocus] 警告：versions 下没有 stage=stable 的内核，"
+                         "暂用最高版本 %s（开发态）\n" % newest.name)
+        return newest
+    return vers / "v0.07"
 
 
 PF_ROOT = resolve_pf_root()
@@ -549,6 +579,105 @@ class Snapshot:
 SNAP = Snapshot()
 
 
+# ---------- GPU 温度 / 降频 / 功耗（复用系统 nvidia-smi，不引入 pynvml 依赖） ----------
+_GPU_CACHE: dict = {"ts": 0.0, "data": None}
+_CREATE_NO_WINDOW = 0x08000000
+
+# NVML 官方 ClocksThrottleReasons 位定义（只映射确定项；未知位原样保留十六进制，不猜）
+_THROTTLE_BITS = (
+    (0x0001, "GpuIdle"),
+    (0x0002, "ApplicationsClocksSetting"),
+    (0x0004, "SwPowerCap"),
+    (0x0008, "HwSlowdown"),
+    (0x0010, "SyncBoost"),
+    (0x0020, "SwThermalSlowdown"),
+    (0x0040, "HwThermalSlowdown"),
+    (0x0080, "HwPowerBrakeSlowdown"),
+    (0x0100, "DisplayClockSetting"),
+)
+
+
+def _parse_gpu_row(line: str) -> dict | None:
+    """解析 nvidia-smi 的一行 CSV。字段缺失或为 N/A 时置 None，不填假值。"""
+    parts = [p.strip() for p in line.split(",")]
+    if len(parts) < 8:
+        return None
+
+    def num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None                     # N/A 及非数字一律 None
+
+    thr = parts[7]
+    active = None
+    reasons: list[str] = []
+    if thr.lower().startswith("0x"):
+        try:
+            active = int(thr, 16)
+            for bit, name in _THROTTLE_BITS:
+                if active & bit:
+                    reasons.append(name)
+            if active and not reasons:
+                # 有活动位但不在已知表里：不猜含义，如实标注未映射，避免谎报成「无活动」
+                reasons.append("Unmapped(%s)" % thr)
+        except ValueError:
+            active = None
+    elif thr.lower() not in ("n/a", "[n/a]", "not active", ""):
+        reasons.append(thr)                 # 文字形式（如 "Not Active"）原样保留
+
+    return {
+        "index": parts[0],
+        "name": parts[1],
+        "temp_c": num(parts[2]),
+        "mem_temp_c": num(parts[3]),
+        "util_percent": num(parts[4]),
+        "mem_used_mb": num(parts[5]),
+        "mem_total_mb": num(parts[6]),
+        "throttle_hex": thr,
+        "throttle_active": active,
+        "throttle_reasons": reasons,
+        "power_w": num(parts[8]) if len(parts) > 8 else None,
+        "power_limit_w": num(parts[9]) if len(parts) > 9 else None,
+    }
+
+
+def gpu_thermal(force: bool = False) -> dict:
+    """读 GPU 温度/降频/功耗。5 秒缓存，避免每次快照都拉子进程。
+
+    只依赖系统自带 nvidia-smi（NVML 的 pynvml 未安装，内核本来也用这个命令）。
+    无 NVIDIA GPU 或命令不可用时返回 available=False，不影响其余快照字段。
+    温度只读不控：本函数不写任何硬件设置。
+    """
+    now = time.time()
+    if not force and _GPU_CACHE["data"] is not None and now - _GPU_CACHE["ts"] < 5:
+        return dict(_GPU_CACHE["data"], cached=True)
+
+    query = ("--query-gpu=index,name,temperature.gpu,temperature.memory,"
+             "utilization.gpu,memory.used,memory.total,"
+             "clocks_throttle_reasons.active,power.draw,power.limit")
+    result: dict = {"available": False, "gpus": [], "cached": False}
+    try:
+        p = subprocess.run(["nvidia-smi", query, "--format=csv,noheader,nounits"],
+                           capture_output=True, timeout=3,
+                           creationflags=_CREATE_NO_WINDOW)
+        if p.returncode != 0:
+            result["error"] = "nvidia-smi 退出码 %d" % p.returncode
+        else:
+            text = (p.stdout or b"").decode("utf-8", "replace")
+            gpus = [g for g in (_parse_gpu_row(ln) for ln in text.splitlines() if ln.strip()) if g]
+            result.update({"available": bool(gpus), "gpus": gpus})
+    except FileNotFoundError:
+        result["error"] = "未检测到 nvidia-smi（无 NVIDIA GPU 或未在 PATH）"
+    except subprocess.TimeoutExpired:
+        result["error"] = "nvidia-smi 超时（3 秒）"
+    except Exception as e:
+        result["error"] = "%s: %s" % (type(e).__name__, e)
+
+    _GPU_CACHE.update({"ts": now, "data": result})
+    return result
+
+
 # ---------- 命令总线 ----------
 def _pwsh() -> str:
     import shutil
@@ -764,6 +893,19 @@ async def health():
     }
 
 
+@app.get("/api/temp")
+async def temp_status():
+    """温度落盘状态（免鉴权，只回温度与日志路径，不含任何密钥）。
+
+    current      最近一条采样（CPU / GPU / 内存 / 硬盘 原始读数）
+    session_peak 本次运行峰值
+    history_peak 扫已有日志得到的历史峰值（首次启动时算一次）
+    真实历史最高只能从落盘之后开始积累：这套接口上线之前的温度没有记录。
+    """
+    return {"temp": temp_log.current(),
+            "note": "采样间隔 %d 秒，落盘 %s" % (temp_log.INTERVAL, temp_log.log_dir())}
+
+
 _model_cache = {"ts": 0.0, "data": []}
 
 
@@ -782,6 +924,7 @@ async def snapshot():
             _model_cache["data"] = []
         _model_cache["ts"] = now
     d["model_loaded"] = _model_cache["data"]
+    d["gpu"] = await asyncio.to_thread(gpu_thermal)
     return d
 
 
@@ -1158,14 +1301,44 @@ async def cloud_test():
 _BOOTSTRAP_CACHE: dict = {"ts": 0.0, "data": None, "error": ""}
 
 
+def _py_component_dir(name: str) -> Path:
+    """
+    定位 Python 组件所在版本目录（如 dependency_bootstrap / kvrt_bundle 等）。
+
+    历史原因：这 4 个组件是 v0.10 引入的，而发布内核 current 指向 v0.09，
+    所以早期代码写死了 versions/v0.10。v0.11 也已包含这些组件，写死 v0.10
+    会让 v0.11 的能力永远用不上，且版本越往后越错。
+
+    现在的口径：KERNEL_DIR 优先；不存在则扫 versions/ 下所有包含该组件的
+    目录，取版本号最大的那个；再兜底 v0.10（保持历史行为）。
+    """
+    if (KERNEL_DIR / (name + ".py")).exists():
+        return KERNEL_DIR
+    vers = PF_ROOT / "versions"
+    best, best_key = None, None
+    if vers.is_dir():
+        for d in vers.iterdir():
+            if not d.is_dir():
+                continue
+            m = re.match(r"^v0\.(\d+)$", d.name)
+            if not m:
+                continue
+            if not (d / (name + ".py")).exists():
+                continue
+            k = int(m.group(1))
+            if best_key is None or k > best_key:
+                best, best_key = d, k
+    return best or (vers / "v0.10")
+
+
 def _bootstrap():
-    """延迟导入：模块由 PyInstaller --hidden-import 收进 PYZ，源码运行则从 versions/v0.10 找。"""
+    """延迟导入：模块由 PyInstaller --hidden-import 收进 PYZ，源码运行则从当前内核版本找。"""
     try:
         import dependency_bootstrap
     except ImportError:
-        v010 = PF_ROOT / "versions" / "v0.10"
-        if str(v010) not in sys.path:
-            sys.path.insert(0, str(v010))
+        d = _py_component_dir("dependency_bootstrap")
+        if str(d) not in sys.path:
+            sys.path.insert(0, str(d))
         import dependency_bootstrap
     return dependency_bootstrap
 
@@ -1264,8 +1437,159 @@ async def bootstrap_wizard(req: Request):
     return out
 
 
+# ---------------------------------------------------------------------------
+# 安全扫描：复用 versions/v0.10 已跑通的 kvrt_bundle 链路
+#   1. run_scan 需管理员权限 + 引擎已验签，不满足会抛 RuntimeError，原样透出
+#   2. 默认 process_level=0（只报告，不处置）；要处置必须显式 disinfect_confirm=yes
+#   3. 扫描可达数分钟，故后台线程执行 + 状态轮询，不在 HTTP 请求里等
+#   4. 单飞：同一时刻只允许一个扫描任务
+# ---------------------------------------------------------------------------
+_SCAN_LOCK = threading.Lock()
+_SCAN_STATE: dict = {"running": False, "started": "", "finished": "",
+                     "result": None, "error": "", "scope": "", "path": "",
+                     "verdict": None}
+
+
+def _kvrt():
+    """延迟导入 kvrt_bundle：PyInstaller 已 --hidden-import 收进 PYZ，源码运行从当前内核版本找。"""
+    try:
+        import kvrt_bundle
+    except ImportError:
+        d = _py_component_dir("kvrt_bundle")
+        if str(d) not in sys.path:
+            sys.path.insert(0, str(d))
+        import kvrt_bundle
+    return kvrt_bundle
+
+
+def _judge_scan(scan: dict, parsed: dict) -> dict:
+    """把 exit_code 与产出组合成明确结论。
+
+    实测教训（2026-11-15）：扫一个只有 3 个 txt 的空目录时，KVRT 退出码为 0
+    但 stdout 是 `finish with status -1`、files_scanned=0。若只看退出码就会
+    把「没扫成」误报成「干净」。这里逐级区分，宁可说 inconclusive 也不说 clean。
+    """
+    stdout = str(scan.get("stdout") or "")
+    try:
+        processed = int(parsed.get("files_scanned") or 0)
+    except Exception:
+        processed = 0
+    try:
+        found = int(parsed.get("threat_count") or 0)
+    except Exception:
+        found = 0
+
+    if scan.get("timed_out"):
+        return {"verdict": "timeout", "processed": processed, "found": found,
+                "reason": "扫描超时，结论不可用"}
+    if "status -1" in stdout:
+        return {"verdict": "failed", "processed": processed, "found": found,
+                "reason": "KVRT 异常退出（finish with status -1），本次扫描未生效，不能判定为安全"}
+    if scan.get("exit_code") not in (0,):
+        return {"verdict": "failed", "processed": processed, "found": found,
+                "reason": "KVRT 退出码 %r，扫描未正常完成" % scan.get("exit_code")}
+    if processed == 0:
+        return {"verdict": "inconclusive", "processed": 0, "found": found,
+                "reason": "扫描完成但未统计到任何对象（目标可能为空、不可读或格式不支持），不能判定为安全"}
+    if found > 0:
+        return {"verdict": "threats", "processed": processed, "found": found,
+                "reason": "扫描 %d 个对象，发现 %d 项威胁" % (processed, found)}
+    return {"verdict": "clean", "processed": processed, "found": found,
+            "reason": "扫描 %d 个对象，未发现威胁" % processed}
+
+
+def _scan_worker(scope: str, path: str, level: int, timeout: int) -> None:
+    try:
+        k = _kvrt()
+        req = k.ScanRequest(scope=scope, custom_path=path, process_level=level,
+                            timeout_sec=timeout)
+        out = k.run_scan(req)
+        try:
+            parsed = k.parse_kvrt_output(str(req.data_dir), out.get("stdout", "") or "")
+        except Exception as e:
+            parsed = {"available": False, "error": "%s: %s" % (type(e).__name__, e)}
+        _SCAN_STATE.update({"result": {"scan": out, "parsed": parsed},
+                            "verdict": _judge_scan(out, parsed)})
+    except Exception as e:
+        _SCAN_STATE.update({"error": "%s: %s" % (type(e).__name__, e)})
+    finally:
+        _SCAN_STATE["running"] = False
+        _SCAN_STATE["finished"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+@app.get("/api/security/scan/status")
+async def security_scan_status():
+    """只读扫描状态：引擎是否就绪 + 当前进度 + 上次结果。"""
+    try:
+        info = await asyncio.to_thread(_kvrt().status)
+    except Exception as e:
+        info = {"available": False, "error": "%s: %s" % (type(e).__name__, e)}
+    return {"ok": True, "engine": info, "running": _SCAN_STATE["running"],
+            "started": _SCAN_STATE["started"], "finished": _SCAN_STATE["finished"],
+            "scope": _SCAN_STATE["scope"], "path": _SCAN_STATE["path"],
+            "error": _SCAN_STATE["error"], "result": _SCAN_STATE["result"]}
+
+
+@app.post("/api/security/scan")
+async def security_scan_start(req: Request):
+    """
+    发起真实扫描。默认只报告不处置。
+    body: {scope: custom|core|allvolumes, path, process_level: 0-3,
+           timeout_sec, disinfect_confirm: "yes"}
+    """
+    body = await _json_body(req)
+    if not isinstance(body, dict):
+        raise HTTPException(400, "请求体必须是 JSON 对象")
+    with _SCAN_LOCK:
+        if _SCAN_STATE["running"]:
+            raise HTTPException(409, "已有扫描任务在进行中，请等待完成或查看状态")
+        scope = str(body.get("scope") or "custom").strip().lower()
+        if scope not in ("custom", "core", "allvolumes"):
+            raise HTTPException(400, "scope 只能是 custom / core / allvolumes")
+        target = str(body.get("path") or "").strip()
+        if scope == "custom":
+            if not target:
+                raise HTTPException(400, "scope=custom 时必须提供 path")
+            if not os.path.isabs(target):
+                raise HTTPException(400, "path 必须是绝对路径")
+        else:
+            target = ""
+        try:
+            level = int(body.get("process_level") or 0)
+        except Exception:
+            raise HTTPException(400, "process_level 必须是整数")
+        if level not in (0, 1, 2, 3):
+            raise HTTPException(400, "process_level 只能是 0/1/2/3")
+        # 处置是不可逆动作：必须第二道显式同意
+        if level != 0 and str(body.get("disinfect_confirm") or "") != "yes":
+            raise HTTPException(400, "启用处置（process_level>0）必须显式传 disinfect_confirm=yes")
+        try:
+            timeout = int(body.get("timeout_sec") or 3600)
+        except Exception:
+            timeout = 3600
+        timeout = max(30, min(timeout, 14400))
+        _SCAN_STATE.update({"running": True, "result": None, "error": "",
+                            "scope": scope, "path": target,
+                            "started": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "finished": ""})
+    threading.Thread(target=_scan_worker, args=(scope, target, level, timeout),
+                     daemon=True, name="pf-scan").start()
+    security.audit("security_scan_start", scope=scope, path=target,
+                   process_level=str(level))
+    return {"ok": True, "started": True, "scope": scope, "path": target,
+            "process_level": level, "timeout_sec": timeout,
+            "note": "扫描在后台执行，用 GET /api/security/scan/status 查进度"}
+
+
 def start_background():
     threading.Thread(target=SNAP.run, daemon=True).start()
+    # 温度采样线程：与快照线程并列，互不阻塞；源不可用时只记录、不影响服务。
+    try:
+        temp_log.start()
+        security.audit("temp_sampler_started", interval=str(temp_log.INTERVAL),
+                       log_dir=str(temp_log.log_dir()))
+    except Exception as e:
+        security.audit("temp_sampler_failed", error="%s: %s" % (type(e).__name__, e))
 
 
 def serve(port: int = PORT, sock=None):

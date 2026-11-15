@@ -16,7 +16,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 a = Analysis(
     ['E:/PowerFocus/product/v1.00/app/main.py'],
-    pathex=['E:/PowerFocus', 'E:/PowerFocus/versions/v0.10'],
+    pathex=['E:/PowerFocus', 'E:/PowerFocus/versions/v0.13'],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,

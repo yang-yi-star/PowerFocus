@@ -8,9 +8,9 @@
   "entry": "dist\\电脑算力调度中心.exe",
   "installer": "install.ps1",
   "builder": "build\\build.ps1",
-  "kernel_version": "v0.09",
+  "kernel_version": "v0.13",
   "kernel_dir": "E:\\PowerFocus\\versions\\v0.09",
-  "kernel_required": ">= v0.09",
+  "kernel_required": ">= v0.13",
   "service": {
     "host": "127.0.0.1",
     "port": "18080（占用时自动向后寻找）"
@@ -27,8 +27,18 @@
     "使用说明.md": "使用与排障文档"
   },
   "dependencies": {
-    "runtime": ["Microsoft Edge WebView2 Runtime", "PowerShell 7"],
-    "python": ["fastapi", "uvicorn", "httpx", "psutil", "pywebview", "pyinstaller"]
+    "runtime": [
+      "Microsoft Edge WebView2 Runtime",
+      "PowerShell 7"
+    ],
+    "python": [
+      "fastapi",
+      "uvicorn",
+      "httpx",
+      "psutil",
+      "pywebview",
+      "pyinstaller"
+    ]
   },
   "capabilities": [
     "任意进程聚焦（gentle / aggressive / godmode）",

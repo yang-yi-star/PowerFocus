@@ -189,17 +189,29 @@ def ensure_kernel():
         if os.name == "nt":
             # 不能用 DETACHED_PROCESS：pwsh 的 WinForms 托盘在无控制台会话中会立即退出（退出码 0）
             flags = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
-        subprocess.Popen(cmd, creationflags=flags, close_fds=True,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(cmd, creationflags=flags, close_fds=True,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         log("内核已拉起: %s (pwsh=%s)" % (entry, pwsh))
     except Exception as e:
         log("内核拉起失败: %s" % e)
         return False
-    for _ in range(50):
+
+    # 启动竞态修复（2026-11-14）：
+    # 原实现硬等 10 秒（50 × 0.2s），在磁盘繁忙、杀软扫描、规则引擎初始化较慢的机器上
+    # 会误判成「内核未响应」红条（desktop.log 2026-11-14 06:29:12 复现）。
+    # 改为指数退避 + 内核进程存活检查，总上限 90 秒；正常机器仍在 1 秒内返回，
+    # 且内核若提前崩掉会立刻报「进程已退出」而不是干等到超时。
+    deadline = time.time() + 90
+    interval = 0.5
+    while time.time() < deadline:
         if kernel_alive():
             return True
-        time.sleep(0.2)
-    log("内核启动超时（10 秒内未见心跳）")
+        if proc.poll() is not None:
+            log("内核进程已退出（退出码 %s），未写出心跳" % proc.returncode)
+            return False
+        time.sleep(interval)
+        interval = min(interval * 1.5, 5.0)
+    log("内核启动超时（90 秒内未见心跳）")
     return False
 
 

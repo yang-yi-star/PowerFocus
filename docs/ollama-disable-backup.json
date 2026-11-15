@@ -1,9 +1,0 @@
-﻿{
-    "disabled_at":  "2026-11-15 05:38:51",
-    "task_previous_state":  3,
-    "registry_run_key":  "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-    "registry_value_data":  "%USERPROFILE%\\AppData\\Local\\Programs\\Ollama\\ollama app.exe",
-    "note":  "恢复方法：Set-ItemProperty -LiteralPath HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run -Name Ollama -Value \u003cregistry_value_data\u003e; Enable-ScheduledTask -TaskName OllamaDaemon",
-    "scheduled_task":  "OllamaDaemon",
-    "registry_value_name":  "Ollama"
-}

@@ -125,3 +125,4 @@ archive/
 tools/hardcode-report.json
 docs/*-backup.json
 marketing/**/*.mp4
+tools/ps1-encoding-report.json

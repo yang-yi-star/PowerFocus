@@ -1,5 +1,10 @@
 # PowerFocus — one pool for CPU, RAM and local LLM inference on Windows
 
+[![CI](https://github.com/yang-yi-star/PowerFocus/actions/workflows/ci.yml/badge.svg)](https://github.com/yang-yi-star/PowerFocus/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/yang-yi-star/PowerFocus?label=latest%20release)](https://github.com/yang-yi-star/PowerFocus/releases)
+[![License](https://img.shields.io/github/license/yang-yi-star/PowerFocus)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-0078D4)](#quick-start-from-source)
+
 PowerFocus is a **single-machine** Windows desktop console that treats process priority,
 memory headroom and local LLM inference as one resource pool. It is not a cluster
 scheduler and it does not manage remote machines.
@@ -83,8 +88,8 @@ python -m ruff check product/v1.00/app tests/py app_paths.py
 ```
 
 `requirements-ci.txt` is the minimal CI set. `versions/current.json` points at the
-stable kernel slot (`v0.09`); `versions/v0.10` is intentionally marked `stage=dev`.
-Release tags (`v0.10.x`) are the only public version numbers.
+current stable kernel slot (`v0.13`; v0.12 and v0.11 remain available as stable slots).
+Release tags (`v0.12.x` line onward) are the only public version numbers.
 
 ## Scope and limits
 

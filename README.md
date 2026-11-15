@@ -1,5 +1,10 @@
 # PowerFocus · 电脑算力调度中心
 
+[![CI](https://github.com/yang-yi-star/PowerFocus/actions/workflows/ci.yml/badge.svg)](https://github.com/yang-yi-star/PowerFocus/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/yang-yi-star/PowerFocus?label=latest%20release)](https://github.com/yang-yi-star/PowerFocus/releases)
+[![License](https://img.shields.io/github/license/yang-yi-star/PowerFocus)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-0078D4)](#快速开始从源码运行)
+
 [English README](README_EN.md) · [MCP 接入](mcp/README.md) · [版本规则](docs/VERSION_POLICY.md) · [更新日志](CHANGELOG.md) · [使用教程](docs/user-guide.md)
 
 一个 Windows 桌面算力调度工具，把「任务管理器 + 调度台 + 对话控制」塞进同一个窗口。
@@ -10,6 +15,16 @@
 > 诚实定位：这是个人开发者维护的开源项目。代码（Python / PowerShell / HTML）为项目原创；
 > 项目**不包含任何第三方二进制**——卡巴斯基 KVRT、Node.js 等第三方组件均由应用在用户明确同意后
 > 从官方源下载到本机，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 为什么做它
+
+Windows 上把「跑大模型、打游戏、剪片子」挤在一台机器上时，真正的瓶颈往往不是硬件不够，
+而是**没有人在替你做取舍**：Windows 自带的调度只看进程自身需求，不会知道「现在该让
+llama-server 先歇一会」。市面上的工具也分得很碎——任务管理器只管看，游戏加速器只管游戏，
+内存清理只管内存。PowerFocus 想做的是把这几个动作收进一个面板、一个入口，并且**说人话也能操作**；
+顺带把「这套能力能不能被 AI 客户端直接调用」这件事做成标准 MCP 接口
+（详见 [mcp/README.md](mcp/README.md)）。与同类工具的定位对比见
+[docs/competitive-analysis.md](docs/competitive-analysis.md)。
 
 ## 界面预览
 
@@ -75,15 +90,15 @@ Microsoft Edge WebView2 Runtime（Win11 自带）。
 
 ```powershell
 # 1. 克隆仓库
-git clone <仓库地址> PowerFocus
+git clone https://github.com/yang-yi-star/PowerFocus.git PowerFocus
 cd PowerFocus
 
 # 2. 创建并激活虚拟环境
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
-# 3. 安装运行依赖
-pip install fastapi uvicorn httpx psutil pywebview
+# 3. 安装运行依赖（精确锁定见 requirements.lock.txt）
+python -m pip install -r requirements.txt
 
 # 4. 运行桌面端（product/v1.00 源码形态）
 python product\v1.00\app\main.py
@@ -98,7 +113,7 @@ cd product\v1.00
 
 ## 版本机制
 
-- `versions/` 存放调度内核的各历史版本（v0.05 … v0.10），`versions/current.json`
+- `versions/` 存放调度内核的各历史版本（v0.05 … v0.13），`versions/current.json`
   指向当前生效内核；根目录的 `电脑算力调度中心.ps1` 是跟随该指针的兼容转发壳。
 - `product/v1.00/` 是桌面端产品（源码 + 打包 + 安装脚本），依赖内核 ≥ v0.07。
   产品版本与内核版本是两条线，互不影响。

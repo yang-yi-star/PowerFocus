@@ -52,10 +52,14 @@ jobs:
           if [ -z "$REL_ID" ]; then echo "未找到 v* Release（不应发生）"; exit 1; fi
           gh api -X PATCH "repos/$REPO/releases/$REL_ID" -f tag_name="$GITHUB_REF_NAME" -F draft=false >/dev/null
           echo "Release $GITHUB_REF_NAME 已关联 tag 并发布"
-          gh api "repos/$REPO/releases/$REL_ID/assets" --jq '.[] | select(.name=="default.exe") | .id' |
-            while read -r AID; do
-              echo "删除遗留附件 asset $AID (default.exe)"
-              gh api -X DELETE "repos/$REPO/releases/assets/$AID"
+          # 清理历史遗留的错名/旧命名 exe 附件（保留唯一正确的 PowerFocus-vX.Y.Z-x64.exe）
+          KEEP="PowerFocus-${GITHUB_REF_NAME}-x64.exe"
+          gh api "repos/$REPO/releases/$REL_ID/assets" --jq '.[] | "\(.name) \(.id)"' |
+            while read -r NAME AID; do
+              if [ "$NAME" = "default.exe" ] || { echo "$NAME" | grep -q -- '-x64\.exe$' && [ "$NAME" != "$KEEP" ]; }; then
+                echo "删除遗留附件 asset $AID ($NAME)"
+                gh api -X DELETE "repos/$REPO/releases/assets/$AID"
+              fi
             done
           gh api "repos/$REPO/releases/$REL_ID/assets" --jq '.[] | "\(.name)  \(.size)"'
 
@@ -106,8 +110,9 @@ jobs:
           gh release upload "$($env:GITHUB_REF_NAME)" "$relPath" --clobber --repo "${{ github.repository }}"
 
           # CI 构建的 exe 与本机构建副本不是同一二进制（PyInstaller 非可复现构建），
-          # 把 CI exe 的 SHA256 写进 Release 说明供下载者校验。
+          # 把 CI exe 的 SHA256 写进 Release 说明供下载者校验（先去重旧行再追加）。
           $name = "PowerFocus-$($env:GITHUB_REF_NAME)-x64.exe"
           $body = gh release view "$($env:GITHUB_REF_NAME)" --json body -q .body
-          $newBody = $body + "`n`n**$name**（CI windows-latest 构建）：SHA256 ``$hash``"
+          $body = $body -replace '(?m)^\*\*PowerFocus-v[\d.]+-x64\.exe\*\*（CI windows-latest 构建）：SHA256 `[0-9a-f]{64}``(\r?\n)?',''
+          $newBody = $body.TrimEnd() + "`n`n**$name**（CI windows-latest 构建）：SHA256 ``$hash``"
           gh release edit "$($env:GITHUB_REF_NAME)" --notes $newBody --repo "${{ github.repository }}"

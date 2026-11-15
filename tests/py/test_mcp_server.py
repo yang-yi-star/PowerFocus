@@ -18,7 +18,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "mcp"))
 
-from powerfocus_mcp import __version__, version_info  # noqa: E402
+from powerfocus_mcp import APP_VERSION, __version__, version_info  # noqa: E402
 from powerfocus_mcp import server as mcp  # noqa: E402
 
 
@@ -58,8 +58,12 @@ def _call_tool(name, arguments, policy=None, rt=None, **kw):
 
 def test_version_aligned_with_app_release():
     info = version_info()
-    assert info["mcp_version"] == __version__ == "0.11.1"
+    # 不变量：包内 __version__、VERSION.json 的 mcp_version / target_app_version
+    # 三者一致，且 mcp_version 恒等于 APP_VERSION（发行物与主 Release 对齐）。
+    # 具体数值随 Release 演进，不在此硬编码（避免每次发版漏改测试）。
+    assert info["mcp_version"] == __version__
     assert info["target_app_version"] == __version__
+    assert APP_VERSION == __version__
     assert info["default_protocol_version"] == "2026-07-28"
     assert "2024-11-05" in info["protocol_versions"]
     assert (ROOT / "mcp" / "VERSION.json").is_file()

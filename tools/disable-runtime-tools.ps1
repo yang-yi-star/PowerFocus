@@ -7,7 +7,7 @@
 ============================================================
 #>
 
-$root = 'C:\Users\Administrator.医院\AppData\Local\DoubaoWork\User Data\sandbox_runtime\bases'
+$root = "${env:USERPROFILE}\AppData\Local\DoubaoWork\User Data\sandbox_runtime\bases"
 $stamp = '20261104'
 
 # 安全闸：有进程正在使用运行时里的工具时，一律不执行

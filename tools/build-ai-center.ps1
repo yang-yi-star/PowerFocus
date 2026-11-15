@@ -56,7 +56,7 @@ $out += '| NVIDIA 驱动 | 617.42（RTX 5060 Laptop 8GB） | GPU 驱动 | 已装
 $out += '| CMake 4.3.2 | C:\Program Files\CMake（已入 PATH） | 编译构建 | 已装 |'
 $out += '| Ninja | winget 安装 | 编译加速 | 已装 |'
 $out += '| aria2 | winget 安装 | 大文件多线程下载 | 已装 |'
-$out += '| Python 3.11.9（AI 统一解释器） | C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311 | AI 脚本 | 已装（py 默认） |'
+$out += '| Python 3.11.9（AI 统一解释器） | %USERPROFILE%\AppData\Local\Programs\Python\Python311 | AI 脚本 | 已装（py 默认） |'
 $out += '| ffmpeg 9.0.2 | winget（gyan.dev） | 音视频处理 | 已装 |'
 $out += '| Ollama 0.35.1 | 用户目录 Programs\Ollama | 模型管理（备用） | 已装 |'
 $out += '| LM Studio | winget 安装 | 模型 GUI 管理（对比观察） | 已装 |'
@@ -117,8 +117,8 @@ $manifest = [ordered]@{
         @{ name = 'llama.cpp'; path = 'E:\Program Files\llama.cpp\bin'; version = 'b12032' },
         @{ name = 'CUDA Toolkit'; path = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8'; version = '12.8' },
         @{ name = 'CMake'; path = 'C:\Program Files\CMake'; version = '4.3.2' },
-        @{ name = 'Python (AI 统一解释器)'; path = 'C:\Users\Administrator.医院\AppData\Local\Programs\Python\Python311'; version = '3.11.9' },
-        @{ name = 'ffmpeg'; path = 'C:\Users\Administrator.医院\AppData\Local\Microsoft\WinGet\Packages'; version = '9.0.2' },
+        @{ name = 'Python (AI 统一解释器)'; path = "${env:USERPROFILE}\AppData\Local\Programs\Python\Python311"; version = '3.11.9' },
+        @{ name = 'ffmpeg'; path = "${env:USERPROFILE}\AppData\Local\Microsoft\WinGet\Packages"; version = '9.0.2' },
         @{ name = 'Ollama'; version = '0.35.1' },
         @{ name = 'LM Studio'; note = 'winget ElementLabs.LMStudio' },
         @{ name = 'ONNX Runtime DirectML'; note = 'Python 3.11 包 onnxruntime-directml' }

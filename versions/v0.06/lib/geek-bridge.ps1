@@ -5,7 +5,7 @@
 
 function Get-GeekPath {
     $cands = @(
-        'C:\Users\Administrator.医院\Desktop\geek.exe',
+        "${env:USERPROFILE}\Desktop\geek.exe",
         'C:\Temp\geek64.exe',
         'D:\电脑文件\桌面\geek.exe',
         'D:\旧账户文件\Desktop\geek.exe'

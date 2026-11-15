@@ -889,7 +889,7 @@
       }
     ],
     "excluded_from_scan": [
-      "C:\\Users\\Administrator.医院\\.lmstudio\\models（空目录，LM Studio 未下载任何模型）",
+      "%USERPROFILE%\\.lmstudio\\models（空目录，LM Studio 未下载任何模型）",
       "Ollama blobs（.ollama\\models\\blobs 无 100MB 以上文件，Ollama 无有效模型）"
     ],
     "duplicate_map": "D:\\AI\\tools\\ComfyUI\\models 为 D:\\AI\\models 与 D:\\AI-Models\\MiniMax-H3 的镜像副本（ComfyUI 标准目录结构），登记以源目录为准，镜像仅记录不重复计数"

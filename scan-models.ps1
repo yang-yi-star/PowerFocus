@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = 'SilentlyContinue'
 $out = 'E:\PowerFocus\_model-scan.json'
-$roots = @('C:\Users\Administrator.医院', 'D:\', 'E:\')
+$roots = @("${env:USERPROFILE}", 'D:\', 'E:\')
 $exts = @('.gguf', '.safetensors', '.ckpt', '.pth', '.onnx', '.msgpack')
 $items = New-Object System.Collections.ArrayList
 foreach ($r in $roots) {
@@ -21,7 +21,7 @@ foreach ($r in $roots) {
         }
 }
 # ollama 的 blobs 没有扩展名，单独登记
-$ob = 'C:\Users\Administrator.医院\.ollama\models\blobs'
+$ob = "${env:USERPROFILE}\.ollama\models\blobs"
 if (Test-Path -LiteralPath $ob) {
     Get-ChildItem -LiteralPath $ob -File -Force -ErrorAction SilentlyContinue |
         Where-Object { $_.Length -gt 20MB } |

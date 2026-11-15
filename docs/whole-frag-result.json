@@ -1,0 +1,28 @@
+{
+  "mode": "frag",
+  "rows": [
+    {
+      "tg": 40.0,
+      "tokens": 40,
+      "prompt_per_s": 5.1,
+      "wall_s": 28.22,
+      "pred_per_s": 1.47
+    },
+    {
+      "tg": 38.0,
+      "tokens": 38,
+      "prompt_per_s": 4.62,
+      "wall_s": 25.93,
+      "pred_per_s": 1.49
+    },
+    {
+      "tg": 39.0,
+      "tokens": 39,
+      "prompt_per_s": 3.9,
+      "wall_s": 26.65,
+      "pred_per_s": 1.49
+    }
+  ],
+  "ngl": 20,
+  "avg_tg": 1.48
+}

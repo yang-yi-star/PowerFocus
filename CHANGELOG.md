@@ -96,7 +96,9 @@
 `pytest` **113 passed**（新增 9 例：安全扫描接口 + 温度模块）；`ruff` 0 错误；
 `py_compile` 全部目标通过；关键 JSON 契约（`mcp/VERSION.json`、`current.json`、
 `MANIFEST.json`×3）解析通过；改动过的关键 `.ps1` 语法 0 错误。
-- exe：`PowerFocus-v0.12.0-x64.exe` — 字节数与 SHA256 见下方附件记录。
+- exe：`PowerFocus-v0.12.0-x64.exe` — **20,475,707 字节**，
+  SHA256 `bcbf0b40d6227bfc46d993a4fcfa00e30d6090c2cd1e0acb8101cc5cb5cb91d8`
+  （本机 PyInstaller 构建，打包组件目录 = `versions\v0.13`，2026-11-15）。
 - `PowerFocus-MCP-v0.12.0.zip` — 由 CI 从 `mcp/` 打包，作为 Release 独立附件。
 
 ### 明确不入库

@@ -79,4 +79,8 @@ jobs:
           if (-not $exe) { Write-Error "构建产物中未找到 exe"; exit 1 }
           $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
           Write-Host "exe: $($exe.FullName) ($($exe.Length) bytes) SHA256=$hash"
-          gh release upload "$($env:GITHUB_REF_NAME)" "$($exe.FullName)" --clobber --repo "${{ github.repository }}"
+          # 与历史 Release 附件命名对齐：PowerFocus-vX.Y.Z-x64.exe
+          $relName = "PowerFocus-$($env:GITHUB_REF_NAME.TrimStart('v'))-x64.exe"
+          $relPath = Join-Path (Split-Path $exe.FullName) $relName
+          Copy-Item -LiteralPath $exe.FullName -Destination $relPath -Force
+          gh release upload "$($env:GITHUB_REF_NAME)" "$relPath" --clobber --repo "${{ github.repository }}"

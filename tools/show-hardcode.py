@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-REPORT = Path(r"E:\PowerFocus\tools\hardcode-report.json")
+REPORT = Path(__file__).resolve().parent / "hardcode-report.json"
 TARGETS = [
     "versions/v0.11/电脑算力调度中心_v0.11.ps1",
     "versions/v0.11/engine_adapters.py",

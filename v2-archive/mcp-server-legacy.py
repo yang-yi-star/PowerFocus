@@ -85,7 +85,7 @@ def _find_rea():
             return cand
 
     # APPDATA 缺失时的兜底（用户目录固定安装位置）
-    cand = r"C:\Users\Administrator.医院\AppData\Roaming\npm\rea.cmd"
+    cand = os.path.join(os.environ.get("USERPROFILE", ""), "AppData", "Roaming", "npm", "rea.cmd")
     if os.path.exists(cand):
         return cand
 

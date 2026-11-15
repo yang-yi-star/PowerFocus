@@ -89,7 +89,7 @@ if ($jsonBad.Count -eq 0) {
 
 # ---------------- 3. Python 编译 ----------------
 $py = Get-DevPython
-$pyTargets = @('mcp-server.py', 'app\server.py',
+$pyTargets = @('v2-archive\mcp-server-legacy.py', 'app\server.py',
                'product\v1.00\app\server.py', 'product\v1.00\app\security.py',
                'product\v1.00\app\main.py')
 if (-not $py) {
@@ -139,7 +139,7 @@ if (-not (Test-Path $venvPy)) {
 }
 
 # ---------------- 4. MCP stdio 冒烟 ----------------
-$mcpPath = Join-Path $Root 'mcp-server.py'
+$mcpPath = Join-Path $Root 'v2-archive\mcp-server-legacy.py'
 if ($SkipMcp) {
     Add-Result 'MCP 冒烟' 'SKIP' '按参数跳过'
 } elseif (-not $py) {

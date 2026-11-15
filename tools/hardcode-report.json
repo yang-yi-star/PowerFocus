@@ -1188,14 +1188,14 @@
         {
           "line": 8,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\Desktop\\geek.exe",
-          "text": "'C:\\Users\\Administrator.医院\\Desktop\\geek.exe',"
+          "token": "%USERPROFILE%\\Desktop\\geek.exe",
+          "text": "'%USERPROFILE%\\Desktop\\geek.exe',"
         },
         {
           "line": 8,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\Desktop\\geek.exe',"
+          "text": "'%USERPROFILE%\\Desktop\\geek.exe',"
         },
         {
           "line": 9,
@@ -1596,14 +1596,14 @@
         {
           "line": 88,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\AppData\\Roaming\\npm\\rea.cmd",
-          "text": "cand = r\"C:\\Users\\Administrator.医院\\AppData\\Roaming\\npm\\rea.cmd\""
+          "token": "%USERPROFILE%\\AppData\\Roaming\\npm\\rea.cmd",
+          "text": "cand = r\"%USERPROFILE%\\AppData\\Roaming\\npm\\rea.cmd\""
         },
         {
           "line": 88,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "cand = r\"C:\\Users\\Administrator.医院\\AppData\\Roaming\\npm\\rea.cmd\""
+          "text": "cand = r\"%USERPROFILE%\\AppData\\Roaming\\npm\\rea.cmd\""
         },
         {
           "line": 564,
@@ -1751,14 +1751,14 @@
         {
           "line": 59,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311",
-          "text": "$out += '| Python 3.11.9（AI 统一解释器） | C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311 | AI 脚本 | 已装（py 默认） |'"
+          "token": "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311",
+          "text": "$out += '| Python 3.11.9（AI 统一解释器） | %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311 | AI 脚本 | 已装（py 默认） |'"
         },
         {
           "line": 59,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "$out += '| Python 3.11.9（AI 统一解释器） | C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311 | AI 脚本 | 已装（py 默认） |'"
+          "text": "$out += '| Python 3.11.9（AI 统一解释器） | %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311 | AI 脚本 | 已装（py 默认） |'"
         },
         {
           "line": 64,
@@ -1871,26 +1871,26 @@
         {
           "line": 120,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311",
-          "text": "@{ name = 'Python (AI 统一解释器)'; path = 'C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311'; version = '3.11.9' },"
+          "token": "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311",
+          "text": "@{ name = 'Python (AI 统一解释器)'; path = '%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311'; version = '3.11.9' },"
         },
         {
           "line": 120,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "@{ name = 'Python (AI 统一解释器)'; path = 'C:\\Users\\Administrator.医院\\AppData\\Local\\Programs\\Python\\Python311'; version = '3.11.9' },"
+          "text": "@{ name = 'Python (AI 统一解释器)'; path = '%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311'; version = '3.11.9' },"
         },
         {
           "line": 121,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\AppData\\Local\\Microsoft\\WinGet\\Packages",
-          "text": "@{ name = 'ffmpeg'; path = 'C:\\Users\\Administrator.医院\\AppData\\Local\\Microsoft\\WinGet\\Packages'; version = '9.0.2' },"
+          "token": "%USERPROFILE%\\AppData\\Local\\Microsoft\\WinGet\\Packages",
+          "text": "@{ name = 'ffmpeg'; path = '%USERPROFILE%\\AppData\\Local\\Microsoft\\WinGet\\Packages'; version = '9.0.2' },"
         },
         {
           "line": 121,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "@{ name = 'ffmpeg'; path = 'C:\\Users\\Administrator.医院\\AppData\\Local\\Microsoft\\WinGet\\Packages'; version = '9.0.2' },"
+          "text": "@{ name = 'ffmpeg'; path = '%USERPROFILE%\\AppData\\Local\\Microsoft\\WinGet\\Packages'; version = '9.0.2' },"
         },
         {
           "line": 130,
@@ -2149,122 +2149,122 @@
         {
           "line": 6,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.dsh\\speech-to-text",
-          "text": "'C:\\Users\\Administrator.医院\\.dsh\\speech-to-text','C:\\Users\\Administrator.医院\\.cache\\whisper',"
+          "token": "%USERPROFILE%\\.dsh\\speech-to-text",
+          "text": "'%USERPROFILE%\\.dsh\\speech-to-text','%USERPROFILE%\\.cache\\whisper',"
         },
         {
           "line": 6,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.cache\\whisper",
-          "text": "'C:\\Users\\Administrator.医院\\.dsh\\speech-to-text','C:\\Users\\Administrator.医院\\.cache\\whisper',"
-        },
-        {
-          "line": 6,
-          "kind": "绝对盘符简写",
-          "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.dsh\\speech-to-text','C:\\Users\\Administrator.医院\\.cache\\whisper',"
+          "token": "%USERPROFILE%\\.cache\\whisper",
+          "text": "'%USERPROFILE%\\.dsh\\speech-to-text','%USERPROFILE%\\.cache\\whisper',"
         },
         {
           "line": 6,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.dsh\\speech-to-text','C:\\Users\\Administrator.医院\\.cache\\whisper',"
+          "text": "'%USERPROFILE%\\.dsh\\speech-to-text','%USERPROFILE%\\.cache\\whisper',"
+        },
+        {
+          "line": 6,
+          "kind": "绝对盘符简写",
+          "token": "C:\\U",
+          "text": "'%USERPROFILE%\\.dsh\\speech-to-text','%USERPROFILE%\\.cache\\whisper',"
         },
         {
           "line": 7,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.deepseek\\models",
-          "text": "'C:\\Users\\Administrator.医院\\.deepseek\\models','C:\\Users\\Administrator.医院\\.lmstudio',"
+          "token": "%USERPROFILE%\\.deepseek\\models",
+          "text": "'%USERPROFILE%\\.deepseek\\models','%USERPROFILE%\\.lmstudio',"
         },
         {
           "line": 7,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.lmstudio",
-          "text": "'C:\\Users\\Administrator.医院\\.deepseek\\models','C:\\Users\\Administrator.医院\\.lmstudio',"
+          "token": "%USERPROFILE%\\.lmstudio",
+          "text": "'%USERPROFILE%\\.deepseek\\models','%USERPROFILE%\\.lmstudio',"
         },
         {
           "line": 7,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.deepseek\\models','C:\\Users\\Administrator.医院\\.lmstudio',"
+          "text": "'%USERPROFILE%\\.deepseek\\models','%USERPROFILE%\\.lmstudio',"
         },
         {
           "line": 7,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.deepseek\\models','C:\\Users\\Administrator.医院\\.lmstudio',"
+          "text": "'%USERPROFILE%\\.deepseek\\models','%USERPROFILE%\\.lmstudio',"
         },
         {
           "line": 8,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.ollama",
-          "text": "'C:\\Users\\Administrator.医院\\.ollama','C:\\Users\\Administrator.医院\\.modelscope',"
+          "token": "%USERPROFILE%\\.ollama",
+          "text": "'%USERPROFILE%\\.ollama','%USERPROFILE%\\.modelscope',"
         },
         {
           "line": 8,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.modelscope",
-          "text": "'C:\\Users\\Administrator.医院\\.ollama','C:\\Users\\Administrator.医院\\.modelscope',"
+          "token": "%USERPROFILE%\\.modelscope",
+          "text": "'%USERPROFILE%\\.ollama','%USERPROFILE%\\.modelscope',"
         },
         {
           "line": 8,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.ollama','C:\\Users\\Administrator.医院\\.modelscope',"
+          "text": "'%USERPROFILE%\\.ollama','%USERPROFILE%\\.modelscope',"
         },
         {
           "line": 8,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.ollama','C:\\Users\\Administrator.医院\\.modelscope',"
+          "text": "'%USERPROFILE%\\.ollama','%USERPROFILE%\\.modelscope',"
         },
         {
           "line": 9,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.cache\\huggingface",
-          "text": "'C:\\Users\\Administrator.医院\\.cache\\huggingface'"
+          "token": "%USERPROFILE%\\.cache\\huggingface",
+          "text": "'%USERPROFILE%\\.cache\\huggingface'"
         },
         {
           "line": 9,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "'C:\\Users\\Administrator.医院\\.cache\\huggingface'"
+          "text": "'%USERPROFILE%\\.cache\\huggingface'"
         },
         {
           "line": 25,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.ollama\\models\\blobs",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "token": "%USERPROFILE%\\.ollama\\models\\blobs",
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 25,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.lmstudio\\models",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "token": "%USERPROFILE%\\.lmstudio\\models",
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 25,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "token": "%USERPROFILE%\\.lmstudio\\.internal\\bundled-models",
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 25,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 25,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 25,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "foreach ($ob in @('C:\\Users\\Administrator.医院\\.ollama\\models\\blobs','C:\\Users\\Administrator.医院\\.lmstudio\\models','C:\\Users\\Administrator.医院\\.lmstudio\\.internal\\bundled-models')) {"
+          "text": "foreach ($ob in @('%USERPROFILE%\\.ollama\\models\\blobs','%USERPROFILE%\\.lmstudio\\models','%USERPROFILE%\\.lmstudio\\.internal\\bundled-models')) {"
         },
         {
           "line": 31,
@@ -2298,26 +2298,26 @@
         {
           "line": 3,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院",
-          "text": "$roots = @('C:\\Users\\Administrator.医院', 'D:\\', 'E:\\')"
+          "token": "%USERPROFILE%",
+          "text": "$roots = @('%USERPROFILE%', 'D:\\', 'E:\\')"
         },
         {
           "line": 3,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "$roots = @('C:\\Users\\Administrator.医院', 'D:\\', 'E:\\')"
+          "text": "$roots = @('%USERPROFILE%', 'D:\\', 'E:\\')"
         },
         {
           "line": 24,
           "kind": "绝对路径-Windows",
-          "token": "C:\\Users\\Administrator.医院\\.ollama\\models\\blobs",
-          "text": "$ob = 'C:\\Users\\Administrator.医院\\.ollama\\models\\blobs'"
+          "token": "%USERPROFILE%\\.ollama\\models\\blobs",
+          "text": "$ob = '%USERPROFILE%\\.ollama\\models\\blobs'"
         },
         {
           "line": 24,
           "kind": "绝对盘符简写",
           "token": "C:\\U",
-          "text": "$ob = 'C:\\Users\\Administrator.医院\\.ollama\\models\\blobs'"
+          "text": "$ob = '%USERPROFILE%\\.ollama\\models\\blobs'"
         }
       ]
     },

@@ -120,3 +120,8 @@ models-preset.local.ini
 
 # 开发机诊断归档仅保留本地，不入库（含本机路径，勿提交）
 archive/
+
+# 生成物与一次性本机备份（含开发机用户名/绝对路径），不入库
+tools/hardcode-report.json
+docs/*-backup.json
+marketing/**/*.mp4

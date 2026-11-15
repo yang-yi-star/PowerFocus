@@ -69,7 +69,7 @@ jobs:
         run: |
           $targets = @(
             'app_paths.py',
-            'mcp-server.py',
+            'v2-archive/mcp-server-legacy.py',
             'app/server.py',
             'product/v1.00/app/server.py',
             'product/v1.00/app/security.py',

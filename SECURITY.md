@@ -2,8 +2,8 @@
 
 ## 支持的版本
 
-> 说明：本项目存在两套数字——**发布版本**（GitHub Release tag，如 v0.11.1）
-> 与**内核槽 / 代码目录**（如 `versions/v0.09`、`product/v1.00`），二者不是一回事。
+> 说明：本项目存在两套数字——**发布版本**（GitHub Release tag，如 v0.12.0）
+> 与**内核槽 / 代码目录**（如 `versions/v0.13`、`product/v1.00`），二者不是一回事。
 > 内核槽是否接收安全报告以 `versions/current.json` 的 stable 指针为准。
 
 | 组件 | 位置 | 是否接收安全报告 |

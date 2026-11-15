@@ -7,11 +7,10 @@
 版本递增规则（小更新 / 功能版本 / 全面更新）见 [`docs/VERSION_POLICY.md`](docs/VERSION_POLICY.md)。
 
 > **版本真源（2026-11-14 定，工程审计 P0）**
-> 唯一对外版本号 = **GitHub Release tag（当前 0.11.1）**，遵循 SemVer 2.0.0。
+> 唯一对外版本号 = **GitHub Release tag（当前 0.12.0）**，遵循 SemVer 2.0.0。
 > 仓库里另有两类数字，只是「代码目录 / 内核迭代槽」，不是发布版本，不得当作 tag 引用：
 > - `product/v1.00` — 桌面端代码目录名与数据目录版本槽；
-> - `versions/current.json` → `v0.09`（stable）；`versions/v0.10` 的 MANIFEST 标 `stage=dev`，
->   是**尚未转正的开发内核，指针未切换是刻意决策，不是配置错误**。
+> - `versions/current.json` → `v0.13`（stable）；内核逐版独立目录，指针切换以 `versions/VERSIONING.md` 记录为准。
 >
 > 修正历史问题：`[1.00.0]` 曾指向不存在的 tag（死链）；`1.00` 含前导零，违反 SemVer §2。
 > 逐轮开发细节见根目录 `DEVELOPMENT_LOG.md`（append-only 权威开发日志）。
@@ -40,11 +39,71 @@
 - **F3**：`/api/health` 在限流豁免集合内；**F7**：KVRT 验签与执行之间存在 TOCTOU，执行前应重验并重算 SHA256。
 - **F8**：`dependency_bootstrap.py` 的同意令牌是源码可读的硬编码常量。
 - **F10**：部分写操作未进审计日志；**F13**：exe 未做 Authenticode 签名（需证书决策）。
-- **B29/B30**：第二条独立启动路径绕过端口顺延、`_ACTIVE` 不更新；`app_paths.VERSION_SLOT=v0.10`
-  与 `current.json=v0.09`、`main.py` 日志槽 `v1.00` 三处版本槽不一致，尚未统一。
 - **B7/B8/B9/B11/B12/B13** 等 P1/P2 级并发与参数校验细节，见审查记录。
 
 ## 仓库发布（唯一对外版本真源）
+
+### [0.12.0] - 2026-11-15
+
+按 `docs/VERSION_POLICY.md` 判定为 **MINOR（功能版本）**：新增向后兼容的能力与接口，
+老用法全部继续有效。内核线随本版转为 v0.13（stable）。
+
+### 新增（主应用）
+
+- **温度采集落盘**（`product/v1.00/app/temp_log.py`）：优先 LibreHardwareMonitorLib
+  （pythonnet，经 `POWERFOCUS_LHM_DIR` 指定库目录），GPU 失败时退回 `nvidia-smi`，
+  CPU 无法兜底时如实置空、不填假值；按天落盘 `temp-YYYYMMDD.jsonl`，内存维护本次
+  运行峰值并在启动时扫描历史峰值；新增只读接口 `GET /api/temp`（走既有令牌鉴权）。
+- **真实病毒扫描 API**（KVRT 链路）：`POST /api/security/scan`（后台执行；
+  `process_level>0` 处置必须显式 `disinfect_confirm=yes`）、
+  `GET /api/security/scan/status`（进度与结果轮询）。
+
+### 新增（MCP 发行物，版本对齐 0.12.0）
+
+- 新增高危工具 `pf_security_scan`（双重开关：`POWERFOCUS_MCP_ALLOW_WRITE=1`
+  + 一次性确认 nonce；默认 `process_level=0` 只报告不处置）。
+- 新增只读工具 `pf_security_scan_status`。默认只读工具由 10 个变 11 个。
+
+### 内核（versions/，指针 `current.json` → v0.13）
+
+- **v0.12（stable）**：进程价值判据重写——按可见窗口分级
+  （`protect`/`active`/`busy`/`visible`/`idle`），TCP 连接不再算「在用」；
+  **清场永不杀进程**，改为优先级 + EcoQoS + 工作集换出，释放时完整还原。
+- **v0.13（stable）**：配套应用声明机制（`companion-apps.json`）——用户声明
+  「正在使用」的应用按父子链整组 protect 不压不杀。依据：CPU/IO/TCP/窗口四个信号
+  在实测中全部判不准「在用」（覆盖 41 个 PID 的实测数据，见 `docs/` 盘点文档）。
+  修复 `$pid` 只读自动变量被当循环变量的问题。
+- `new-version.ps1` 不再复制 `engines/`（运行时引擎走 `app_paths.data_root()`，
+  版本目录内的 `engines\` 是历史遗留）；版本工具支持 `.py` 与 `prototype`。
+
+### 修复（主应用）
+
+- **打包组件错位**（关键）：`build.ps1` 此前写死 `versions\v0.10`，导致每次打包都把
+  4 个 Python 组件的**旧副本**塞进 exe——内核指针已指到新版本、exe 里跑的却是旧组件。
+  现改为跟随 `versions\current.json` 指针，指针缺失时回退到含组件的最高版本目录。
+- **内核拉起启动竞态**：`main.py` 原实现硬等 10 秒，磁盘繁忙/杀软扫描的机器上会误判
+  「内核未响应」；改为指数退避 + 内核进程存活检查，总上限 90 秒，内核提前崩溃立即报错。
+- **72 个 `.ps1` 文件 BOM 编码统一**（UTF-8 BOM，消除 5.1 下中文注释乱码）。
+
+### 文档
+
+- 新增 12 篇盘点/实测文档（进程判据重写、整机实测、能力台账、版本台账、
+  行业共识对照、硬编码盘点、统一内存接线、温度落盘、IO 判据、内核逐版真改、
+  复用底账、v0.11 转正式版记录），另附 benchmark 证据 JSON。
+
+### 验证
+
+`pytest` **113 passed**（新增 9 例：安全扫描接口 + 温度模块）；`ruff` 0 错误；
+`py_compile` 全部目标通过；关键 JSON 契约（`mcp/VERSION.json`、`current.json`、
+`MANIFEST.json`×3）解析通过；改动过的关键 `.ps1` 语法 0 错误。
+- exe：`PowerFocus-v0.12.0-x64.exe` — 字节数与 SHA256 见下方附件记录。
+- `PowerFocus-MCP-v0.12.0.zip` — 由 CI 从 `mcp/` 打包，作为 Release 独立附件。
+
+### 明确不入库
+
+- `tools/lhm-lib/`（LibreHardwareMonitor v0.9.6 第三方库副本，运行时依赖；
+  用户按 `docs/温度落盘-2026-11-15.md` 从官方 Release 自行下载）。
+- `marketing/douyin/video_hy4/`（59.7 MB 素材工程，非发行物）。
 
 ### [0.11.1] - 2026-11-14
 

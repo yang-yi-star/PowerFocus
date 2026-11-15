@@ -86,7 +86,21 @@ versions/**/scan_settings.json
 *.part
 
 # PyInstaller 打包日志（本地构建留档，不入库）
-product/v1.00/build/pack-log-*.txt
+product/v1.00/build/pack-log*.txt
+
+# ---- 2026-11-15 补：v0.12.0 发版前新增忽略项 ----
+# LibreHardwareMonitor 第三方库副本（运行时依赖，约 7.6 MB）。
+# 与 KVRT 同一原则：引擎/库本体不入库，用户按 docs/温度落盘-2026-11-15.md
+# 从 LibreHardwareMonitor 官方 Release 自行下载，或设 POWERFOCUS_LHM_DIR 指向。
+tools/lhm-lib/
+# BOM 修复时的一次性原文件备份目录（留档本地，不入库）
+tools/ps1-bom-backup/
+# 一次性扫描测试运行态
+.scan-test/
+# 抖音营销素材工程（59.7 MB 视频工程文件，非发行物）；shots 截图与成片保留入库
+marketing/douyin/video_hy4/
+# 投稿材料草稿（过程留痕含本机路径 C:\Users\Administrator 等，不入库）
+marketing/submission/
 
 # ---- 2026-11-14 补：v3 重新打包前的旧版 exe 本地备份（20 MB 二进制，不入库） ----
 product/**/dist-v3/

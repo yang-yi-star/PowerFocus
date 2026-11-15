@@ -48,7 +48,7 @@ show a message instead of failing silently.
 
 ## Install
 
-1. Download `PowerFocus-v0.11.1-x64.exe` from
+1. Download `PowerFocus-v0.12.0-x64.exe` from
    [Releases](https://github.com/yang-yi-star/PowerFocus/releases).
    The same Release also carries `LICENSE` and `THIRD_PARTY_NOTICES.md` — keep
    them alongside the binary.
@@ -61,7 +61,7 @@ Windows SmartScreen may warn because the binary is currently **unsigned**.
 If you build from source, compare the SHA256 published in
 [CHANGELOG.md](CHANGELOG.md) for the corresponding Release.
 
-## MCP Server (0.11.1)
+## MCP Server (0.12.0)
 
 PowerFocus ships a **standalone MCP Server** under `mcp/` so other AI agents can
 load it directly with one `mcpServers` entry — see
@@ -71,7 +71,7 @@ clients. Read-only tools are exposed by default; write tools require an explicit
 switch plus a one-time confirmation nonce. The legacy root `mcp-server.py` is
 deprecated and must not be loaded.
 
-Release `v0.11.1` also publishes `PowerFocus-MCP-v0.11.1.zip` as a separate asset.
+Release `v0.12.0` also publishes `PowerFocus-MCP-v0.12.0.zip` as a separate asset.
 Version numbering follows [docs/VERSION_POLICY.md](docs/VERSION_POLICY.md).
 
 ## Development

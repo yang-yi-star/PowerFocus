@@ -1,9 +1,9 @@
-# PowerFocus MCP Server 0.11.1
+# PowerFocus MCP Server 0.12.0
 
 让任何支持 MCP 的 AI 客户端（Claude、Cursor、VS Code、ChatGPT、各类 Agent）把
 PowerFocus 识别成 MCP Server 并加载使用。
 
-- **产品版本**：`0.11.1`，与主应用 Release `v0.11.1` 一致（规则见 `docs/VERSION_POLICY.md`）
+- **产品版本**：`0.12.0`，与主应用 Release `v0.12.0` 一致（规则见 `docs/VERSION_POLICY.md`）
 - **协议版本**：默认 `2026-07-28`（无状态核心），兼容 `2025-06-18` / `2025-03-26` / `2024-11-05`
 - **传输**：`stdio`，逐行 JSON-RPC 2.0
 - **依赖**：**零第三方依赖**，仅 Python 3.10+ 标准库
@@ -40,7 +40,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python mcp/powerfocus_mc
 | 维度 | 旧 `mcp-server.py` | 本发行物 `mcp/` |
 |---|---|---|
 | 后端通道 | 直写 `commands/in` 命令总线，绕过全部 HTTP 鉴权 | 通过 `127.0.0.1` 的 HTTP API，复用 `X-PF-Token`、动作白名单与限流 |
-| 默认能力 | 全部 16 个工具（含写操作）+ 229 项 REA 逆向工具 | **默认只读 10 个工具**；REA 完全不提供 |
+| 默认能力 | 全部 16 个工具（含写操作）+ 229 项 REA 逆向工具 | **默认只读 11 个工具**；REA 完全不提供 |
 | 写操作 | 无二次确认、无审计 | 默认不暴露；需显式开关 + 一次性确认 nonce |
 | 审计 | 无 | 每次调用写 `%LOCALAPPDATA%\PowerFocus\mcp\audit.jsonl`（只记参数键名，不记值/令牌） |
 | 协议 | 强制先 `initialize`，否则 `-32000` | 无状态：任何请求可独立到达；同时兼容旧握手 |
@@ -54,12 +54,16 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python mcp/powerfocus_mc
 ## 3. 默认工具（只读）
 
 `pf_health`、`pf_snapshot`、`pf_processes`、`pf_models`、`pf_scenes`、
-`pf_router_status`、`pf_security_status`、`pf_audit_log`、
+`pf_router_status`、`pf_security_status`、`pf_security_scan_status`、`pf_audit_log`、
 `pf_bootstrap_check`、`pf_parse_command`。
 
-写工具（`pf_run_command`、`pf_boost_model`、`pf_chat`）与高危工具
+写工具（`pf_run_command`、`pf_boost_model`、`pf_chat`、`pf_security_scan`）与高危工具
 （`pf_install_component`）只有设置 `POWERFOCUS_MCP_ALLOW_WRITE=1`
 （安装类另需 `POWERFOCUS_MCP_ALLOW_INSTALL=1`）后才会出现在 `tools/list`。
+
+`pf_security_scan` 用于下载准入与故障取证：默认 `process_level=0`（只报告、不处置），
+要真正清除威胁必须显式传 `disinfect_confirm=yes`。扫描在后台执行，
+用 `pf_security_scan_status` 轮询进度与结果。
 
 ## 4. 写操作的一次性确认（两步）
 
@@ -118,4 +122,4 @@ mcp/
     └── server.py                # MCP Server 主体
 ```
 
-发版时整个 `mcp/` 打成 `PowerFocus-MCP-v0.11.1.zip`，作为该 tag Release 的独立附件。
+发版时整个 `mcp/` 打成 `PowerFocus-MCP-v0.12.0.zip`，作为该 tag Release 的独立附件。

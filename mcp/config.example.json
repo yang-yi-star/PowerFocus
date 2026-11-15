@@ -1,5 +1,5 @@
 {
-  "_comment": "PowerFocus MCP 0.11.1 客户端配置样例。把 <...> 换成本机实际路径后，复制到你的 AI 客户端 MCP 配置文件里。只读是默认策略，无需任何开关。",
+  "_comment": "PowerFocus MCP 0.12.0 客户端配置样例。把 <...> 换成本机实际路径后，复制到你的 AI 客户端 MCP 配置文件里。只读是默认策略，无需任何开关。",
   "mcpServers": {
     "powerfocus": {
       "command": "python",

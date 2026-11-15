@@ -83,7 +83,8 @@ def test_tools_list_deterministic_with_cache_hints():
     names_a = [t["name"] for t in a["result"]["tools"]]
     names_b = [t["name"] for t in b["result"]["tools"]]
     assert names_a == names_b == sorted(names_a)
-    assert len(names_a) == len(set(names_a)) == 10  # 默认只读 10 个
+    # 默认只读 11 个：v0.11.1 基线 10 个 + pf_security_scan_status（扫描状态查询，只读）
+    assert len(names_a) == len(set(names_a)) == 11
     assert a["result"]["ttlMs"] == 60000
     assert a["result"]["cacheScope"] == "server"
 

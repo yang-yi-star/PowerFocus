@@ -96,6 +96,8 @@ TOOLS: tuple[Tool, ...] = (
     Tool("pf_scenes", "列出场景预设（游戏/工作/全力等）。无副作用。", "GET", "/api/scenes"),
     Tool("pf_router_status", "读取调度路由当前状态。无副作用。", "GET", "/api/router"),
     Tool("pf_security_status", "读取安全态势摘要（只读，不触发扫描）。", "GET", "/api/security"),
+    Tool("pf_security_scan_status", "读取病毒扫描引擎状态与上次扫描进度/结果（只读，不触发扫描）。",
+         "GET", "/api/security/scan/status"),
     Tool("pf_audit_log", "读取应用内审计记录。无副作用。", "GET", "/api/audit"),
     Tool("pf_bootstrap_check", "读取 7 项组件自检结果（只读，不下载不安装）。",
          "GET", "/api/bootstrap/check"),
@@ -132,6 +134,23 @@ TOOLS: tuple[Tool, ...] = (
          }, ("messages",))),
 
     # ---------- 高危（双重开关） ----------
+    Tool("pf_security_scan", "发起一次真实病毒扫描（KVRT），用于下载准入与故障取证。"
+         "默认只报告不处置；要处置须显式传 disinfect_confirm=yes。扫描在后台执行，"
+         "用 pf_security_scan_status 查进度。有副作用，必须确认。",
+         "POST", "/api/security/scan", risk="write",
+         schema=_obj({
+             "scope": {"type": "string", "enum": ["custom", "core", "allvolumes"],
+                       "description": "扫描范围，缺省 custom（需配 path）"},
+             "path": {"type": "string",
+                      "description": "scope=custom 时的绝对路径，如 C:\\Downloads\\setup.exe"},
+             "process_level": {"type": "integer", "enum": [0, 1, 2, 3],
+                               "description": "0=只报告（默认推荐）；1/2/3=启用处置，不可逆"},
+             "timeout_sec": {"type": "integer",
+                             "description": "超时秒数，30~14400，缺省 3600"},
+             "disinfect_confirm": {"type": "string", "enum": ["yes"],
+                                   "description": "process_level>0 时必须传 yes"},
+             **_CONFIRM_PROP,
+         })),
     Tool("pf_install_component", "触发组件下载/安装。会写入本机文件，需独立开关且逐次确认。",
          "POST", "/api/bootstrap/install", risk="dangerous",
          schema=_obj({

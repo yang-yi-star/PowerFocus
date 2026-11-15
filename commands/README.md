@@ -33,10 +33,10 @@
 
 ## 自然语言层（阶段二，已实现）
 
-入口：`E:\PowerFocus\nl-gateway.ps1`
+入口：`E:\PowerFocus\v2-archive\nl-gateway.ps1`（2026-11-15 根目录清理迁入）
 
-- 交互模式：`pwsh -File nl-gateway.ps1`，直接说人话（"给 llama-server 开后门"、"看看现在什么情况"）
-- 单次模式（供外部 AI / 脚本调用）：`pwsh -File nl-gateway.ps1 -Command "给 llama-server 开后门"`
+- 交互模式：`pwsh -File v2-archive\nl-gateway.ps1`，直接说人话（"给 llama-server 开后门"、"看看现在什么情况"）
+- 单次模式（供外部 AI / 脚本调用）：`pwsh -File v2-archive\nl-gateway.ps1 -Command "给 llama-server 开后门"`
 - 纯规则模式（不依赖模型）：加 `-NoModel`
 
 翻译两级：规则解析（nl-parser.ps1，快、离线）→ LLM 兜底（localhost:8080 主推理服务，OpenAI 兼容接口，系统提示词内约束 schema + 输出经 action 白名单校验）。

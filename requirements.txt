@@ -10,7 +10,7 @@
 # --- 本机 Web 服务层 ---
 fastapi==0.162.4
 starlette==1.10.0
-pydantic==2.14.2
+pydantic==2.14.3
 uvicorn==0.54.0
 
 # --- HTTP 客户端（云端 API / 本地 llama-server 双通道） ---

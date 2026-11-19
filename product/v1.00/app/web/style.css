@@ -265,7 +265,7 @@ input:focus, select:focus, textarea:focus {
 }
 .proc-head span { cursor: pointer; }
 .proc-head span:hover { color: var(--pf-text-secondary); }
-.proc-body { flex: 1; overflow-y: auto; min-height: 0; padding: 4px 0; }
+.proc-body { flex: 1 1 0; overflow-y: auto; min-height: 120px; padding: 4px 0; }
 .row {
   height: 40px; font-size: 13px; cursor: pointer; border-radius: var(--pf-radius-sm);
   transition: background .12s ease;
@@ -278,6 +278,7 @@ input:focus, select:focus, textarea:focus {
 .ops {
   display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
   padding: 8px 12px; border-top: 0.5px solid var(--pf-border-default);
+  flex: 0 0 auto; max-height: 104px; overflow-y: auto;
 }
 .ops .who { font-size: 12px; color: var(--pf-text-secondary); margin-right: 6px; }
 .ops .who b { color: var(--pf-text-primary); font-weight: 500; }

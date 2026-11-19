@@ -359,6 +359,7 @@
       } else {
         const empty = body.querySelector('.empty');
         if (empty) empty.remove();
+        body.querySelectorAll('.skel').forEach((n) => n.remove());
         for (const p of list) body.appendChild(rowMap.get(p.pid));
       }
     } else if (!list.length && !body.querySelector('.empty')) {
@@ -900,6 +901,16 @@
         guard(runCommand(real, action === 'revoke' ? { process_name: selected.name, level: 'normal' } : extra,
           needsConfirm ? '将对 ' + selected.name + ' 执行「' + b.textContent + '」，是否继续？' : null),
           b.textContent);
+      });
+    }
+
+    const killBtn = document.querySelector('.ops [data-kill]');
+    if (killBtn) {
+      killBtn.addEventListener('click', async () => {
+        if (!selected) { toast('请先在列表里选择进程', 'err'); return; }
+        const ok = await confirmDialog('终止进程', '将强制结束 ' + selected.name + ' (PID ' + selected.pid + ')。系统关键进程可能被内核拒绝。', '终止', true);
+        if (!ok) return;
+        guard(runCommand('kill_process', { process_name: selected.name }, null), '终止指令已发送');
       });
     }
 

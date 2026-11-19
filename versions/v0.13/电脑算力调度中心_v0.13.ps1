@@ -2257,8 +2257,16 @@ function Invoke-CommandBusTick {
                 # 都必须持有本机 .auth_token；内核内部直接调用
                 # Invoke-CommandObject 不经过这里，行为不变。
                 $expected = Get-AuthToken
-                if (-not $expected -or [string]$cmdObj.token -ne $expected) {
-                    $resultText = "ERROR: 命令总线认证失败：缺少或错误的内核授权令牌"
+                # 01：拒绝原因细分三种，便于一眼定位（令牌文件不可读 / 命令缺 token 字段 / token 不匹配）
+                if ([string]::IsNullOrWhiteSpace($expected)) {
+                    $resultText = "ERROR: 命令总线认证失败：内核授权令牌文件不可读或为空"
+                    Write-Log "WARN" "命令 $($f.Name) 被拒：授权令牌文件不可读或为空"
+                } elseif ($null -eq $cmdObj.PSObject.Properties['token'] -or [string]::IsNullOrWhiteSpace([string]$cmdObj.token)) {
+                    $resultText = "ERROR: 命令总线认证失败：命令缺少 token 字段（写入方必须注入内核授权令牌）"
+                    Write-Log "WARN" "命令 $($f.Name) 被拒：正文缺 token 字段"
+                } elseif ([string]$cmdObj.token -ne $expected) {
+                    $resultText = "ERROR: 命令总线认证失败：token 不匹配（令牌值错误或已失效）"
+                    Write-Log "WARN" "命令 $($f.Name) 被拒：token 不匹配"
                 } else {
                     $resultText = Invoke-CommandObject $cmdObj
                 }

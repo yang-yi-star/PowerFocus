@@ -190,8 +190,11 @@ function Invoke-RuleAction {
 # ---------- EcoQoS 效率模式（官方功率节流 API） ----------
 function Set-EcoQos {
     param([int]$ProcId, [bool]$On)
+    # 03：入口先复查 PID。补给快照（内核 L601 Get-Process）到执行之间是 TOCTOU 窗口，
+    # 短命进程可能已退出；这种情况静默跳过，不重试、不打 WARN。
+    $p = Get-Process -Id $ProcId -ErrorAction SilentlyContinue
+    if (-not $p) { return $false }
     try {
-        $p = Get-Process -Id $ProcId -ErrorAction Stop
         $state = New-Object PowerFocus.RulesNative+PROCESS_POWER_THROTTLING_STATE
         $state.Version = 1
         $state.ControlMask = 1          # PROCESS_POWER_THROTTLING_EXECUTION_SPEED

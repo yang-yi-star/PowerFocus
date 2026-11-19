@@ -68,6 +68,36 @@ public static extern System.IntPtr OpenProcess(uint access, bool inherit, int pi
 public static extern bool CloseHandle(System.IntPtr h);
 '@
 
+# 05：I/O 优先级提升所需的 SeIncreaseBasePriorityPrivilege 启用入口。
+# 本机令牌通常是"持有但未启用"，不启用时 NtSetInformationProcess 提升到 High 会返回 0xC0000061（PRIVILEGE_NOT_HELD），
+# 而旧代码把它和"进程已退出""目标受保护"混成同一条 WARN。
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+namespace PowerFocus {
+    public static class Priv {
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        struct TP { public int Count; public long Luid; public int Attr; }
+        [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+        [DllImport("advapi32.dll", SetLastError = true)] static extern bool OpenProcessToken(IntPtr h, int acc, out IntPtr tok);
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern bool LookupPrivilegeValue(string sys, string name, out long luid);
+        [DllImport("advapi32.dll", SetLastError = true)] static extern bool AdjustTokenPrivileges(IntPtr tok, bool dis, ref TP st, int len, IntPtr prev, IntPtr ret);
+        [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+        public static int EnableIoBoost() {
+            IntPtr tok;
+            if (!OpenProcessToken(GetCurrentProcess(), 0x28, out tok)) return -1;
+            long luid;
+            if (!LookupPrivilegeValue(null, "SeIncreaseBasePriorityPrivilege", out luid)) { CloseHandle(tok); return -2; }
+            TP tp = new TP(); tp.Count = 1; tp.Luid = luid; tp.Attr = 2;
+            bool ok = AdjustTokenPrivileges(tok, false, ref tp, 16, IntPtr.Zero, IntPtr.Zero);
+            int err = Marshal.GetLastWin32Error();
+            CloseHandle(tok);
+            return ok ? err : -err;
+        }
+    }
+}
+'@
+
 # 不可终止的系统关键进程（杀之会导致蓝屏/重启，任何情况下都拒绝）
 # F9：与 Python 服务端共用同一份名单真源；文件缺失时用内置兜底。
 $script:UnkillableProcesses = @('System','Registry','Idle','Memory Compression','smss','csrss','wininit','services','lsass','winlogon','fontdrvhost','WUDFHost','dwm','MsMpEng')
@@ -727,15 +757,68 @@ function Get-IoPriority {
     } catch { return $null }
 }
 
-function Set-IoPriority {
-    # 返回 $true=成功，$false=失败（权限不足/进程退出）
-    param([int]$ProcessId, [int]$Value)
+$script:IoBoostPrivState = $null    # 05：Enabled / NotHeld / Failed；$null=尚未尝试
+$script:LastIoFailure    = $null    # 05：Exited / PrivilegeNotHeld / AccessDenied / Other:<hex> / Error
+$script:LastIoNt         = $null    # 05：最近一次失败的 NTSTATUS
+
+function Enable-IoBoostPrivilege {
+    # 幂等：把 SeIncreaseBasePriorityPrivilege 从"持有未启用"切到"已启用"；只在需要提升到 High 时调用
+    if ($script:IoBoostPrivState) { return ($script:IoBoostPrivState -eq 'Enabled') }
     try {
-        $p = Get-Process -Id $ProcessId -ErrorAction Stop
+        $r = [PowerFocus.Priv]::EnableIoBoost()
+        if ($r -eq 0) {
+            $script:IoBoostPrivState = 'Enabled'
+            Write-Log "INFO" "I/O 提升特权已启用（SeIncreaseBasePriorityPrivilege）"
+        } elseif ($r -eq 1300 -or $r -eq 1314) {
+            $script:IoBoostPrivState = 'NotHeld'
+            Write-Log "INFO" "令牌未分配 SeIncreaseBasePriorityPrivilege（ret=$r），I/O 提升将被系统拒绝；降级/保持不受影响"
+        } else {
+            $script:IoBoostPrivState = 'Failed'
+            Write-Log "WARN" "启用 I/O 提升特权失败（ret=$r）"
+        }
+    } catch {
+        $script:IoBoostPrivState = 'Failed'
+        Write-Log "WARN" "启用 I/O 提升特权异常: $_"
+    }
+    return ($script:IoBoostPrivState -eq 'Enabled')
+}
+
+function Get-IoFailureText {
+    switch ($script:LastIoFailure) {
+        'Exited' { return '目标进程已退出' }
+        'PrivilegeNotHeld' { return '缺少 SeIncreaseBasePriorityPrivilege，I/O 提升被系统拒绝（0xC0000061）' }
+        'AccessDenied' { return '拒绝访问：目标进程受保护或句柄权限不足（0xC0000022）' }
+        'Error' { return '调用异常' }
+        default { return "未知失败（$($script:LastIoFailure)）" }
+    }
+}
+
+function Set-IoPriority {
+    # 返回 $true=成功，$false=失败；失败原因写入 $script:LastIoFailure，供调用方分级留痕（本函数自身不写日志，避免监管每 10 秒刷屏）
+    param([int]$ProcessId, [int]$Value)
+    $script:LastIoFailure = $null
+    $script:LastIoNt = $null
+    if ($Value -gt 2) { Enable-IoBoostPrivilege | Out-Null }
+    $p = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    if (-not $p) { $script:LastIoFailure = 'Exited'; return $false }
+    $h = [PowerFocus.Native]::OpenProcess(0x1F0FFF, $false, $ProcessId)
+    if ($null -eq $h -or $h -eq [IntPtr]::Zero) { $script:LastIoFailure = 'AccessDenied'; return $false }
+    try {
         $val = $Value
-        $nt = [PowerFocus.Native]::NtSetInformationProcess($p.Handle, 0x21, [ref]$val, 4)
-        return ($nt -eq 0)
-    } catch { return $false }
+        $nt = [PowerFocus.Native]::NtSetInformationProcess($h, 0x21, [ref]$val, 4)
+        if ($nt -eq 0) { return $true }
+        $script:LastIoNt = $nt
+        if ($nt -eq -1073741727) { $script:LastIoFailure = 'PrivilegeNotHeld' }
+        elseif ($nt -eq -1073741790) { $script:LastIoFailure = 'AccessDenied' }
+        else { $script:LastIoFailure = ('Other:0x{0:X8}' -f $nt) }
+        return $false
+    } catch {
+        $script:LastIoFailure = 'Error'
+        $script:LastIoError = "$_"
+        return $false
+    } finally {
+        [PowerFocus.Native]::CloseHandle($h) | Out-Null
+    }
 }
 
 function ConvertFrom-IoPriorityName {
@@ -1283,8 +1366,10 @@ function Start-GodModeFocus {
     if (Set-IoPriority -ProcessId $ProcessId -Value 3) {
         $script:DesiredIoPriority = 3
         Write-Log "INFO" "GodMode: $Name 磁盘 I/O 优先级 -> High"
+    } elseif ($script:LastIoFailure -eq 'Exited') {
+        Write-Log "INFO" "GodMode: $Name I/O 优先级跳过（目标已退出），仅保留 CPU 优先级倾斜"
     } else {
-        Write-Log "WARN" "GodMode: $Name I/O 优先级设置失败（权限不足或进程受保护），仅保留 CPU 优先级倾斜"
+        Write-Log "WARN" "GodMode: $Name I/O 优先级设置失败（$(Get-IoFailureText)），仅保留 CPU 优先级倾斜"
     }
     Set-PowerPlanHigh
 }
@@ -1357,8 +1442,10 @@ function Stop-Focus {
         if ($script:TargetPid -and ($null -ne $script:TargetOriginalIoPriority)) {
             if (Set-IoPriority -ProcessId $script:TargetPid -Value $script:TargetOriginalIoPriority) {
                 Write-Log "INFO" "目标 I/O 优先级已还原为 $(ConvertTo-IoPriorityName $script:TargetOriginalIoPriority)"
+            } elseif ($script:LastIoFailure -eq 'Exited') {
+                Write-Log "INFO" "目标已退出，无需还原 I/O 优先级"
             } else {
-                Write-Log "WARN" "还原目标 I/O 优先级失败"
+                Write-Log "WARN" "还原目标 I/O 优先级失败（$(Get-IoFailureText)）"
             }
         }
         # 修复#2: 被降级进程写回各自原始优先级
@@ -1932,7 +2019,8 @@ function Invoke-CommandObject {
             if (Set-IoPriority -ProcessId $t.PID -Value $v) {
                 return "OK: $($t.Name) (PID $($t.PID)) 磁盘 I/O 优先级 -> $([string]$Cmd.priority)"
             }
-            return "ERROR: I/O 优先级设置失败（权限不足或进程受保护）"
+            if ($script:LastIoFailure -eq 'Exited') { return "ERROR: PID $($t.PID) 进程已退出（I/O 优先级未设置）" }
+            return "ERROR: I/O 优先级设置失败——$(Get-IoFailureText)"
         }
         'set_net_qos' {
             $pn = [string]$Cmd.process_name

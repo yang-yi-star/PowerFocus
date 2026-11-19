@@ -1161,10 +1161,25 @@ function Set-PowerPlanHigh {
             $script:OriginalPlan = $null
             Write-Log "WARN" "未能解析当前电源计划 GUID"
         }
+        # 04 守卫①：当前已是高性能，无需切换；清空原计划，避免还原时做无意义的反向切换
+        if ($cur -match [regex]::Escape($script:HighPerfGuid)) {
+            Write-Log "INFO" "已是高性能电源计划，跳过切换"
+            $script:OriginalPlan = $null
+            return
+        }
+        # 04 守卫②：目标 GUID 不在 /list 中（OEM 精简/已删除），跳过且不调 native，
+        # 避免每次聚焦都刷一条 exit=1 的 WARN
+        $listAll = ""
+        try { $listAll = (powercfg /list 2>$null | Out-String) } catch {}
+        if ($listAll -notmatch [regex]::Escape($script:HighPerfGuid)) {
+            Write-Log "INFO" "本机无高性能电源计划（OEM 精简或已删除），跳过电源优化"
+            $script:OriginalPlan = $null
+            return
+        }
         if (Invoke-Native -Exe "powercfg" -Args @('/setactive', $script:HighPerfGuid) -What "切换高性能电源计划") {
             Write-Log "INFO" "电源计划已切换为高性能"
         } else {
-            Write-Log "WARN" "本机可能不存在高性能电源计划（OEM 精简系统），跳过电源优化"
+            Write-Log "WARN" "切换高性能电源计划失败（计划在列表中但调用被拒，可能是权限或策略限制），保留当前方案"
         }
     } catch { Write-Log "WARN" "电源计划切换异常: $_" }
 }

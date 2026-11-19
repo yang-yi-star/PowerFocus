@@ -27,7 +27,8 @@ param(
     [switch]$Once,
     [switch]$Json,
     [int]$Loops = 0,
-    [int]$CacheMs = 0
+    [int]$CacheMs = 0,
+    [int]$RaiseLogThrottleSec = 300   # 纯提权日志的节流窗口（秒），不改变提权行为本身
 )
 
 $ErrorActionPreference = 'Continue'
@@ -152,6 +153,8 @@ function Get-AncestorSet([int]$StartPid, $ParentMap) {
 $script:SystemCritical = @('System','Registry','Idle','Memory Compression','smss','csrss','wininit','services','lsass','winlogon','fontdrvhost','dwm','MsMpEng','LogonUI','SecurityHealthService','WUDFHost','audiodg')
 $script:Cooldown = @{}   # pid -> 上次压制时间
 $script:LastCommitLog = [datetime]::MinValue   # 提交额度告警的节流时间
+$script:RaisePending = 0                       # 未落盘的提权次数（节流窗口内累积）
+$script:RaiseLogSlot = [datetime]::MinValue    # 提权汇总上次落盘时间
 
 function Test-IsModelProcess([string]$Name, [string]$CommandLine) {
     if ($Name -like 'llama-*') { return $true }
@@ -338,6 +341,7 @@ function Invoke-GuardCycle {
         fgPid         = $fgPid
         protectedCount = $protect.Count
         priorityRaised = $raised
+        raisePending  = $script:RaisePending
         trimmed       = $trimmed
         freedMB       = [math]::Round($freedBytes / 1MB, 1)
         cooldownSkip  = $skippedCooldown
@@ -364,8 +368,16 @@ $n = 0
 while ($true) {
     $r = Invoke-GuardCycle -Simulate:$SimulatePressure
     if ((Get-Date) -ge $lastTrim.AddMilliseconds($TrimIntervalMs)) { $lastTrim = Get-Date; Set-MgState $r }
-    if ($r.trimmed -gt 0 -or $r.priorityRaised -gt 0) {
+    if ($r.trimmed -gt 0) {
         Write-MgLog 'INFO' ("model={0} mem={1}% commit={2}%({3}GB/{4}GB) level={5} trimmed={6} freed={7}MB raised={8}" -f $r.modelRunning, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB, $r.level, $r.trimmed, $r.freedMB, $r.priorityRaised)
+    } elseif ($r.priorityRaised -gt 0) {
+        # 纯提权（trimmed=0）：按窗口汇总，避免某进程被系统反复降权时每周期刷一条 INFO（09 号）
+        $script:RaisePending += $r.priorityRaised
+        if (((Get-Date) - $script:RaiseLogSlot).TotalSeconds -ge $RaiseLogThrottleSec) {
+            $script:RaiseLogSlot = Get-Date
+            Write-MgLog 'INFO' ("提权汇总 {0}s窗口 raised={1} level={2} mem={3}% commit={4}%({5}GB/{6}GB) trimmed=0" -f $RaiseLogThrottleSec, $script:RaisePending, $r.level, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB)
+            $script:RaisePending = 0
+        }
     }
     $n++
     if ($Loops -gt 0 -and $n -ge $Loops) { break }

@@ -281,6 +281,31 @@ if ($routeBad.Count -eq 0) {
     Add-Result '路由契约' 'FAIL' ($routeBad -join ' ;; ')
 }
 
+# ---------------- 4c. 总线鉴权离线回归（14 号：01 三分支拒绝） ----------------
+# 说明：pytest 只覆盖 Python 侧；内核 .ps1 长期只有语法检查、无行为覆盖。
+# 此项用 AST 从真内核提取 Invoke-CommandBusTick，桩掉 I/O，离线断言三分支文案。
+$authTest = Join-Path $PSScriptRoot 'test-bus-auth.ps1'
+if (-not (Test-Path -LiteralPath $authTest)) {
+    Add-Result '总线鉴权' 'FAIL' '缺少 tests\test-bus-auth.ps1'
+} else {
+    $selfPwsh = (Get-Process -Id $PID).Path
+    $authOut = ''
+    Push-Location $Root
+    try {
+        $authOut = (& $selfPwsh -NoProfile -File $authTest 2>&1) -join "`n"
+        $authExit = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($authExit -eq 0) {
+        $tail = (($authOut -split "`r?`n" | Where-Object { $_ -match '^PASS \d+ / FAIL \d+' }) | Select-Object -Last 1)
+        Add-Result '总线鉴权' 'PASS' $tail
+    } else {
+        $badLines = (($authOut -split "`r?`n" | Where-Object { $_ -match '\[FAIL\]|Exception|throw' }) | Select-Object -First 6) -join ' ;; '
+        Add-Result '总线鉴权' 'FAIL' $(if ($badLines) { $badLines } else { ($authOut -split "`r?`n" | Select-Object -Last 6) -join ' ;; ' })
+    }
+}
+
 # ---------------- 5. 仓库卫生 ----------------
 if (Test-Path (Join-Path $Root '.git')) {
     $tracked = @(git -C $Root ls-files)

@@ -17,6 +17,8 @@ param(
     [int]$TrimIntervalMs  = 5000,
     [int]$WarnPercent     = 75,
     [int]$CriticalPercent = 90,
+    [int]$CommitWarnPercent     = 88,
+    [int]$CommitCriticalPercent = 93,
     [int]$MaxTrimPerCycle = 8,
     [int]$CooldownSec     = 30,
     [int]$MinWorkingSetMB = 60,
@@ -85,11 +87,19 @@ function Get-MemoryStatus {
     [void][MemGuardNative]::GlobalMemoryStatusEx($m)
     $totalMB = [math]::Round($m.ullTotalPhys / 1MB, 0)
     $availMB = [math]::Round($m.ullAvailPhys / 1MB, 0)
+    # 提交额度（commit）：ullTotalPageFile 是系统提交上限，ullAvailPageFile 是还能提交多少
+    # 物理占用低但提交打满时，应用会先于物理内存崩溃（2026-11-16 事故即此）
+    $commitTotalMB = [math]::Round($m.ullTotalPageFile / 1MB, 0)
+    $commitAvailMB = [math]::Round($m.ullAvailPageFile / 1MB, 0)
     [pscustomobject]@{
-        TotalMB    = $totalMB
-        AvailMB    = $availMB
-        UsedMB     = $totalMB - $availMB
-        Percent    = if ($totalMB -gt 0) { [math]::Round(($totalMB - $availMB) / $totalMB * 100, 1) } else { 0 }
+        TotalMB       = $totalMB
+        AvailMB       = $availMB
+        UsedMB        = $totalMB - $availMB
+        Percent       = if ($totalMB -gt 0) { [math]::Round(($totalMB - $availMB) / $totalMB * 100, 1) } else { 0 }
+        CommitTotalMB = $commitTotalMB
+        CommitAvailMB = $commitAvailMB
+        CommitUsedMB  = $commitTotalMB - $commitAvailMB
+        CommitPercent = if ($commitTotalMB -gt 0) { [math]::Round(($commitTotalMB - $commitAvailMB) / $commitTotalMB * 100, 1) } else { 0 }
     }
 }
 
@@ -141,6 +151,7 @@ function Get-AncestorSet([int]$StartPid, $ParentMap) {
 
 $script:SystemCritical = @('System','Registry','Idle','Memory Compression','smss','csrss','wininit','services','lsass','winlogon','fontdrvhost','dwm','MsMpEng','LogonUI','SecurityHealthService','WUDFHost','audiodg')
 $script:Cooldown = @{}   # pid -> 上次压制时间
+$script:LastCommitLog = [datetime]::MinValue   # 提交额度告警的节流时间
 
 function Test-IsModelProcess([string]$Name, [string]$CommandLine) {
     if ($Name -like 'llama-*') { return $true }
@@ -174,6 +185,18 @@ function Invoke-GuardCycle {
 
     $fgPid     = Get-ForegroundPid
 
+    # 提交额度独立监控：与是否运行模型无关（空闲时打满提交同样会让应用崩溃）
+    $commitLevel = if ($mem.CommitPercent -ge $CommitCriticalPercent) { 'critical' } elseif ($mem.CommitPercent -ge $CommitWarnPercent) { 'warn' } else { 'normal' }
+    if ($commitLevel -ne 'normal') {
+        $nowC = Get-Date
+        if (($nowC - $script:LastCommitLog).TotalSeconds -ge 60) {
+            $script:LastCommitLog = $nowC
+            $top = $procs | Sort-Object -Property PrivateMemorySize64 -Descending | Select-Object -First 5
+            $topText = ($top | ForEach-Object { "{0}({1})={2}MB" -f $_.ProcessName, $_.Id, [math]::Round($_.PrivateMemorySize64 / 1MB, 0) }) -join ', '
+            Write-MgLog 'WARN' ("提交告警 commit={0}% used={1}GB/{2}GB 物理={3}% level={4} 前五={5}" -f $mem.CommitPercent, [math]::Round($mem.CommitUsedMB / 1024, 1), [math]::Round($mem.CommitTotalMB / 1024, 1), $mem.Percent, $commitLevel, $topText)
+        }
+    }
+
     # 保护集合：前台 + 模型 + 其祖先链 + 系统关键 + 自身
     $protect = [System.Collections.Generic.HashSet[int]]::new()
     if ($fgPid -gt 0) { [void]$protect.Add($fgPid); foreach ($a in (Get-AncestorSet $fgPid $parentMap)) { [void]$protect.Add($a) } }
@@ -198,11 +221,13 @@ function Invoke-GuardCycle {
         } catch {}
     }
 
-    $trimmed = 0; $freedMB = 0; $skippedCooldown = 0
+    $trimmed = 0; $freedBytes = [long]0; $skippedCooldown = 0
     $actions = @()
 
     if ($modelRunning) {
-        $level = if ($mem.Percent -ge $CriticalPercent) { 'critical' } elseif ($mem.Percent -ge $WarnPercent) { 'warn' } else { 'normal' }
+        $physLevel = if ($mem.Percent -ge $CriticalPercent) { 'critical' } elseif ($mem.Percent -ge $WarnPercent) { 'warn' } else { 'normal' }
+        # 取物理与提交两者中更严重的一档
+        $level = if ($physLevel -eq 'critical' -or $commitLevel -eq 'critical') { 'critical' } elseif ($physLevel -eq 'warn' -or $commitLevel -eq 'warn') { 'warn' } else { 'normal' }
         if ($level -ne 'normal') {
             $limit = if ($level -eq 'critical') { [math]::Max($MaxTrimPerCycle, 12) } else { $MaxTrimPerCycle }
             $cores = [Environment]::ProcessorCount
@@ -267,7 +292,7 @@ function Invoke-GuardCycle {
                 $after = $p.WorkingSet64
                 if ($ok) {
                     $trimmed++
-                    $freedMB += [math]::Round(($before - $after) / 1MB, 1)
+                    $freedBytes += ($before - $after)
                     $script:Cooldown[$p.Id] = Get-Date
                     if ($level -eq 'critical') {
                         try { if ([string]$p.PriorityClass -notin @('Idle','BelowNormal')) { $p.PriorityClass = 'Idle' } } catch {}
@@ -302,6 +327,10 @@ function Invoke-GuardCycle {
         memPercent    = $mem.Percent
         availMB       = $mem.AvailMB
         totalMB       = $mem.TotalMB
+        commitPercent = $mem.CommitPercent
+        commitUsedGB  = [math]::Round($mem.CommitUsedMB / 1024, 1)
+        commitLimitGB = [math]::Round($mem.CommitTotalMB / 1024, 1)
+        commitLevel   = $commitLevel
         modelRunning  = $modelRunning
         modelCount    = $models.Count
         modelPids     = $modelPids
@@ -310,7 +339,7 @@ function Invoke-GuardCycle {
         protectedCount = $protect.Count
         priorityRaised = $raised
         trimmed       = $trimmed
-        freedMB       = $freedMB
+        freedMB       = [math]::Round($freedBytes / 1MB, 1)
         cooldownSkip  = $skippedCooldown
         actions       = $actions
     }
@@ -336,7 +365,7 @@ while ($true) {
     $r = Invoke-GuardCycle -Simulate:$SimulatePressure
     if ((Get-Date) -ge $lastTrim.AddMilliseconds($TrimIntervalMs)) { $lastTrim = Get-Date; Set-MgState $r }
     if ($r.trimmed -gt 0 -or $r.priorityRaised -gt 0) {
-        Write-MgLog 'INFO' ("model={0} mem={1}% level={2} trimmed={3} freed={4}MB raised={5}" -f $r.modelRunning, $r.memPercent, $r.level, $r.trimmed, $r.freedMB, $r.priorityRaised)
+        Write-MgLog 'INFO' ("model={0} mem={1}% commit={2}%({3}GB/{4}GB) level={5} trimmed={6} freed={7}MB raised={8}" -f $r.modelRunning, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB, $r.level, $r.trimmed, $r.freedMB, $r.priorityRaised)
     }
     $n++
     if ($Loops -gt 0 -and $n -ge $Loops) { break }

@@ -1567,6 +1567,21 @@ function Resolve-TargetFromCommand {
     return $null
 }
 
+function Get-TargetMissingReply {
+    # 06 号：目标定位失败按"口径"分级回执，不再统一一句"pid/process_name 均未命中"
+    param($Cmd, [string]$Action)
+    $who = if ($Action) { $Action } else { 'unknown' }
+    if ($Cmd.pid) {
+        $msg = "PID $([string]$Cmd.pid) 不存在（进程可能已退出，或 pid 填错）"
+    } elseif ($Cmd.process_name) {
+        $msg = "没有进程名匹配 '$([string]$Cmd.process_name)'（可能已退出，或名称拼写不符）"
+    } else {
+        $msg = "命令缺少 pid / process_name 字段，无法定位目标"
+    }
+    Write-Log "WARN" "命令总线目标定位失败 [$who]: $msg"
+    return "ERROR: $msg"
+}
+
 # ---------- 阶段三：场景模式 ----------
 $script:SceneAllowedActions = @('focus','unfocus','set_priority','set_power_plan','trim_memory','set_io_priority','set_net_qos','status')
 
@@ -1688,7 +1703,7 @@ function Invoke-CommandObject {
         }
         'focus' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             $auth = Test-AppAuthorized -ProcName $t.Name
             if (-not $auth) {
                 Write-Log "WARN" "拒绝聚焦: $($t.Name) 不在授权清单"
@@ -1737,7 +1752,7 @@ function Invoke-CommandObject {
         }
         'set_priority' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             $cls = Get-PriorityClassFromString ([string]$Cmd.priority)
             if (-not $cls) { return "ERROR: 无效优先级，可用: Idle/BelowNormal/Normal/AboveNormal/High/RealTime" }
             try {
@@ -1757,7 +1772,7 @@ function Invoke-CommandObject {
         # ---------- v0.06：进程强制控制（破坏性操作，必须带 token） ----------
         'kill_process' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if ($t.PID -eq $PID) { return "ERROR: 拒绝终止调度中心自身" }
             if ($t.Name -in $script:UnkillableProcesses) {
                 Write-Log "WARN" "kill_process 拒绝: $($t.Name) 属系统关键进程"
@@ -1775,7 +1790,7 @@ function Invoke-CommandObject {
         }
         'suspend_process' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if ($t.PID -eq $PID) { return "ERROR: 拒绝挂起调度中心自身" }
             if ($t.Name -in $script:UnkillableProcesses) {
                 return "ERROR: $($t.Name) 是系统关键进程，已拒绝挂起"
@@ -1791,7 +1806,7 @@ function Invoke-CommandObject {
         }
         'resume_process' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if ([string]$Cmd.token -ne (Get-AuthToken)) { return "ERROR: token 校验失败，拒绝恢复进程" }
             $h = [PowerFocus.Native]::OpenProcess(0x0800, $false, $t.PID)
             if ($h -eq [IntPtr]::Zero) { return "ERROR: 打开进程失败（权限不足或受保护）" }
@@ -1803,7 +1818,7 @@ function Invoke-CommandObject {
         }
         'stress_process' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if ($t.PID -eq $PID) { return "ERROR: 拒绝压制调度中心自身" }
             if ($t.Name -in $script:UnkillableProcesses) { return "ERROR: $($t.Name) 是系统关键进程，已拒绝压制" }
             if ([string]$Cmd.token -ne (Get-AuthToken)) { return "ERROR: token 校验失败，拒绝压制进程" }
@@ -1911,7 +1926,7 @@ function Invoke-CommandObject {
         }
         'set_io_priority' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             $v = ConvertFrom-IoPriorityName ([string]$Cmd.priority)
             if ($null -eq $v) { return "ERROR: I/O 优先级只支持 VeryLow/Low/Normal/High" }
             if (Set-IoPriority -ProcessId $t.PID -Value $v) {
@@ -2138,7 +2153,7 @@ function Invoke-CommandObject {
         }
         'set_ecoqos' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if (-not (Get-Command Set-EcoQos -ErrorAction SilentlyContinue)) {
                 return "ERROR: 规则引擎未加载（rules-engine.ps1 缺失或加载失败）"
             }
@@ -2151,7 +2166,7 @@ function Invoke-CommandObject {
         }
         'set_affinity' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到目标进程（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             if (-not (Get-Command Set-ProcessAffinity -ErrorAction SilentlyContinue)) {
                 return "ERROR: 规则引擎未加载（rules-engine.ps1 缺失或加载失败）"
             }
@@ -2169,7 +2184,7 @@ function Invoke-CommandObject {
         # ---------- 阶段五：算力申请-补给（应用主动借算力） ----------
         'request_power' {
             $t = Resolve-TargetFromCommand $Cmd
-            if (-not $t) { return "ERROR: 找不到申请目标（pid/process_name 均未命中）" }
+            if (-not $t) { return (Get-TargetMissingReply $Cmd $action) }
             $level = if ([string]$Cmd.level) { [string]$Cmd.level } else { 'gentle' }
             if ($level -notin @('gentle','aggressive','godmode')) { return "ERROR: level 仅支持 gentle/aggressive/godmode" }
             $dur = if ([int]$Cmd.duration -gt 0) { [int]$Cmd.duration } else { 300 }

@@ -696,10 +696,11 @@ function Restore-PowerSupply {
 
 function Invoke-Native {
     # 修复#3: 统一执行 native 命令并检查 $LASTEXITCODE，失败返回 $false
+    # v0.13-fix: 捕获 stderr/stdout 到 $script:LastNativeOutput，失败时能说清原因
     param([string]$Exe, [string[]]$Args, [string]$What)
-    & $Exe @Args | Out-Null
+    $script:LastNativeOutput = (& $Exe @Args 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) {
-        Write-Log "WARN" "native 命令失败 (exit=$LASTEXITCODE): $What"
+        Write-Log "WARN" "native 命令失败 (exit=$LASTEXITCODE): $What | $($script:LastNativeOutput)"
         return $false
     }
     return $true
@@ -1638,6 +1639,10 @@ function Get-PresetModelPath {
 function Invoke-CommandObject {
     param($Cmd)
     $action = [string]$Cmd.action
+    if ([string]::IsNullOrWhiteSpace($action)) {
+        Write-Log "WARN" "命令总线收到空 action（正文缺少 action 字段；文件名不参与解析）"
+        return "ERROR: 命令缺少 action 字段（action 只取 JSON 正文，文件名不参与解析）"
+    }
     Write-Log "INFO" "命令总线收到 action=$action"
 
     switch ($action) {
@@ -1723,8 +1728,15 @@ function Invoke-CommandObject {
             try {
                 $p = Get-Process -Id $t.PID -ErrorAction Stop
                 $p.PriorityClass = $cls
-                Write-Log "INFO" "set_priority: $($t.Name) -> $cls"
-                return "OK: $($t.Name) 优先级已设为 $cls"
+                # 回读校验：不能只信赋值成功，必须确认内核里真的变了
+                Start-Sleep -Milliseconds 150
+                $p2 = Get-Process -Id $t.PID -ErrorAction Stop
+                $actual = $p2.PriorityClass
+                if ((Get-PriorityRank $actual) -ne (Get-PriorityRank $cls)) {
+                    return "ERROR: 已尝试设为 $cls，但回读仍为 $actual（权限不足或被外部重置）"
+                }
+                Write-Log "INFO" "set_priority: $($t.Name) -> $actual (回读校验通过)"
+                return "OK: $($t.Name) 优先级已设为 $actual（回读校验通过）"
             } catch { return "ERROR: 设置失败（可能权限不足）: $_" }
         }
         # ---------- v0.06：进程强制控制（破坏性操作，必须带 token） ----------
@@ -1857,12 +1869,22 @@ function Invoke-CommandObject {
             $plan = [string]$Cmd.plan
             $listHint = ""
             try { $listHint = (powercfg /list 2>$null | Out-String).Trim() } catch {}
+            $activeHint = ""
+            try { $activeHint = (powercfg /getactivescheme 2>$null | Out-String).Trim() } catch {}
             if ($plan -eq 'high') {
+                if ($activeHint -match [regex]::Escape($script:HighPerfGuid)) { return "OK: 已是高性能方案（无需切换）" }
                 if (Invoke-Native -Exe "powercfg" -Args @('/setactive', $script:HighPerfGuid) -What "切换高性能") { return "OK: 已切到高性能" }
-                else { return "ERROR: 切高性能失败（本机可能无此计划）。可用计划:`n$listHint" }
+                else {
+                    $failHint = if ($script:LastNativeOutput -match '拒绝访问|Access is denied|0x5|权限') { "需要管理员权限：请以管理员身份运行调度中心后再切换" } else { "请检查 powercfg 输出" }
+                    return "ERROR: 切高性能失败（exit=$LASTEXITCODE）：$($script:LastNativeOutput)。$failHint`n可用计划:`n$listHint"
+                }
             } elseif ($plan -eq 'balanced') {
+                if ($activeHint -match '381b4222-f694-41f0-9685-ff5bb260df2e') { return "OK: 已是平衡方案（无需切换）" }
                 if (Invoke-Native -Exe "powercfg" -Args @('/setactive', '381b4222-f694-41f0-9685-ff5bb260df2e') -What "切换平衡") { return "OK: 已切到平衡" }
-                else { return "ERROR: 切平衡失败（本机可能无此计划）。可用计划:`n$listHint" }
+                else {
+                    $failHint = if ($script:LastNativeOutput -match '拒绝访问|Access is denied|0x5|权限') { "需要管理员权限：请以管理员身份运行调度中心后再切换" } else { "请检查 powercfg 输出" }
+                    return "ERROR: 切平衡失败（exit=$LASTEXITCODE）：$($script:LastNativeOutput)。$failHint`n可用计划:`n$listHint"
+                }
             }
             return "ERROR: plan 只支持 high / balanced"
         }

@@ -84,6 +84,7 @@ _AUDIT_KINDS = {
 # ---------------------------------------------------------------- 注册表读取（唯一入口，测试替换这里）
 
 def _read_value(root, path, name):
+    """QueryValueEx 返回 (数据, 类型)——[0] 是值本体，[1] 是类型码；顺序拿反会把类型码当值读（真机踩过）。"""
     if winreg is None or root is None:
         return None
     try:
@@ -96,19 +97,19 @@ def _read_value(root, path, name):
 def read_dword(root, path, name):
     r = _read_value(root, path, name)
     try:
-        return None if r is None else int(r[1])
+        return None if r is None else int(r[0])
     except (TypeError, ValueError):
         return None
 
 
 def read_str(root, path, name):
     r = _read_value(root, path, name)
-    return None if r is None or r[1] is None else str(r[1])
+    return None if r is None or r[0] is None else str(r[0])
 
 
 def read_bytes(root, path, name):
     r = _read_value(root, path, name)
-    return None if r is None or not isinstance(r[1], bytes) else r[1]
+    return None if r is None or not isinstance(r[0], bytes) else r[0]
 
 
 def enum_subkeys(root, path):

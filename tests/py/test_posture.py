@@ -641,3 +641,19 @@ def test_content_checks_share_one_probe(monkeypatch, tmp_path):
     assert by_id["dnsenc"]["status"] == "warn" and by_id["httpsonly"]["status"] == "warn"
     # 其余读不到的不计分；DNS 需注意、HTTPS 需注意 → 0/2
     assert res["score"] == 0 and res["summary"].startswith("2 项需要注意")
+
+
+# ---------------------------------------------------------------- 真机事故回归（2026-11-25，真机踩坑）
+
+def test_read_helpers_return_value_not_type_code(monkeypatch):
+    """真机事故：QueryValueEx 返回 (数据, 类型)，read_* 一度拿 [1]（类型码）当值。
+    这台机器的开关值恰好都是 1、DWORD 的类型码恰好是 4，碰巧没露馅——第一次写 0 才暴露。
+    假值故意选「值 ≠ 类型码」的组合，顺序再拿反必红。"""
+    monkeypatch.setattr(posture, "_read_value", lambda root, path, name: (1, 4))
+    assert posture.read_dword(posture.HKLM, "x", "y") == 1        # 拿反会读到 4
+    monkeypatch.setattr(posture, "_read_value", lambda root, path, name: ("Allow", 1))
+    assert posture.read_str(posture.HKLM, "x", "y") == "Allow"    # 拿反会读到 "1"
+    monkeypatch.setattr(posture, "_read_value", lambda root, path, name: (b"\x01", 3))
+    assert posture.read_bytes(posture.HKLM, "x", "y") == b"\x01"
+    monkeypatch.setattr(posture, "_read_value", lambda root, path, name: ("0x1", 4))
+    assert posture.read_dword(posture.HKLM, "x", "y") is None    # 非数值仍按读不到处理

@@ -59,20 +59,21 @@ class Store:
     def install(self, monkeypatch):
         m = monkeypatch
         m.setattr(shield, "_key_exists", self.exists)
+        # 假表按 QueryValueEx 的真实顺序存 (数据, 类型)——真机事故就是顺序拿反了，假表必须与真实 API 同序
         m.setattr(shield, "_read_raw", lambda hive, path, name: self.vals.get((hive, path, name)))
         m.setattr(shield, "_write_value",
-                  lambda hive, path, name, typ, value: self.vals.__setitem__((hive, path, name), (typ, value)))
+                  lambda hive, path, name, typ, value: self.vals.__setitem__((hive, path, name), (value, typ)))
         m.setattr(shield, "_delete_value", lambda hive, path, name: self.vals.pop((hive, path, name), None))
         m.setattr(shield, "_key_is_empty", lambda hive, path: self.exists(hive, path) and self.children(hive, path) == (0, 0))
         m.setattr(shield, "_delete_key", lambda hive, path: self.keys.discard((hive, path)))
 
         def rd(root, path, name):
             v = self.vals.get((root, path, name))
-            return v[1] if v and v[0] == T_DWORD else None
+            return v[0] if v and v[1] == T_DWORD else None
 
         def rs(root, path, name):
             v = self.vals.get((root, path, name))
-            return v[1] if v and isinstance(v[1], str) else None
+            return v[0] if v and isinstance(v[0], str) else None
 
         m.setattr(posture, "read_dword", rd)
         m.setattr(posture, "read_str", rs)
@@ -145,32 +146,82 @@ def test_unknown_id_is_rejected_without_touching_anything(rig):
     assert shield.apply(["nope", "ad_id"])[1]["ok"] is True
 
 
+# ---------------------------------------------------------------- 真机事故回归（2026-11-25，真机踩坑）
+
+def test_store_order_matches_queryvalueex(rig):
+    """假表必须按 (数据, 类型) 存——与 winreg.QueryValueEx 同序。
+    拿反的假表会把拿反的实现也测成绿的（真机第一次跑就翻车，测试却全绿）。"""
+    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (1, T_DWORD)
+    assert shield._read_raw(LM, RA, "fAllowToGetHelp") == (1, T_DWORD)
+    ctx = shield._Ctx()
+    ctx.reg_set("HKLM", RA, "fAllowToGetHelp", T_DWORD, 0)
+    assert ctx.undo[0]["value"] == 1 and ctx.undo[0]["type"] == T_DWORD
+    assert rig.store.vals[(LM, RA, "fAllowToGetHelp")] == (0, T_DWORD)
+
+
+def test_rollback_restores_original_value_not_type_code(rig):
+    """真机事故的直接回归：值原为 1、类型码为 4（DWORD）。
+    顺序拿反时，还原会拿类型码 1 当类型、值 4 当数据写回——注册表当场报「类型转换失败」。"""
+    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (1, T_DWORD)
+    assert shield.apply(["remote_assist"])[0]["ok"] is True
+    assert rig.store.vals[(LM, RA, "fAllowToGetHelp")] == (0, T_DWORD)
+    assert shield.revert() == [{"id": "remote_assist", "ok": True, "title": "远程协助"}]
+    assert rig.store.vals[(LM, RA, "fAllowToGetHelp")] == (1, T_DWORD)   # 值 1 回来了，不是 4
+    assert posture.check_remote_assist()["status"] == "warn"              # posture 也按真值判
+
+
+def test_failed_rollback_still_journals_the_change_for_later_revert(rig, monkeypatch):
+    """真机事故二：自动还原失败时系统停在改过的状态——必须把改动记入还原日志，
+    否则用户失去还原途径；记入后故障排除仍能从应用里还原。"""
+    rig.store.vals[(CU, ADID, "Enabled")] = (1, T_DWORD)
+    monkeypatch.setattr(posture, "check_adid", lambda: posture._item("adid", "广告 ID", "warn", "已开启", "", "", "low"))
+    real_write = shield._write_value
+    calls = []
+
+    def flaky(hive, path, name, typ, value):
+        calls.append(value)
+        if len(calls) >= 2:
+            raise RuntimeError("write denied")     # 第 1 次正向写入成功，第 2 次回滚还原失败
+        real_write(hive, path, name, typ, value)
+
+    monkeypatch.setattr(shield, "_write_value", flaky)
+    res = shield.apply(["ad_id"])
+    assert res[0]["ok"] is False and "记入还原日志" in res[0]["note"]
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (0, T_DWORD)        # 系统停在改过的状态
+    entries = shield._load()["entries"]
+    assert [e["id"] for e in entries] == ["ad_id"]
+    assert entries[0]["undo"][0]["value"] == 1 and entries[0]["undo"][0]["type"] == T_DWORD
+    monkeypatch.setattr(shield, "_write_value", real_write)
+    assert shield.revert(["ad_id"])[0]["ok"] is True
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (1, T_DWORD)        # 之后仍能还原回去
+
+
 # ---------------------------------------------------------------- 承诺三：还原即原样
 
 def test_apply_then_revert_restores_previous_value_and_type(rig):
-    rig.store.vals[(CU, ADID, "Enabled")] = (T_DWORD, 1)
+    rig.store.vals[(CU, ADID, "Enabled")] = (1, T_DWORD)
     res = shield.apply(["ad_id"])
     assert res == [{"id": "ad_id", "ok": True, "state": "on", "title": "广告 ID", "note": ""}]
-    assert rig.store.vals[(CU, ADID, "Enabled")] == (T_DWORD, 0)
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (0, T_DWORD)
     assert posture.check_adid()["status"] == "ok"                       # 单一真相源
     entries = shield._load()["entries"]
     assert [e["id"] for e in entries] == ["ad_id"]
     assert entries[0]["undo"][0]["existed"] is True and entries[0]["undo"][0]["value"] == 1
 
     assert shield.revert(["ad_id"]) == [{"id": "ad_id", "ok": True, "title": "广告 ID"}]
-    assert rig.store.vals[(CU, ADID, "Enabled")] == (T_DWORD, 1)
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (1, T_DWORD)
     assert shield._load()["entries"] == []
     assert [e for e, _f in rig.events] == ["shield_apply", "shield_revert"]
 
 
 def test_revert_writes_back_the_original_string_not_just_the_default(rig, monkeypatch):
     monkeypatch.setattr(posture, "content_probe", lambda pwsh=None: _probe())
-    rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] = (T_SZ, "disallowed")
+    rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] = ("disallowed", T_SZ)
     assert shield.apply(["https_only_edge"], _pwsh(rig))[0]["ok"] is True
-    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == (T_SZ, "force_balanced_enabled")
+    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == ("force_balanced_enabled", T_SZ)
     assert posture.check_https_only(_probe())["status"] == "ok"
     shield.revert()
-    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == (T_SZ, "disallowed")   # 原值、原类型
+    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == ("disallowed", T_SZ)   # 原值、原类型
 
 
 def test_revert_removes_value_and_the_empty_key_we_created(rig, monkeypatch):
@@ -204,14 +255,14 @@ def test_unwritable_journal_means_not_a_single_byte_changes(rig, monkeypatch):
     blocker = rig.tmp / "blocker"
     blocker.write_text("x")                                   # 让日志目录建不出来
     monkeypatch.setenv("PF_SHIELD_JOURNAL", str(blocker / "journal.json"))
-    rig.store.vals[(CU, ADID, "Enabled")] = (T_DWORD, 1)
+    rig.store.vals[(CU, ADID, "Enabled")] = (1, T_DWORD)
     res = shield.apply(["ad_id"])
     assert res[0]["ok"] is False and "还原日志" in res[0]["error"]
-    assert rig.store.vals[(CU, ADID, "Enabled")] == (T_DWORD, 1)
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (1, T_DWORD)
 
 
 def test_journal_records_how_to_undo_before_reporting_success(rig):
-    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (T_DWORD, 1)
+    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (1, T_DWORD)
     assert shield.apply(["remote_assist"])[0]["ok"] is True
     raw = json.loads(shield.journal_path().read_text(encoding="utf-8"))
     assert raw["entries"][0]["id"] == "remote_assist"
@@ -224,18 +275,18 @@ def test_journal_records_how_to_undo_before_reporting_success(rig):
 # ---------------------------------------------------------------- 承诺二：改完必验
 
 def test_verify_failure_rolls_back_automatically(rig, monkeypatch):
-    rig.store.vals[(CU, ADID, "Enabled")] = (T_DWORD, 1)
+    rig.store.vals[(CU, ADID, "Enabled")] = (1, T_DWORD)
     monkeypatch.setattr(posture, "check_adid",
                         lambda: posture._item("adid", "广告 ID", "warn", "已开启", "", "", "low"))
     res = shield.apply(["ad_id"])
     assert res[0]["ok"] is False and "复验" in res[0]["error"] and "已自动还原" in res[0]["note"]
-    assert rig.store.vals[(CU, ADID, "Enabled")] == (T_DWORD, 1)       # 回到原样
+    assert rig.store.vals[(CU, ADID, "Enabled")] == (1, T_DWORD)       # 回到原样
     assert shield._load()["entries"] == []                            # 不留半截记录
 
 
 def test_every_result_carries_a_human_readable_title(rig, monkeypatch):
     """界面要显示「DNS 查询全加密：没有权限…」，不能只甩一个 doh_all 给用户看。"""
-    rig.store.vals[(CU, ADID, "Enabled")] = (T_DWORD, 1)
+    rig.store.vals[(CU, ADID, "Enabled")] = (1, T_DWORD)
     monkeypatch.setattr(posture, "check_adid", lambda: posture._item("adid", "广告 ID", "warn", "已开启", "", "", "low"))
     assert shield.apply(["ad_id"])[0]["title"] == "广告 ID"                      # 复验失败
     monkeypatch.setattr(posture, "content_probe", lambda pwsh=None: _probe())
@@ -250,7 +301,7 @@ def test_every_result_carries_a_human_readable_title(rig, monkeypatch):
 
 
 def test_verify_step_crashing_counts_as_not_verified(rig, monkeypatch):
-    rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] = (T_SZ, "disallowed")
+    rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] = ("disallowed", T_SZ)
     calls = []
 
     def flaky(pwsh=None):
@@ -262,11 +313,11 @@ def test_verify_step_crashing_counts_as_not_verified(rig, monkeypatch):
     monkeypatch.setattr(posture, "content_probe", flaky)
     res = shield.apply(["https_only_edge"], _pwsh(rig))
     assert res[0]["ok"] is False
-    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == (T_SZ, "disallowed")
+    assert rig.store.vals[(CU, EDGE, "HttpsOnlyMode")] == ("disallowed", T_SZ)
 
 
 def test_already_tightened_is_reported_without_changing_anything(rig, monkeypatch):
-    rig.store.vals[(CU, ADID, "Enabled")] = (T_DWORD, 0)
+    rig.store.vals[(CU, ADID, "Enabled")] = (0, T_DWORD)
     runner = Runner()
     monkeypatch.setattr(shield, "_default_run", runner)
     res = shield.apply(["ad_id"])
@@ -369,7 +420,7 @@ def test_default_runner_takes_system_tools_from_system32_not_cwd(rig, monkeypatc
 
 def test_status_mirrors_posture_and_marks_what_is_journaled(rig, monkeypatch):
     monkeypatch.setattr(posture, "content_probe", lambda pwsh=None: _probe())
-    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (T_DWORD, 1)
+    rig.store.vals[(LM, RA, "fAllowToGetHelp")] = (1, T_DWORD)
     items = {x["id"]: x for x in shield.status(pwsh=_pwsh(rig))}
     assert [x["id"] for x in shield.status(pwsh=_pwsh(rig))] == list(shield.ACTION_ORDER)
     assert items["remote_assist"]["state"] == "off" and items["remote_assist"]["admin"] is True

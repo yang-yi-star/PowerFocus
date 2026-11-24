@@ -210,13 +210,14 @@ class _Ctx:
 
     def reg_set(self, hive_name, path, name, typ, value):
         hive = _hive(hive_name)
-        # 先记后改：原值先进记录本，再动系统。写失败时这条记录还原出来还是原值，无害。
+        # 先记后改：原值先进记录本，再动系统。QueryValueEx 返回 (数据, 类型)——
+        # [0] 是值本体、[1] 是类型码；顺序拿反会让还原时拿类型码当值写（真机踩过）。
         prev = _read_raw(hive, path, name)
         self.undo.append({"op": "reg", "hive": hive_name, "path": path, "name": name,
                           "key_existed": _key_exists(hive, path),
                           "existed": prev is not None,
-                          "type": prev[0] if prev else None,
-                          "value": _pack(prev[1]) if prev else None})
+                          "type": prev[1] if prev else None,
+                          "value": _pack(prev[0]) if prev else None})
         _write_value(hive, path, name, typ, value)
 
     def cmd(self, args, undo_args):
@@ -403,8 +404,17 @@ def apply(ids, pwsh=None) -> list:
                 errs = _run_undo(ctx.undo)
                 security.audit("shield_apply", id=aid, ok=False, error="verify_failed",
                                rollback_errors="; ".join(errs) if errs else None)
+                note = "已自动还原"
+                if errs:
+                    # 系统停在改过的状态：必须把这条改动留在还原日志里，用户之后才能在应用里还原
+                    data = _load()
+                    data["entries"].append({"id": aid, "title": act["title"],
+                                            "at": time.strftime("%Y-%m-%d %H:%M:%S"), "undo": ctx.undo})
+                    _save(data)
+                    note = "自动还原时有未成功的步骤：\n" + "\n".join(errs) + \
+                           "\n已把这项改动记入还原日志，需要时可在这里还原。"
                 out.append({"id": aid, "ok": False, "title": act["title"], "error": "改完后复验没有通过",
-                            "note": ("已自动还原" if not errs else "自动还原时有未成功的步骤：\n" + "\n".join(errs))})
+                            "note": note})
                 continue
             data = _load()
             data["entries"].append({"id": aid, "title": act["title"],

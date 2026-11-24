@@ -1188,6 +1188,47 @@ async def security_status():
     }
 
 
+@app.get("/api/security/posture")
+async def security_posture():
+    """隐私防护 P0：网络暴露面体检（只读）。
+
+    不改任何设置、不触发任何外联。注册表 / psutil / 一次固定的 pwsh 查询都是阻塞调用，
+    放线程池，避免卡住事件循环。单项读不到由 posture 报 unknown，这里不再兜底改写。
+    """
+    from starlette.concurrency import run_in_threadpool
+    import posture
+    return await run_in_threadpool(
+        posture.collect,
+        pwsh=_pwsh(),
+        audit_items=security.audit_tail(200),
+        chat_default="cloud" if cloud_ready() else "local",
+    )
+
+
+@app.post("/api/security/posture/exitip")
+async def security_posture_exitip():
+    """公网 IP：只响应用户点击。先写审计、再发一次 HTTPS 到 api.ipify.org，结果不落盘。
+
+    如实说明：任何「查我的 IP」都是把 IP 暴露给被查的那一家；所以页面明示、单源、
+    HTTPS、不缓存、不后台定时。失败只回错误类型，不回显上游正文。
+    """
+    import httpx
+    security.audit("exitip_check", host="api.ipify.org")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=6.0)) as c:
+            r = await c.get("https://api.ipify.org?format=json",
+                            headers={"User-Agent": "PowerFocus-posture/1.0"})
+        if r.status_code != 200:
+            raise RuntimeError("status_%d" % r.status_code)
+        ip = str((r.json() or {}).get("ip") or "")
+        if not re.fullmatch(r"[0-9A-Fa-f:.]+", ip):
+            raise RuntimeError("bad_body")
+    except Exception as e:
+        security.audit("exitip_check_failed", error="%s: %s" % (type(e).__name__, e))
+        return JSONResponse({"detail": "公网 IP 检测失败（%s）" % type(e).__name__}, status_code=502)
+    return {"ip": ip, "source": "api.ipify.org", "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+
+
 @app.get("/api/audit")
 async def audit_log(limit: int = 40):
     return {"items": security.audit_tail(limit), "path": str(security.audit_path())}

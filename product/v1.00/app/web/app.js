@@ -542,7 +542,9 @@
   /* ---------------- 安全态势 ---------------- */
   async function refreshSecurity() {
     if (!securityLoaded) skeleton($('sec-audit'), 5);
-    const [secRes, auditRes] = await Promise.allSettled([api('/api/security'), api('/api/audit?limit=40')]);
+    const [secRes, auditRes, posRes] = await Promise.allSettled([
+      api('/api/security'), api('/api/audit?limit=40'), api('/api/security/posture', { timeout: 25000 })
+    ]);
     if (secRes.status === 'fulfilled') {
       renderSecurity(secRes.value);
       securityLoaded = true;
@@ -555,6 +557,13 @@
     } else {
       const e = auditRes.reason || {};
       renderAudit([], '审计日志读取失败：' + (e.message || String(auditRes.reason || '未知错误')));
+    }
+    // 隐私防护 P0：体检失败只在本区块内说，不弹 toast、不影响上面两块
+    if (posRes.status === 'fulfilled') {
+      renderPosture(posRes.value);
+    } else {
+      const e = posRes.reason || {};
+      renderPosture(null, (e.message || String(posRes.reason || '未知错误')));
     }
   }
 
@@ -624,6 +633,93 @@
         el('span', { class: 'dt', text: it.ts || '' }),
         el('span', { class: 'ev', text: it.event || '' }),
         el('span', { class: 'meta', text: meta })));
+    }
+  }
+
+  /* ---------------- 网络暴露面体检（隐私防护 P0，只读） ---------------- */
+  async function refreshPosture() {
+    setText('posture-summary', '正在体检…');
+    try {
+      renderPosture(await api('/api/security/posture', { timeout: 25000 }));
+    } catch (e) {
+      renderPosture(null, (e && e.message) || String(e));
+    }
+  }
+
+  /* 字段逐段归一（51 号同款）：缺哪格写未知，不让一个坏字段把整块打空 */
+  function renderPosture(p, error) {
+    const box = $('posture-checks'), sum = $('posture-summary'), score = $('posture-score'), out = $('posture-outbound');
+    if (!box || !sum || !score || !out) return;
+    box.textContent = '';
+    out.textContent = '';
+    if (error) {
+      score.textContent = '--';
+      sum.textContent = '体检失败：' + error;
+      box.appendChild(el('div', { class: 'empty', text: '未能读取体检结果' }));
+      return;
+    }
+    p = (p && typeof p === 'object' && !Array.isArray(p)) ? p : {};
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const txt = (v) => {
+      if (typeof v === 'string') return v || '--';
+      if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+      return '--';
+    };
+    const badge = { ok: ['ok', '正常'], warn: ['skip', '需注意'], unknown: ['na', '未知'], info: ['na', '信息'] };
+    const checks = arr(p.checks).filter((c) => c && typeof c === 'object' && !Array.isArray(c));
+    score.textContent = (typeof p.score === 'number' && Number.isFinite(p.score)) ? p.score + ' 分' : '--';
+    sum.textContent = txt(p.summary);
+    if (!checks.length) box.appendChild(el('div', { class: 'empty', text: '没有体检项目（未回报）' }));
+    for (const c of checks) {
+      const st = badge[c.status] ? c.status : 'unknown';
+      const detail = [txt(c.detail), c.advice ? '建议：' + txt(c.advice) : '']
+        .filter((x) => x && x !== '--').join('\n');
+      box.appendChild(el('div', { class: 'check' },
+        el('span', { class: 'badge ' + badge[st][0], text: badge[st][1] }),
+        el('span', { class: 't', text: txt(c.title) + '：' + txt(c.value) }),
+        el('span', { class: 'd', text: detail })));
+    }
+    const ao = (p.app_outbound && typeof p.app_outbound === 'object' && !Array.isArray(p.app_outbound)) ? p.app_outbound : {};
+    const ev = (ao.events && typeof ao.events === 'object' && !Array.isArray(ao.events)) ? ao.events : {};
+    const last = (ev.last && typeof ev.last === 'object' && !Array.isArray(ev.last)) ? ev.last : {};
+    const rows = [['本应用会连出去的地方', '只在下面这些动作发生时，没有静默外联']];
+    for (const d of arr(ao.declared)) {
+      if (!d || typeof d !== 'object' || Array.isArray(d)) continue;
+      rows.push([txt(d.what), txt(d.host) + ' — ' + txt(d.when)]);
+    }
+    const cnt = (k, label) => {
+      const n = ev[k];
+      const c = (typeof n === 'number' && Number.isFinite(n)) ? n : null;
+      return label + '：' + (c === null ? '--' : c + ' 次' + (last[k] ? '（最近 ' + last[k] + '）' : ''));
+    };
+    rows.push(['审计日志里的外联（' + txt(ao.events_window) + '）',
+      [cnt('chat_cloud', '云端对话'), cnt('bootstrap', '组件下载'), cnt('scan', '安全扫描'), cnt('exitip', 'IP 检测')].join(' · ')]);
+    const ob = checks.find((c) => c.id === 'outbound');
+    for (const r of arr(ob && ob.rows).slice(0, 20)) {
+      if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
+      rows.push([txt(r.proc), txt(r.ip) + ':' + txt(r.port) + ' ×' + txt(r.count)]);
+    }
+    for (const row of rows) {
+      out.appendChild(el('div', { class: 'k', text: row[0] }));
+      out.appendChild(el('div', { class: 'v', text: row[1] }));
+    }
+  }
+
+  /* 公网 IP 只在用户点击后查一次；页面已明示「对方会看到你的 IP」，点击即知情 */
+  async function checkExitIp() {
+    const btn = $('posture-exitip');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    setText('posture-exitip-out', '正在向 api.ipify.org 请求…');
+    try {
+      const r = await api('/api/security/posture/exitip', { method: 'POST', timeout: 15000 });
+      const ip = (r && typeof r === 'object' && typeof r.ip === 'string') ? r.ip : '';
+      setText('posture-exitip-out', ip ? '公网 IP：' + ip + '（来源 api.ipify.org，' + ((r && r.ts) || '') + '）'
+        : '检测失败：服务没有返回 IP');
+    } catch (e) {
+      setText('posture-exitip-out', '检测失败：' + ((e && e.message) || String(e)));
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -1201,6 +1297,11 @@
 
     $('sec-selfcheck').addEventListener('click', runSelfcheck);
     $('sec-refresh').addEventListener('click', refreshSecurity);
+    // 隐私防护 P0：新节点判空绑定，旧页面 / 测试桩缺节点也不报错
+    const postureRefresh = $('posture-refresh');
+    if (postureRefresh) postureRefresh.addEventListener('click', refreshPosture);
+    const postureExitIp = $('posture-exitip');
+    if (postureExitIp) postureExitIp.addEventListener('click', checkExitIp);
     $('scan-refresh').addEventListener('click', refreshScan);
     $('scan-start').addEventListener('click', startScan);
     $('scan-eula').addEventListener('change', updateScanButton);

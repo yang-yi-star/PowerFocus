@@ -565,7 +565,9 @@ if (-not (Test-Path -LiteralPath $ioTest)) {
 # ---------------- 5. 仓库卫生 ----------------
 if (Test-Path (Join-Path $Root '.git')) {
     $tracked = @(git -C $Root ls-files)
-    $leak = @($tracked | Where-Object { $_ -match 'auth_token|\.log$|heartbeat|rules_state|\.lock$' })
+    # 拦的是运行态 / 密钥文件（心跳 JSON、日志、锁、令牌），不是测试脚本：
+    # 旧规则裸匹配 heartbeat，会把 52 号轮的回归测试 tests/test-heartbeat-cadence.ps1 误判成泄露。
+    $leak = @($tracked | Where-Object { $_ -match 'auth_token|\.log$|heartbeat[^/]*\.json$|rules_state|\.lock$' })
     $ignoredOk = (Test-Path (Join-Path $Root '.gitignore'))
     if ($leak.Count -gt 0) {
         Add-Result '仓库卫生' 'FAIL' "运行态/密钥被跟踪：$($leak -join ', ')"

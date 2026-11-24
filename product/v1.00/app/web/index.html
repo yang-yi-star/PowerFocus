@@ -205,6 +205,20 @@
       <div class="body"><div class="kv" id="sec-kv"><div class="k">加载中</div><div class="v">--</div></div></div>
     </div>
     <div class="panel">
+      <div class="head">网络暴露面体检<span class="sp"></span><span class="hint" id="posture-score">--</span>
+        <button class="btn sm" id="posture-refresh">重新体检</button></div>
+      <div class="body">
+        <div class="hint" id="posture-summary">正在体检…</div>
+        <div class="checks" id="posture-checks"><div class="empty">加载中</div></div>
+        <div class="hint mt8">只读体检，不改任何设置。公网 IP 不会自动检测——点下面的按钮才会向 api.ipify.org 发一次 HTTPS 请求，对方会看到你的 IP，并记入审计日志。</div>
+        <div class="bs-actions">
+          <button class="btn sm" id="posture-exitip">检测一次公网 IP</button>
+          <span class="hint" id="posture-exitip-out"></span>
+        </div>
+        <div class="kv mt8" id="posture-outbound"></div>
+      </div>
+    </div>
+    <div class="panel">
       <div class="head">KVRT 一次性扫描<span class="sp"></span><span class="hint" id="scan-engine">读取中…</span></div>
       <div class="body">
         <div class="hint scan-note">

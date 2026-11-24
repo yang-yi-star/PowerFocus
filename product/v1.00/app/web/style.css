@@ -353,6 +353,7 @@ input:focus, select:focus, textarea:focus {
 .check .badge.ok, .check .badge.bs-ok { color: var(--pf-status-success-text); background: var(--pf-badge-success-bg); }
 .check .badge.bad, .check .badge.bs-sys { color: var(--pf-status-danger-text); background: var(--pf-badge-danger-bg); }
 .check .badge.skip, .check .badge.bs-miss { color: var(--pf-status-warning-text); background: var(--pf-badge-warning-bg); }
+.check .badge.na { color: var(--pf-text-secondary); background: transparent; border: 1px solid var(--pf-border, rgba(127, 127, 127, 0.35)); }
 .check .t { font-size: 12px; font-weight: 500; }
 .check .d { font-size: 11px; color: var(--pf-text-tertiary); margin-top: 2px; white-space: pre-wrap; }
 .bs-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }

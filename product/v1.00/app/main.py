@@ -239,6 +239,7 @@ def main():
         notify_already_running()
         return
     import webview
+    import app_paths  # 30-C：固定 WebView2 数据目录，避开 %TEMP% 卷
 
     server.start_background()
     threading.Thread(target=log_bootstrap, daemon=True).start()
@@ -258,7 +259,11 @@ def main():
         width=1300, height=840, min_size=(1040, 680),
         background_color="#070b10",
     )
-    webview.start(gui="edgechromium", debug=False)
+    webview.start(
+        gui="edgechromium",
+        debug=False,
+        storage_path=str(app_paths.ensure(app_paths.data_root() / "EBWebView")),
+    )
     log("窗口已关闭，进程退出")
 
 

@@ -6,7 +6,7 @@
 做什么：读注册表、列 TCP 连接、读本应用的自启项、汇总审计日志里的外联事件。
 不做什么：不改任何注册表 / 防火墙 / 网络设置；不自动探测公网 IP；不切换代理；
           不 import 任何网络库（本文件被测试锁死：出现 httpx/urllib/socket/requests 即红）。
-          收紧动作是 P1，代理 / VPN 改道不在本产品范围。
+          收紧动作在 shield.py（P1，每项可还原）；代理 / VPN 改道不在本产品范围。
 
 取值依据（官方文档，查过再用，不凭记忆）：
   - 防火墙三配置文件：
@@ -24,6 +24,15 @@
       https://learn.microsoft.com/en-us/windows/apps/develop/settings/settings-windows-11
   - 广告 ID：HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo\\Enabled（0 = 关）
   - 定位：HKLM / HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\location\\Value（Deny = 拒绝）
+
+内容保密四项（回答「别人看得到我在浏览器里干什么吗」）——数据来自一次固定的 pwsh 只读查询 content_probe()：
+  - DNS 查询加密：Get-DnsClientDohServerAddress（哪些解析服务器有加密模板）+ netsh dnsclient show global（总开关）
+      https://learn.microsoft.com/en-gb/windows-server/administration/windows-commands/netsh-dnsclient
+  - 浏览器强制加密（Edge）：HKLM / HKCU 下 SOFTWARE/Policies/Microsoft/Edge 的 HttpsOnlyMode（REG_SZ，Edge 140+）
+      https://learn.microsoft.com/de-de/deployedge/microsoft-edge-policies/HttpsOnlyMode
+  - 本机能解开加密流量的东西：Cert 本机 / 当前用户的 Root 库里的自签证书、系统代理、hosts 改写
+  - 系统加密协议下限：SCHANNEL/Protocols 下 TLS 1.0 / 1.1 的 Client/Enabled
+      https://learn.microsoft.com/en-us/windows/win32/secauthn/protocols-in-tls-ssl--schannel-ssp-
 
 不确定就报 unknown，绝不猜：任何一项读失败 / 缺键 / 抛异常，状态都是 unknown，且不计分。
 """
@@ -437,7 +446,8 @@ def check_outbound(conn_iter=None, proc_name=None):
     return _item("outbound", title, "info", value,
                  "只列已建立、对方是公网地址的连接；浏览器、输入法、杀毒软件、系统更新在这里出现都正常，"
                  "不认识的名字才值得查。", "", "low",
-                 rows=[{"proc": k[0], "ip": k[1], "port": k[2], "count": v} for k, v in top])
+                 rows=[{"proc": k[0], "ip": k[1], "port": k[2], "count": v,
+                        "plain": k[2] in PLAIN_PORTS} for k, v in top])
 
 
 def summarize_app_outbound(audit_items=None):
@@ -456,6 +466,253 @@ def summarize_app_outbound(audit_items=None):
     return out
 
 
+# ---------------------------------------------------------------- 内容保密（别人看得到我在浏览器里干什么）
+
+# 走这些端口的连接是明文的：网络上的旁观者看得到传了什么（含完整网址）
+PLAIN_PORTS = frozenset((21, 23, 25, 80, 110, 143, 8000, 8008, 8080, 8888))
+
+_EDGE_POLICY = r"SOFTWARE\Policies\Microsoft\Edge"
+_SCHANNEL = r"SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols"
+_INET = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+
+# 已知的私有 CA：只写查证过的，查不到的一律按「来历不明」报
+_KNOWN_PRIVATE_CA = {
+    "steamtools": "Watt Toolkit（Steam++）加速工具装的；它开着加速时，被加速的网站在它本机的代理里是明文",
+}
+
+# 一次固定的只读查询。输出强制 UTF-8；全部是本机读取，不发任何网络请求。
+# doh_flags 取自 netsh dnsclient show global 的状态行，按输出顺序第一行是 DoH、第二行是 DoT。
+_CONTENT_COMMAND = r"""
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$ErrorActionPreference = 'SilentlyContinue'
+$ifaces = @(Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { $_.ServerAddresses } | ForEach-Object {
+    @{ if = [string]$_.InterfaceAlias; servers = @($_.ServerAddresses | ForEach-Object { [string]$_ }) } })
+$doh = @{}
+Get-DnsClientDohServerAddress | ForEach-Object {
+    $doh[[string]$_.ServerAddress] = @{ tpl = [string]$_.DohTemplate; auto = [bool]$_.AutoUpgrade; fallback = [bool]$_.AllowFallbackToUdp } }
+$flags = @([regex]::Matches((netsh dnsclient show global | Out-String), '(?im)^[^:\r\n]*:\s*(enabled|disabled|auto)\s*$') |
+    ForEach-Object { $_.Groups[1].Value })
+$roots = @(Get-ChildItem Cert:\LocalMachine\Root, Cert:\CurrentUser\Root | Sort-Object Thumbprint -Unique | ForEach-Object {
+    $c = $_
+    $e = $c.Extensions
+    $eku = @($e | Where-Object { $_.Oid.Value -eq '2.5.29.37' } | ForEach-Object { $_.EnhancedKeyUsageList } | ForEach-Object { $_.Value })
+    $bc = @($e | Where-Object { $_.Oid.Value -eq '2.5.29.19' })
+    $ku = @($e | Where-Object { $_.Oid.Value -eq '2.5.29.15' })
+    $san = @($e | Where-Object { $_.Oid.Value -eq '2.5.29.17' } | ForEach-Object { [regex]::Matches([string]$_.Format($true), 'DNS[^=]*=\s*([^,;]+)') } |
+        ForEach-Object { $_.Groups[1].Value.Trim() })
+    @{ subject = [string]$c.Subject; not_before = $c.NotBefore.ToString('yyyy-MM-dd'); not_after = $c.NotAfter.ToString('yyyy-MM-dd')
+       self_signed = [bool]($c.Subject -eq $c.Issuer); store = [string]($c.PSParentPath -replace '.*::', '')
+       is_ca = [bool]($bc.Count -gt 0 -and $bc[0].CertificateAuthority)
+       key_cert_sign = [bool]($ku.Count -gt 0 -and (([int]$ku[0].KeyUsages -band 4) -ne 0))
+       server_auth = [bool]($eku -contains '1.3.6.1.5.5.7.3.1'); code_signing = [bool]($eku -contains '1.3.6.1.5.5.7.3.3')
+       san = @($san) } })
+$edge = @(Get-ChildItem 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedge.exe' |
+    Select-Object -First 1)
+@{ ok = $true; os_build = [Environment]::OSVersion.Version.Build; ifaces = @($ifaces)
+   doh = $doh; doh_flags = @($flags); roots = @($roots)
+   edge_version = $(if ($edge) { [string]$edge.VersionInfo.ProductVersion } else { $null }) } | ConvertTo-Json -Depth 6 -Compress
+"""
+
+
+def _empty_probe(reason):
+    return {"ok": False, "reason": reason, "dns_servers": [], "doh": {}, "doh_flags": [],
+            "roots": None, "edge_version": None, "os_build": None}
+
+
+def content_probe(pwsh=None):
+    """一次固定的 pwsh 只读查询：DNS 加密 / 受信任根证书 / Edge 版本。只读，零外联。
+
+    探测不到就返回 ok=False + 原因，调用方据此报 unknown——绝不把「读不到」当成「没问题」。
+    """
+    if not pwsh or not os.path.exists(pwsh):
+        return _empty_probe("no_pwsh")
+    try:
+        r = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-Command", _CONTENT_COMMAND],
+                           capture_output=True, encoding="utf-8", errors="replace", timeout=25,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if r.returncode != 0:
+            return _empty_probe("rc_%d" % r.returncode)
+        data = json.loads(r.stdout.strip() or "null")
+    except Exception as e:
+        return _empty_probe(type(e).__name__)
+    if not isinstance(data, dict):
+        return _empty_probe("bad_json")
+    out = _empty_probe("")
+    out["ok"] = True
+    out["os_build"] = data.get("os_build")
+    out["edge_version"] = data.get("edge_version") or None
+    servers = []
+    ifaces = data.get("ifaces")
+    for x in (ifaces if isinstance(ifaces, list) else []):
+        for s in ((x.get("servers") if isinstance(x, dict) else None) or []):
+            s = str(s)
+            if s not in servers:
+                servers.append(s)
+    out["dns_servers"] = servers
+    raw = data.get("doh")
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            if isinstance(v, dict):
+                out["doh"][str(k)] = {"has": True, "url": str(v.get("tpl") or ""),
+                                      "auto": bool(v.get("auto")), "fallback": bool(v.get("fallback"))}
+    out["doh_flags"] = [str(x) for x in (data.get("doh_flags") or []) if x]
+    roots = data.get("roots")
+    out["roots"] = [x for x in roots if isinstance(x, dict)] if isinstance(roots, list) else None
+    return out
+
+
+def _ver_major(v):
+    head = str(v or "").split(".")[0]
+    return int(head) if head.isdigit() else None
+
+
+def check_dns_encrypted(content=None):
+    """域名查询是不是走加密通道。明文 DNS 等于把「你查了哪些域名」广播给运营商和同一个 Wi-Fi 的人。"""
+    c = content if isinstance(content, dict) else {}
+    title = "DNS 查询加密"
+    if not c.get("ok"):
+        return _item("dnsenc", title, "unknown", "--", "读取不到 DNS 设置（需要 PowerShell 7）。", "", "mid")
+    servers = [str(s) for s in (c.get("dns_servers") or [])]
+    if not servers:
+        return _item("dnsenc", title, "info", "没有配置解析服务器", "当前没有网卡配置了 DNS 服务器。", "", "mid")
+    doh = c.get("doh") or {}
+    flags = c.get("doh_flags") or []
+    enc = [s for s in servers if (doh.get(s) or {}).get("url") and (doh.get(s) or {}).get("auto")]
+    plain = [s for s in servers if s not in enc]
+    if flags and flags[0] == "disabled":
+        return _item("dnsenc", title, "warn", "总开关关闭",
+                     "系统的 DNS 加密总开关是关的，域名查询以明文发出，运营商和同一个 Wi-Fi 的人看得到你查了什么。",
+                     "用下面的开关「DNS 查询全加密」。", "mid")
+    if not plain:
+        return _item("dnsenc", title, "ok", "已加密（%s）" % "、".join(enc),
+                     "域名查询走 HTTPS 加密通道：运营商和同一个 Wi-Fi 的人看不到你查了哪些域名。"
+                     "如实说明：解析服务商（上面的地址）自己看得到。", "", "mid")
+    return _item("dnsenc", title, "warn", "部分明文（%s）" % "、".join(plain),
+                 "这些解析服务器没配加密：轮到它们解析时，域名是明文发出去的。",
+                 "用下面的开关「DNS 查询全加密」。", "mid")
+
+
+def check_https_only(content=None):
+    """Edge 有没有被强制「先走加密连接」。只管 Edge；别的浏览器各管各的。"""
+    c = content if isinstance(content, dict) else {}
+    title = "浏览器强制加密（Edge）"
+    val = read_str(HKLM, _EDGE_POLICY, "HttpsOnlyMode") or read_str(HKCU, _EDGE_POLICY, "HttpsOnlyMode")
+    if val in ("force_balanced_enabled", "force_enabled"):
+        return _item("httpsonly", title, "ok", "已强制（%s）" % ("均衡" if val == "force_balanced_enabled" else "严格"),
+                     "手动输入的 http 网址、从别的程序点开的链接也会先走加密连接；只有对方不支持加密时才回退。", "", "mid")
+    if val == "disallowed":
+        return _item("httpsonly", title, "warn", "已被禁用", "Edge 被策略明确禁止自动升级加密连接。",
+                     "用下面的开关「浏览器强制加密」。", "mid")
+    if not c.get("ok"):
+        return _item("httpsonly", title, "unknown", "--", "读取不到浏览器信息（需要 PowerShell 7）。", "", "mid")
+    ver = c.get("edge_version")
+    if not ver:
+        return _item("httpsonly", title, "info", "未安装 Edge", "这台电脑没装 Edge，这项不适用。", "", "mid")
+    major = _ver_major(ver)
+    if major is not None and major < 140:
+        return _item("httpsonly", title, "info", "Edge %s 版本过旧" % ver,
+                     "这条策略要 Edge 140 及以上才生效；先把 Edge 升级。", "", "mid")
+    return _item("httpsonly", title, "warn", "未强制（Edge %s）" % ver,
+                 "Edge 默认会尽量把网站升级成加密连接，但手动输入的 http 网址不保证——这种是明文，"
+                 "网络上的人看得到你打开了什么。",
+                 "用下面的开关「浏览器强制加密」。", "mid")
+
+
+def check_tls_floor(content=None):
+    """Windows 自带组件的加密协议下限。浏览器自带加密库，不受这项影响——所以只报信息，不计分。"""
+    title = "系统加密协议下限"
+    on = [n for n in ("TLS 1.0", "TLS 1.1") if read_dword(HKLM, _SCHANNEL + "\\" + n + "\\Client", "Enabled") == 1]
+    if on:
+        return _item("tlsfloor", title, "info", "旧版协议被显式开启（%s）" % "、".join(on),
+                     "TLS 1.0 / 1.1 已过时，只有 Windows 自带组件和 .NET 程序会用到；Edge 这类浏览器自带加密库，不受影响。", "", "low")
+    return _item("tlsfloor", title, "info", "系统默认",
+                 "Windows 自带组件按系统默认协商加密协议；Edge 这类浏览器自带加密库，走的是最新协议。", "", "low")
+
+
+def _days(a, b):
+    try:
+        return int((time.mktime(time.strptime(str(b), "%Y-%m-%d")) -
+                    time.mktime(time.strptime(str(a), "%Y-%m-%d"))) / 86400)
+    except Exception:
+        return None
+
+
+def _cn(subject):
+    m = re.search(r"(?:^|,\s*)CN=([^,]+)", str(subject or ""))
+    return (m.group(1) if m else str(subject or "")).strip()
+
+
+def _known_key(subject):
+    s = str(subject or "").lower()
+    for k in _KNOWN_PRIVATE_CA:
+        if k in s:
+            return k
+    return None
+
+
+def _hosts_redirects():
+    p = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "drivers", "etc", "hosts")
+    try:
+        with open(p, encoding="utf-8", errors="ignore") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return 0
+    n = 0
+    for ln in lines:
+        parts = ln.split("#", 1)[0].strip().split()
+        if len(parts) >= 2 and not parts[0].startswith(("127.", "::1", "0.0.0.0")):
+            n += 1
+    return n
+
+
+def check_eavesdrop(content=None):
+    """本机有哪些东西能解开你的加密流量：受信任的私有 CA、系统代理、hosts 改写。只读，不删任何证书。"""
+    c = content if isinstance(content, dict) else {}
+    title = "本机能解开你加密流量的东西"
+    roots = c.get("roots")
+    if not isinstance(roots, list):
+        return _item("eavesdrop", title, "unknown", "--", "读取不到受信任的根证书列表（需要 PowerShell 7）。", "", "mid")
+    ca, inert, code = [], [], []
+    for r in roots:
+        if not r.get("self_signed"):
+            continue
+        days = _days(r.get("not_before"), r.get("not_after"))
+        if r.get("is_ca") and r.get("key_cert_sign") and days is not None and days < 365 * 5:
+            ca.append(r)
+        elif r.get("server_auth") and not r.get("is_ca"):
+            inert.append(r)
+        elif r.get("code_signing") and not r.get("server_auth"):
+            code.append(r)
+    proxy_on = bool(read_dword(HKCU, _INET, "ProxyEnable"))
+    proxy = read_str(HKCU, _INET, "ProxyServer") or ""
+    pac = read_str(HKCU, _INET, "AutoConfigURL") or ""
+    hosts_n = _hosts_redirects()
+    lines = []
+    if ca:
+        lines.append("受信任根证书里有 %d 个私有 CA——持有它私钥的程序可以给任意网站签证书，从而解开你对那些网站的加密流量：" % len(ca))
+        for r in ca:
+            key = _known_key(r.get("subject"))
+            lines.append("· %s —— %s" % (_cn(r.get("subject")), _KNOWN_PRIVATE_CA[key] if key else "来历不明，建议查清是哪个软件装的"))
+    else:
+        lines.append("受信任根证书里没有私有 CA。")
+    if inert:
+        lines.append("另有 %d 张自签的服务器证书：不是 CA，冒充不了任何网站。" % len(inert))
+    if code:
+        lines.append("另有 %d 张代码签名证书：只用于给程序签名，与网页加密无关。" % len(code))
+    if proxy_on and proxy:
+        lines.append("系统代理开着：%s —— 浏览器流量先经过它。" % proxy)
+    elif pac:
+        lines.append("系统代理由自动脚本指定：%s —— 浏览器流量先经过它。" % pac)
+    if hosts_n:
+        lines.append("hosts 文件里有 %d 条域名改写（加速工具的常见做法）。" % hosts_n)
+    unknown_ca = [r for r in ca if not _known_key(r.get("subject"))]
+    status = "warn" if (unknown_ca or (proxy_on and proxy) or pac) else "info"
+    value = ("%d 个私有 CA" % len(ca) if ca else "没有私有 CA") + ("；系统代理开着" if proxy_on and proxy else "")
+    return _item("eavesdrop", title, status, value, "\n".join(lines),
+                 "来路不明的私有 CA 不要留：查清是哪个软件装的，不用就卸载那个软件（它会带走自己的证书）。"
+                 "本应用只列出，不替你删证书。", "mid")
+
+
 # ---------------------------------------------------------------- 汇总
 
 _CHECKS = (
@@ -464,6 +721,10 @@ _CHECKS = (
     ("rdp", "check_rdp", "high"),
     ("rasat", "check_remote_assist", "mid"),
     ("naming", "check_name_resolution", "mid"),
+    ("dnsenc", None, "mid"),             # 带探测结果参数（内容保密）
+    ("httpsonly", None, "mid"),          # 带探测结果参数（内容保密）
+    ("tlsfloor", "check_tls_floor", "low"),
+    ("eavesdrop", None, "mid"),          # 带探测结果参数（内容保密）
     ("macrand", "check_mac_random", "low"),
     ("adid", "check_adid", "low"),
     ("location", "check_location", "low"),
@@ -474,18 +735,31 @@ _CHECKS = (
 # 存函数名而不是函数对象：测试替换模块属性后 collect 才能真的用到替身
 _TITLES = {
     "firewall": "Windows 防火墙", "netcat": "当前网络类型", "rdp": "远程桌面", "rasat": "远程协助",
-    "naming": "名称广播（LLMNR / mDNS / NetBIOS）", "macrand": "Wi-Fi 随机硬件地址", "adid": "广告 ID",
+    "naming": "名称广播（LLMNR / mDNS / NetBIOS）", "dnsenc": "DNS 查询加密",
+    "httpsonly": "浏览器强制加密（Edge）", "tlsfloor": "系统加密协议下限",
+    "eavesdrop": "本机能解开你加密流量的东西",
+    "macrand": "Wi-Fi 随机硬件地址", "adid": "广告 ID",
     "location": "定位服务", "autostart": "本应用的自启项", "chatdefault": "对话默认发往", "outbound": "谁在往外连",
 }
+_CONTENT_CHECKS = ("dnsenc", "httpsonly", "eavesdrop")   # 这三项吃同一次探测结果
+_CONTENT_FUNCS = {"dnsenc": "check_dns_encrypted", "httpsonly": "check_https_only", "eavesdrop": "check_eavesdrop"}
 
 
-def collect(pwsh=None, audit_items=None, conn_iter=None, proc_name=None, chat_default=None):
-    """跑全部检查。单项抛异常只影响该项（变 unknown），绝不让整页失败。返回可直接 JSON 化的 dict。"""
+def collect(pwsh=None, audit_items=None, conn_iter=None, proc_name=None, chat_default=None, content=None):
+    """跑全部检查。单项抛异常只影响该项（变 unknown），绝不让整页失败。返回可直接 JSON 化的 dict。
+
+    content：content_probe() 的结果。不传且有 pwsh 时在这里探测一次；探测不到，相关三项按 unknown 回报。
+    """
+    if content is None and pwsh:
+        content = content_probe(pwsh)
+    content = content if isinstance(content, dict) else {}
     checks = []
     for cid, fname, _sev in _CHECKS:
         try:
             if cid == "netcat":
                 item = check_network_category(pwsh=pwsh)
+            elif cid in _CONTENT_CHECKS:
+                item = globals()[_CONTENT_FUNCS[cid]](content)
             elif cid == "chatdefault":
                 item = check_chat_default(chat_default)
             elif cid == "outbound":

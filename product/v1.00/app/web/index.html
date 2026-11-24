@@ -205,12 +205,21 @@
       <div class="body"><div class="kv" id="sec-kv"><div class="k">加载中</div><div class="v">--</div></div></div>
     </div>
     <div class="panel">
-      <div class="head">网络暴露面体检<span class="sp"></span><span class="hint" id="posture-score">--</span>
+      <div class="head">隐私防护体检<span class="sp"></span><span class="hint" id="posture-score">--</span>
         <button class="btn sm" id="posture-refresh">重新体检</button></div>
       <div class="body">
         <div class="hint" id="posture-summary">正在体检…</div>
         <div class="checks" id="posture-checks"><div class="empty">加载中</div></div>
-        <div class="hint mt8">只读体检，不改任何设置。公网 IP 不会自动检测——点下面的按钮才会向 api.ipify.org 发一次 HTTPS 请求，对方会看到你的 IP，并记入审计日志。</div>
+        <div class="subhead">谁看得到我在浏览器里干什么<span class="sp"></span>
+          <button class="btn sm" id="posture-dnscheck">实测 DNS 是不是密文</button></div>
+        <div class="hint">运营商、同一个 Wi-Fi 或路由器的人：看得到你在上网、连的是哪个网站（域名）、流量多少和时间；<b>看不到</b>你打开了哪一页、看了什么、输了什么。前提是那个网站是加密的（网址以 https 开头）。所以下面只管三件事：域名查询别明文、网页尽量都走加密、本机别留着能解开加密的东西。如实说明：网站自己当然知道你在它那里做了什么。</div>
+        <div class="hint mt8" id="posture-dnscheck-out"></div>
+        <div class="subhead">一键收紧（每项可还原）<span class="sp"></span>
+          <button class="btn sm" id="shield-apply">收紧推荐项</button>
+          <button class="btn sm" id="shield-revert">全部还原</button></div>
+        <div class="checks" id="shield-items"><div class="empty">加载中</div></div>
+        <div class="hint mt8" id="shield-out"></div>
+        <div class="hint mt8">体检本身只读，不改任何设置；要改设置只能点上面的「收紧」，每一项都先记下原值再改，改完复验，没验上会当场自动还原，全部记入审计日志。公网 IP 不会自动检测——点下面的按钮才会向 api.ipify.org 发一次 HTTPS 请求，对方会看到你的 IP，并记入审计日志。</div>
         <div class="bs-actions">
           <button class="btn sm" id="posture-exitip">检测一次公网 IP</button>
           <span class="hint" id="posture-exitip-out"></span>

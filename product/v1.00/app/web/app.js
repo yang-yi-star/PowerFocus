@@ -656,6 +656,7 @@
       score.textContent = '--';
       sum.textContent = '体检失败：' + error;
       box.appendChild(el('div', { class: 'empty', text: '未能读取体检结果' }));
+      renderShield(null, error);
       return;
     }
     p = (p && typeof p === 'object' && !Array.isArray(p)) ? p : {};
@@ -666,6 +667,7 @@
       return '--';
     };
     const badge = { ok: ['ok', '正常'], warn: ['skip', '需注意'], unknown: ['na', '未知'], info: ['na', '信息'] };
+    renderShield(p.shield);
     const checks = arr(p.checks).filter((c) => c && typeof c === 'object' && !Array.isArray(c));
     score.textContent = (typeof p.score === 'number' && Number.isFinite(p.score)) ? p.score + ' 分' : '--';
     sum.textContent = txt(p.summary);
@@ -697,11 +699,124 @@
     const ob = checks.find((c) => c.id === 'outbound');
     for (const r of arr(ob && ob.rows).slice(0, 20)) {
       if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
-      rows.push([txt(r.proc), txt(r.ip) + ':' + txt(r.port) + ' ×' + txt(r.count)]);
+      rows.push([txt(r.proc), txt(r.ip) + ':' + txt(r.port) + (r.plain === true ? '（明文端口）' : '') + ' ×' + txt(r.count)]);
     }
     for (const row of rows) {
       out.appendChild(el('div', { class: 'k', text: row[0] }));
       out.appendChild(el('div', { class: 'v', text: row[1] }));
+    }
+  }
+
+  /* 防护开关：一项一条，状态与上方体检项同源（开关说关上了，体检一定显示正常） */
+  let shieldItems = [];
+  function renderShield(list, error) {
+    const box = $('shield-items');
+    if (!box) return;
+    box.textContent = '';
+    const items = (Array.isArray(list) ? list : []).filter((x) => x && typeof x === 'object' && !Array.isArray(x));
+    shieldItems = items;
+    if (error) {
+      box.appendChild(el('div', { class: 'empty', text: '开关状态读取失败：' + error }));
+      return;
+    }
+    if (!items.length) {
+      box.appendChild(el('div', { class: 'empty', text: '没有可用的开关（未回报）' }));
+      return;
+    }
+    const st = { on: ['ok', '已收紧'], off: ['skip', '未收紧'], unknown: ['na', '读不到'] };
+    for (const it of items) {
+      const s = st[it.state] ? it.state : 'unknown';
+      const on = it.state === 'on';
+      const title = (typeof it.title === 'string' && it.title) || String(it.id || '开关');
+      const btn = el('button', {
+        class: 'btn sm', text: on ? '还原' : (it.recommended === true ? '收紧' : '收紧（可选）'),
+        onClick: () => shieldRun(on ? 'revert' : 'apply', [it.id])
+      });
+      if (it.state === 'unknown') btn.disabled = true;
+      const scope = (typeof it.scope === 'string' && it.scope) ? ' · ' + it.scope : '';
+      const lines = [
+        (typeof it.why === 'string' && it.why) || '',
+        (typeof it.risk === 'string' && it.risk) ? '影响：' + it.risk : '',
+        (!on && it.admin === true) ? '需要管理员权限' : ''
+      ].filter(Boolean).join('\n');
+      box.appendChild(el('div', { class: 'check' },
+        el('span', { class: 'badge ' + st[s][0], text: st[s][1] }),
+        el('span', { class: 'grow' },
+          el('span', { class: 't', text: title + scope }),
+          el('span', { class: 'd', text: lines || ' ' })),
+        btn));
+    }
+  }
+
+  async function shieldRun(kind, ids) {
+    const out = $('shield-out');
+    const apply = kind !== 'revert';
+    const path = apply ? '/api/security/shield/apply' : '/api/security/shield/revert';
+    if (out) out.textContent = apply ? '正在收紧…' : '正在还原…';
+    try {
+      const r = await api(path, { method: 'POST', body: { ids }, timeout: 90000 });
+      const res = (r && Array.isArray(r.results)) ? r.results.filter((x) => x && typeof x === 'object') : [];
+      /* 名称以后端给的为准；后端没给就用界面上已有的标题，绝不把内部代号（doh_all 这种）甩给用户 */
+      const known = {};
+      for (const it of shieldItems) if (it && typeof it.id === 'string') known[it.id] = it.title;
+      const done = [], failed = [];
+      for (const x of res) {
+        const fallback = known[x.id];
+        const name = (typeof x.title === 'string' && x.title) ||
+          (typeof fallback === 'string' && fallback) || '其中一项';
+        if (x.ok === true) done.push(name);
+        else failed.push(name + '：' + ((typeof x.error === 'string' && x.error) || '没有改成') +
+          (typeof x.note === 'string' && x.note ? '\n  ' + x.note.split('\n').join('\n  ') : ''));
+      }
+      const parts = [];
+      if (done.length) parts.push((apply ? '已收紧：' : '已还原：') + done.join('、') + '。');
+      if (failed.length) parts.push((apply ? '没改成：' : '没还原成：') + failed.join('\n'));
+      if (out) out.textContent = parts.join('\n') || '服务没有返回结果';
+      toast(parts[0] ? parts[0].split('\n')[0] : '服务没有返回结果', failed.length ? 'err' : '');
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      if (out) out.textContent = (apply ? '收紧失败：' : '还原失败：') + msg;
+      toast((apply ? '收紧失败：' : '还原失败：') + msg, 'err');
+    } finally {
+      refreshPosture();
+    }
+  }
+
+  async function shieldApplyRecommended() {
+    // 只带「确实是未收紧」的；读不到状态的不捎上（单项按钮对它也是禁用的，两个入口保持一致）
+    const ids = shieldItems.filter((x) => x.recommended === true && x.state === 'off').map((x) => x.id);
+    if (!ids.length) {
+      if ($('shield-out')) $('shield-out').textContent = '推荐项本来就是收紧的，没有需要改的。';
+      return;
+    }
+    await shieldRun('apply', ids);
+  }
+
+  async function shieldRevertAll() {
+    const ids = shieldItems.filter((x) => x.journaled === true).map((x) => x.id);
+    if (!ids.length) {
+      if ($('shield-out')) $('shield-out').textContent = '没有需要还原的（这个应用没有改过你的设置，或已经还原过）。';
+      return;
+    }
+    await shieldRun('revert', ids);
+  }
+
+  /* 实测 DNS：用户点了才做，会发出一次域名查询（查的是一个不存在的随机名字） */
+  async function dnsCheck() {
+    const btn = $('posture-dnscheck');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    setText('posture-dnscheck-out', '正在解析一个随机域名并查看连接…');
+    try {
+      const r = await api('/api/security/shield/dnscheck', { method: 'POST', timeout: 30000 });
+      const ok = (r && typeof r === 'object');
+      const enc = ok ? r.encrypted : undefined;
+      const head = enc === true ? '是密文。' : (enc === false ? '不是密文。' : '这次判断不了。');
+      setText('posture-dnscheck-out', head + ((ok && typeof r.detail === 'string' && r.detail) ? r.detail : '服务没有返回结果'));
+    } catch (e) {
+      setText('posture-dnscheck-out', '验证失败：' + ((e && e.message) || String(e)));
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -1302,6 +1417,13 @@
     if (postureRefresh) postureRefresh.addEventListener('click', refreshPosture);
     const postureExitIp = $('posture-exitip');
     if (postureExitIp) postureExitIp.addEventListener('click', checkExitIp);
+    // 防护开关 + DNS 实测：同样判空绑定
+    const shieldApply = $('shield-apply');
+    if (shieldApply) shieldApply.addEventListener('click', shieldApplyRecommended);
+    const shieldRevert = $('shield-revert');
+    if (shieldRevert) shieldRevert.addEventListener('click', shieldRevertAll);
+    const dnsCheckBtn = $('posture-dnscheck');
+    if (dnsCheckBtn) dnsCheckBtn.addEventListener('click', dnsCheck);
     $('scan-refresh').addEventListener('click', refreshScan);
     $('scan-start').addEventListener('click', startScan);
     $('scan-eula').addEventListener('change', updateScanButton);

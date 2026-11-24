@@ -287,6 +287,7 @@ export function loadApp(repoRoot, opts = {}) {
     'renderFocus', 'renderProcessTable', 'selectProcess', 'runCommand', 'guard', 'bind',
     'renderSecurity', 'renderAudit', 'renderBootstrap', 'bsBadgeFor', 'bsOut',
     'renderScan', 'updateScanButton', 'syncScanScope', 'startScan', 'refreshScan',
+    'renderPosture', 'renderShield', 'shieldRun', 'shieldApplyRecommended', 'shieldRevertAll', 'dnsCheck',
   ];
   const injection = '\n  globalThis.__PF = { ' + EXPORTS.join(', ') + ', __state: () => ({ snapshot, selected, activeView, clientLog, errBadgeCount }) };\n';
   const tail = /\n\s*\}\s*\)\s*\(\s*\)\s*;?\s*$/;

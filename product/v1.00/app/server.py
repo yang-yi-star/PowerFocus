@@ -1190,19 +1190,81 @@ async def security_status():
 
 @app.get("/api/security/posture")
 async def security_posture():
-    """隐私防护 P0：网络暴露面体检（只读）。
+    """隐私防护体检（只读）：网络暴露面 + 内容保密，外加各防护开关的当前状态。
 
     不改任何设置、不触发任何外联。注册表 / psutil / 一次固定的 pwsh 查询都是阻塞调用，
     放线程池，避免卡住事件循环。单项读不到由 posture 报 unknown，这里不再兜底改写。
     """
     from starlette.concurrency import run_in_threadpool
     import posture
-    return await run_in_threadpool(
-        posture.collect,
-        pwsh=_pwsh(),
-        audit_items=security.audit_tail(200),
-        chat_default="cloud" if cloud_ready() else "local",
-    )
+    import shield
+
+    def _run():
+        pwsh = _pwsh()
+        probe = posture.content_probe(pwsh)
+        res = posture.collect(
+            pwsh=pwsh,
+            audit_items=security.audit_tail(200),
+            chat_default="cloud" if cloud_ready() else "local",
+            content=probe,
+        )
+        res["shield"] = shield.status(pwsh=pwsh, probe=probe)
+        return res
+
+    return await run_in_threadpool(_run)
+
+
+async def _shield_ids(request: Request, allow_all: bool = False):
+    """解析开关接口的请求体：{"ids": [...]}；allow_all 时也接受 {"all": true}（返回 None）。"""
+    import shield
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="请求体不是合法 JSON")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="请求体必须是 JSON 对象")
+    if allow_all and body.get("all") is True:
+        return None
+    ids = body.get("ids")
+    if not isinstance(ids, list) or not ids or not all(isinstance(x, str) for x in ids):
+        raise HTTPException(status_code=400, detail="ids 必须是非空的字符串数组")
+    unknown = [x for x in ids if x not in shield.ACTIONS]
+    if unknown:
+        raise HTTPException(status_code=400, detail="没有这些开关：%s" % ", ".join(unknown))
+    return list(dict.fromkeys(ids))
+
+
+@app.post("/api/security/shield/apply")
+async def security_shield_apply(request: Request):
+    """收紧开关。逐项返回结果，一项失败不影响其他项；每项先记原值再改，改完复验，没验上自动还原。"""
+    from starlette.concurrency import run_in_threadpool
+    import shield
+    ids = await _shield_ids(request)
+    security.audit("shield_apply_request", ids=",".join(ids))
+    results = await run_in_threadpool(shield.apply, ids, _pwsh())
+    return {"results": results, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+
+
+@app.post("/api/security/shield/revert")
+async def security_shield_revert(request: Request):
+    """按还原日志恢复成收紧前的样子：{"all": true} 全部还原，或 {"ids": [...]} 只还原指定项。"""
+    from starlette.concurrency import run_in_threadpool
+    import shield
+    ids = await _shield_ids(request, allow_all=True)
+    security.audit("shield_revert_request", ids="all" if ids is None else ",".join(ids))
+    results = await run_in_threadpool(shield.revert, ids)
+    return {"results": results, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+
+
+@app.post("/api/security/shield/dnscheck")
+async def security_shield_dnscheck():
+    """实测 DNS 是不是密文：解析一个随机的不存在域名，再看 DNS 客户端服务连的是 443 还是 53。
+
+    只响应用户点击；会发出一次域名查询（查询内容是不存在的随机名字），不访问任何网页。
+    """
+    from starlette.concurrency import run_in_threadpool
+    import shield
+    return await run_in_threadpool(shield.dns_check, _pwsh())
 
 
 @app.post("/api/security/posture/exitip")

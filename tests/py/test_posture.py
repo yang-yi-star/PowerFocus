@@ -15,6 +15,7 @@
     出口 IP 用假 httpx，绝不发真实请求；计划任务目录用 tmp_path。
 """
 import asyncio
+import json
 import re
 import sys
 from pathlib import Path
@@ -225,10 +226,17 @@ def test_outbound_filters_private_loopback_listen_and_aggregates():
     it = posture.check_outbound(conn_iter=lambda: conns, proc_name=lambda pid: "proc%d" % pid)
     assert it["status"] == "info"
     rows = it["rows"]
-    assert rows[0] == {"proc": "proc10", "ip": "8.8.8.8", "port": 443, "count": 2}
+    assert rows[0] == {"proc": "proc10", "ip": "8.8.8.8", "port": 443, "count": 2, "plain": False}
     assert {r["ip"] for r in rows} == {"8.8.8.8", "1.1.1.1"}
     assert rows[1]["proc"] == "(权限不足)"
     assert "1 条读不到归属" in it["value"]
+
+
+def test_outbound_marks_plaintext_ports():
+    conns = [_conn("ESTABLISHED", "1.1.1.1", 80, 10), _conn("ESTABLISHED", "1.0.0.1", 443, 10)]
+    it = posture.check_outbound(conn_iter=lambda: conns, proc_name=lambda pid: "p")
+    by_port = {r["port"]: r["plain"] for r in it["rows"]}
+    assert by_port == {80: True, 443: False}
 
 
 def test_outbound_failure_is_unknown():
@@ -302,6 +310,8 @@ def test_collect_without_pwsh_does_not_spawn_and_reports_unknown(monkeypatch):
     by_id = {c["id"]: c for c in res["checks"]}
     assert by_id["netcat"]["status"] == "unknown"
     assert "PowerShell 7" in by_id["netcat"]["detail"]
+    for cid in ("dnsenc", "httpsonly", "eavesdrop"):
+        assert by_id[cid]["status"] == "unknown", cid
 
 
 def test_declared_outbound_lists_every_host():
@@ -319,7 +329,15 @@ def _client():
 
 
 def test_posture_endpoint_returns_collect_result_and_needs_token(monkeypatch):
+    import shield
+    probe = {"ok": False, "reason": "test"}
+    seen = {}
     monkeypatch.setattr(posture, "collect", lambda **kw: {"read_only": True, "score": 7, "checks": [], "summary": "x", "kw": kw})
+    monkeypatch.setattr(posture, "content_probe", lambda pwsh=None: probe)      # 不起真进程
+    def _status(pwsh=None, probe=None):
+        seen["probe"] = probe
+        return [{"id": "ad_id", "state": "off"}]
+    monkeypatch.setattr(shield, "status", _status)
     c = _client()
     assert c.get("/api/security/posture").status_code >= 400
     c.headers.update({"X-PF-Token": server._token()})
@@ -329,6 +347,23 @@ def test_posture_endpoint_returns_collect_result_and_needs_token(monkeypatch):
     assert body["score"] == 7
     assert body["kw"]["chat_default"] in ("cloud", "local")
     assert body["kw"]["pwsh"] is None or isinstance(body["kw"]["pwsh"], str)
+    # 开关列表随体检一起返回，且复用同一次探测结果
+    assert body["shield"][0]["id"] == "ad_id"
+    assert body["kw"]["content"] == probe and seen["probe"] is probe
+
+
+def test_posture_endpoint_keeps_unknown_when_probe_fails(monkeypatch):
+    """探测不到 → 内容保密三项必须是 unknown，绝不能当成正常。"""
+    FakeReg().install(monkeypatch)
+    monkeypatch.setattr(posture, "content_probe", lambda pwsh=None: posture._empty_probe("no_pwsh"))
+    monkeypatch.setattr(posture, "check_network_category", lambda pwsh=None: posture._item("netcat", "当前网络类型", "unknown", "--", "", "", "low"))
+    res = posture.collect(pwsh=None, conn_iter=lambda: [], proc_name=lambda pid: "p", content=posture._empty_probe("rc_1"))
+    by_id = {c["id"]: c for c in res["checks"]}
+    assert by_id["dnsenc"]["status"] == "unknown"
+    assert by_id["eavesdrop"]["status"] == "unknown"
+    # 注册表里没有策略 + 探测不到 Edge → 未知（不是「需注意」，也不是「正常」）
+    assert by_id["httpsonly"]["status"] == "unknown"
+    assert by_id["tlsfloor"]["status"] == "info"
 
 
 def test_exitip_is_post_only():
@@ -407,3 +442,202 @@ def test_exitip_rejects_non_ip_payload(monkeypatch):
     c = _client()
     c.headers.update({"X-PF-Token": server._token()})
     assert c.post("/api/security/posture/exitip").status_code == 502
+
+
+# ---------------------------------------------------------------- 内容保密：别人看得到我在浏览器里干什么
+# 这台机器的真实基线（2026-11-25 实测）：主 DNS 223.5.5.5 已加密，备用 223.6.6.6 没有加密模板；
+# Edge 158 没有策略；根证书里有 Watt Toolkit 的 CA。下面的假数据照这个形状造。
+
+def _probe(**kw):
+    base = {
+        "ok": True, "reason": "", "os_build": 26300, "edge_version": "158.0.4370.33",
+        "dns_servers": ["223.5.5.5", "223.6.6.6"],
+        "doh": {"223.5.5.5": {"has": True, "url": "https://dns.alidns.com/dns-query", "auto": True, "fallback": False}},
+        "doh_flags": ["enabled", "enabled"], "roots": [],
+    }
+    base.update(kw)
+    return base
+
+
+def test_dns_encrypted_backup_server_without_template_is_warn():
+    it = posture.check_dns_encrypted(_probe())
+    assert it["status"] == "warn" and "223.6.6.6" in it["value"] and "部分明文" in it["value"]
+
+
+def test_dns_encrypted_all_configured_is_ok_and_admits_provider_sees_queries():
+    p = _probe()
+    p["doh"]["223.6.6.6"] = {"has": True, "url": "https://dns.alidns.com/dns-query", "auto": True, "fallback": False}
+    it = posture.check_dns_encrypted(p)
+    assert it["status"] == "ok"
+    assert "解析服务商" in it["detail"]      # 如实说明：服务商自己看得到
+
+
+def test_dns_global_switch_off_beats_per_server_config():
+    it = posture.check_dns_encrypted(_probe(doh_flags=["disabled", "enabled"]))
+    assert it["status"] == "warn" and "总开关" in it["value"]
+
+
+def test_dns_encrypted_unreadable_is_unknown_not_ok():
+    assert posture.check_dns_encrypted(None)["status"] == "unknown"
+    assert posture.check_dns_encrypted({})["status"] == "unknown"
+    assert posture.check_dns_encrypted(posture._empty_probe("rc_1"))["status"] == "unknown"
+
+
+def test_https_only_states(monkeypatch):
+    reg = FakeReg()
+    reg.install(monkeypatch)
+    it = posture.check_https_only(_probe())                       # Edge 够新、没有策略 → 需注意
+    assert it["status"] == "warn" and "158.0.4370.33" in it["value"]
+    reg.s[("SOFTWARE\\Policies\\Microsoft\\Edge", "HttpsOnlyMode")] = "force_balanced_enabled"
+    assert posture.check_https_only(_probe())["status"] == "ok"
+    reg.s[("SOFTWARE\\Policies\\Microsoft\\Edge", "HttpsOnlyMode")] = "force_enabled"
+    assert "严格" in posture.check_https_only(_probe())["value"]
+    reg.s[("SOFTWARE\\Policies\\Microsoft\\Edge", "HttpsOnlyMode")] = "disallowed"
+    assert posture.check_https_only(_probe())["status"] == "warn"
+    del reg.s[("SOFTWARE\\Policies\\Microsoft\\Edge", "HttpsOnlyMode")]
+    assert posture.check_https_only({})["status"] == "unknown"     # 探测不到 → 未知，不是正常
+    assert posture.check_https_only(_probe(edge_version=None))["status"] == "info"
+    assert posture.check_https_only(_probe(edge_version="120.0.1.0"))["status"] == "info"
+
+
+def test_tls_floor_is_info_only(monkeypatch):
+    reg = FakeReg()
+    reg.install(monkeypatch)
+    assert posture.check_tls_floor()["status"] == "info" and "系统默认" in posture.check_tls_floor()["value"]
+    reg.d[("SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client", "Enabled")] = 1
+    it = posture.check_tls_floor()
+    assert it["status"] == "info" and "TLS 1.0" in it["value"]
+
+
+def _root(subject, days, ca=True, key_cert_sign=True, server_auth=False, code_signing=False):
+    from datetime import date, timedelta
+    start = date(2026, 4, 29)
+    return {"subject": subject, "not_before": start.isoformat(), "not_after": (start + timedelta(days=days)).isoformat(),
+            "self_signed": True, "store": "LocalMachine\\Root", "is_ca": ca, "key_cert_sign": key_cert_sign,
+            "server_auth": server_auth, "code_signing": code_signing, "san": []}
+
+
+def _no_hosts(monkeypatch):
+    monkeypatch.setattr(posture, "_hosts_redirects", lambda: 0)
+
+
+def test_eavesdrop_known_accelerator_ca_is_info_and_names_the_tool(monkeypatch):
+    _no_hosts(monkeypatch)
+    FakeReg().install(monkeypatch)
+    it = posture.check_eavesdrop(_probe(roots=[_root("C=CN, O=BeyondDimension, CN=SteamTools Certificate", 300)]))
+    assert it["status"] == "info" and "1 个私有 CA" in it["value"]
+    assert "SteamTools Certificate" in it["detail"] and "Watt Toolkit" in it["detail"]
+
+
+def test_eavesdrop_unknown_private_ca_is_warn(monkeypatch):
+    _no_hosts(monkeypatch)
+    FakeReg().install(monkeypatch)
+    it = posture.check_eavesdrop(_probe(roots=[_root("CN=某个来路不明的工具", 200)]))
+    assert it["status"] == "warn" and "来历不明" in it["detail"]
+
+
+def test_eavesdrop_non_ca_certs_cannot_impersonate_and_do_not_alarm(monkeypatch):
+    _no_hosts(monkeypatch)
+    FakeReg().install(monkeypatch)
+    roots = [_root("CN=DESKTOP-O1QN1R0", 3650, ca=False, key_cert_sign=False, server_auth=True),
+             _root("CN=BTIG Local Dev", 365, ca=False, key_cert_sign=False, code_signing=True)]
+    it = posture.check_eavesdrop(_probe(roots=roots))
+    assert it["status"] == "info" and "没有私有 CA" in it["value"]
+    assert "冒充不了任何网站" in it["detail"] and "代码签名" in it["detail"]
+
+
+def test_eavesdrop_long_lived_public_roots_are_not_private_ca(monkeypatch):
+    _no_hosts(monkeypatch)
+    FakeReg().install(monkeypatch)
+    it = posture.check_eavesdrop(_probe(roots=[_root("C=US, O=DigiCert Inc, CN=DigiCert Global Root G2", 9000)]))
+    assert it["status"] == "info" and "没有私有 CA" in it["value"]
+
+
+def test_eavesdrop_system_proxy_is_reported(monkeypatch):
+    _no_hosts(monkeypatch)
+    reg = FakeReg()
+    reg.install(monkeypatch)
+    inet = "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+    reg.d[(inet, "ProxyEnable")] = 1
+    reg.s[(inet, "ProxyServer")] = "127.0.0.1:7890"
+    it = posture.check_eavesdrop(_probe(roots=[]))
+    assert it["status"] == "warn" and "127.0.0.1:7890" in it["detail"]
+    assert posture.check_eavesdrop({})["status"] == "unknown"
+
+
+def test_content_probe_without_pwsh_does_not_spawn(monkeypatch):
+    def no_run(*a, **k):
+        raise AssertionError("没有 pwsh 时不允许起子进程")
+    monkeypatch.setattr(posture.subprocess, "run", no_run)
+    out = posture.content_probe(None)
+    assert out["ok"] is False and out["reason"] == "no_pwsh" and out["roots"] is None
+
+
+def test_content_probe_normalizes_real_shaped_json(monkeypatch, tmp_path):
+    pwsh = tmp_path / "pwsh.exe"
+    pwsh.write_text("")
+    payload = {
+        "ok": True, "os_build": 26300, "edge_version": "158.0.4370.33",
+        "ifaces": [{"if": "WLAN", "servers": ["223.5.5.5", "223.6.6.6"]}, {"if": "以太网", "servers": ["223.5.5.5"]}],
+        "doh": {"223.5.5.5": {"tpl": "https://dns.alidns.com/dns-query", "auto": True, "fallback": False}},
+        "doh_flags": ["enabled", "enabled"], "roots": [{"subject": "CN=医院", "self_signed": True}],
+    }
+    seen = []
+
+    class R:
+        returncode = 0
+        stdout = json.dumps(payload, ensure_ascii=False)
+
+    def run(args, **kw):
+        seen.append(args)
+        return R()
+
+    monkeypatch.setattr(posture.subprocess, "run", run)
+    out = posture.content_probe(str(pwsh))
+    assert out["ok"] is True
+    assert out["dns_servers"] == ["223.5.5.5", "223.6.6.6"]          # 跨网卡去重
+    assert out["doh"]["223.5.5.5"]["auto"] is True and out["doh"]["223.5.5.5"]["url"].startswith("https://")
+    assert out["doh_flags"] == ["enabled", "enabled"] and out["edge_version"] == "158.0.4370.33"
+    assert out["roots"][0]["subject"] == "CN=医院"
+    assert seen[0][:4] == [str(pwsh), "-NoProfile", "-NonInteractive", "-Command"]
+
+
+def test_content_probe_bad_output_is_unknown_not_ok(monkeypatch, tmp_path):
+    pwsh = tmp_path / "pwsh.exe"
+    pwsh.write_text("")
+    monkeypatch.setattr(posture.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=1, stdout=""))
+    assert posture.content_probe(str(pwsh))["reason"] == "rc_1"
+    monkeypatch.setattr(posture.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout="[]"))
+    assert posture.content_probe(str(pwsh))["reason"] == "bad_json"
+    monkeypatch.setattr(posture.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout="{"))
+    assert posture.content_probe(str(pwsh))["ok"] is False
+
+
+def test_content_command_is_read_only_and_makes_no_requests():
+    cmd = posture._CONTENT_COMMAND
+    for bad in ("Resolve-DnsName", "Invoke-WebRequest", "Invoke-RestMethod", "Set-ItemProperty", "New-ItemProperty",
+                "Remove-Item", "Set-DnsClient", "netsh", "curl"):
+        assert bad not in cmd.replace("netsh dnsclient show global", ""), bad   # 只允许这一条只读的 show
+    assert "Get-DnsClientDohServerAddress" in cmd and "Cert:\\LocalMachine\\Root" in cmd
+
+
+def test_content_checks_share_one_probe(monkeypatch, tmp_path):
+    """collect 收到探测结果时不再自己起进程：三项吃同一份。"""
+    FakeReg().install(monkeypatch)
+    _isolate_fs(monkeypatch, tmp_path)
+    spawns = []
+
+    def no_run(*a, **k):
+        spawns.append(a)
+        raise AssertionError("已有探测结果时不允许再起子进程")
+
+    monkeypatch.setattr(posture.subprocess, "run", no_run)
+    monkeypatch.setattr(posture, "check_network_category",
+                        lambda pwsh=None: posture._item("netcat", "当前网络类型", "unknown", "--", "", "", "low"))
+    res = posture.collect(pwsh="pwsh.exe", conn_iter=lambda: [], proc_name=lambda pid: "p",
+                          content=_probe(doh_flags=["disabled", "enabled"]))
+    assert spawns == []
+    by_id = {c["id"]: c for c in res["checks"]}
+    assert by_id["dnsenc"]["status"] == "warn" and by_id["httpsonly"]["status"] == "warn"
+    # 其余读不到的不计分；DNS 需注意、HTTPS 需注意 → 0/2
+    assert res["score"] == 0 and res["summary"].startswith("2 项需要注意")

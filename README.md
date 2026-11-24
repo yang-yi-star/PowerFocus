@@ -12,9 +12,11 @@
 也可以直接对输入框说人话，由它翻译成调度指令。另带一条**真实运行的病毒扫描链路**
 （可选能力，详见下文「安全扫描」）。
 
-> 诚实定位：这是个人开发者维护的开源项目。代码（Python / PowerShell / HTML）为项目原创；
-> 项目**不包含任何第三方二进制**——卡巴斯基 KVRT、Node.js 等第三方组件均由应用在用户明确同意后
-> 从官方源下载到本机，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+> 诚实定位：这是个人开发者维护的开源项目。**源码仓库**只含项目原创代码（Python / PowerShell / HTML），
+> 不包含第三方二进制；**Release 单文件 exe** 由 PyInstaller 打包，内含 CPython 与 38 个
+> Python 包。卡巴斯基 KVRT、Node.js 等外部组件不入仓库、不入 exe，由应用在用户明确同意后
+> 从官方源下载到本机。完整边界见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
+> [LICENSES/](LICENSES/README.md) 与 [SBOM.cdx.json](SBOM.cdx.json)。
 
 ## 为什么做它
 
@@ -49,11 +51,12 @@ llama-server 先歇一会」。市面上的工具也分得很碎——任务管�
 v0.10 内核起，应用具备应用内病毒扫描能力。这不是模拟出来的演示——全链路实测跑通过，
 6,943 个扫描对象是真扫出来的：
 
-1. **下载**：仅从卡巴斯基官方分发点获取 KVRT（免费专有工具），落到应用自身目录。
+1. **下载**：仅从卡巴斯基官方 devbuild latest 通道获取 KVRT（免费专有工具；该通道不是普通消费者下载页），落到应用自身目录。
 2. **验签**：纯 Python 调用 `WinVerifyTrust` + SHA256 校验，不依赖外部工具。
-3. **扫描**：真实调用引擎执行自定义范围或全盘扫描，默认只报告、不删除文件。
-4. **报告**：解析 KVRT 官方编码报告并落盘，应用内可查看与调度（每日自动扫描可配置）。
-5. **多引擎适配**：识别本机已装的 Defender / 卡巴斯基 KES / ESET 等并统一接口；
+3. **同意**：界面必须由用户本人勾选 [KVRT EULA](https://support.kaspersky.com/8530)；后端 `accept_eula` 默认 `false`，未收到 JSON 布尔 `true` 直接 400，不代替用户接受协议。
+4. **扫描**：真实调用引擎执行自定义范围或全盘扫描，默认只报告、不删除文件；处置需第二道显式确认。
+5. **报告**：解析 KVRT 官方编码报告并落盘，应用内可查看与调度（每日自动扫描可配置）。
+6. **多引擎适配**：识别本机已装的 Defender / 卡巴斯基 KES / ESET 等并统一接口；
    「识别 ≠ 可调用」，未经实测的引擎拒绝执行。
 
 边界声明：**KVRT 不随本仓库或安装包分发**；卡巴斯基完整版只下载验签、由用户本人在官方向导安装；
@@ -155,5 +158,6 @@ cd product\v1.00
 
 ## 许可
 
-代码以 [Apache License 2.0](LICENSE) 发布。第三方组件的许可与使用方式见
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+代码以 [Apache License 2.0](LICENSE) 发布。第三方组件的许可、逐包全文与来源见
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、[LICENSES/](LICENSES/README.md)；
+机器可读清单见 [SBOM.cdx.json](SBOM.cdx.json)。分发单文件 exe 时，这些附件必须一同提供。

@@ -1,0 +1,40 @@
+PowerFocus 第三方许可证全文
+==============================================================================
+Package: proxy_tools
+Version: 0.1.0
+SPDX-License-Identifier: BSD-2-Clause
+Declared metadata: MIT
+
+License source(s):
+  - https://raw.githubusercontent.com/jtushman/proxy_tools/master/LICENSE.txt  sha256=2b5b3c35d52f5db35132c71e90d40e12d78a2eeb8671d676d2b3820e1468927a  bytes=1324
+
+核实说明:
+PyPI 元数据写的是 MIT，但上游仓库 LICENSE.txt 正文是 BSD 二条款，版权行为 Armin Ronacher (2013) / Jonathan Tushman (2014)。以许可证正文为准，按 BSD-2-Clause 分发。
+
+License text:
+
+----- upstream LICENSE (已核实) -----
+The BSD License (BSD)
+
+Copyright (c) 2013 Armin Ronacher
+Copyright (c) 2014 Jonathan Tushman
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

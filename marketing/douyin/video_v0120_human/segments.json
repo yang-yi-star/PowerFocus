@@ -1,0 +1,122 @@
+[
+  {
+    "id": "s01",
+    "text": "先说个丢人的。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s01.mp3",
+    "dur": 1.92
+  },
+  {
+    "id": "s02",
+    "text": "我这软件打包出来的 exe，版本号是新的，里头装的还是上一版的组件。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s02.mp3",
+    "dur": 6.288
+  },
+  {
+    "id": "s03",
+    "text": "这个 bug 我自己没发现。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s03.mp3",
+    "dur": 2.472
+  },
+  {
+    "id": "s04",
+    "text": "现在打包跟着版本指针走，指到哪装哪。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s04.mp3",
+    "dur": 4.104
+  },
+  {
+    "id": "s05",
+    "text": "第二件事，清场。以前这个按钮按下去，就是杀进程。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s05.mp3",
+    "dur": 5.256
+  },
+  {
+    "id": "s06",
+    "text": "你正在剪片子，或者跑模型，它一按，东西没了。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s06.mp3",
+    "dur": 4.752
+  },
+  {
+    "id": "s07",
+    "text": "现在的做法反过来：降优先级，开 EcoQoS，把工作集换出去。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s07.mp3",
+    "dur": 6.024
+  },
+  {
+    "id": "s08",
+    "text": "就像让一个正在干活的人先站边上歇会儿，不是赶他出门。手一松，他回来接着干。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s08.mp3",
+    "dur": 7.224
+  },
+  {
+    "id": "s09",
+    "text": "我给自己留了一句话：这个我正在用。它和它下面那一串子进程，整组都不动。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s09.mp3",
+    "dur": 6.72
+  },
+  {
+    "id": "s10",
+    "text": "为什么非加这条？我这台机器是 8940HX、5060 8G、32G 内存，跑本地模型经常把内存顶满。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s10.mp3",
+    "dur": 10.584
+  },
+  {
+    "id": "s11",
+    "text": "最怕的就是跑到一半，被清掉。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s11.mp3",
+    "dur": 3.312
+  },
+  {
+    "id": "s12",
+    "text": "温度也是，按天记日志，峰值留着。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s12.mp3",
+    "dur": 3.768
+  },
+  {
+    "id": "s13",
+    "text": "GPU 拿不到，就退 nvidia-smi。CPU 实在拿不到，就空着。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s13.mp3",
+    "dur": 5.64
+  },
+  {
+    "id": "s14",
+    "text": "别的机器我不敢保证。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s14.mp3",
+    "dur": 2.304
+  },
+  {
+    "id": "s15",
+    "text": "空着难看。编个数更难看。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s15.mp3",
+    "dur": 3.144
+  },
+  {
+    "id": "s16",
+    "text": "病毒扫描做成了真接口，扫完能看到进度和结果。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s16.mp3",
+    "dur": 4.584
+  },
+  {
+    "id": "s17",
+    "text": "要处置，得你点确认。你不点，它只敢报告。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s17.mp3",
+    "dur": 4.632
+  },
+  {
+    "id": "s18",
+    "text": "MCP 的只读工具，11 个了。上一版 10 个。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s18.mp3",
+    "dur": 4.584
+  },
+  {
+    "id": "s19",
+    "text": "113 个测试全过，ruff 零错误。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s19.mp3",
+    "dur": 3.72
+  },
+  {
+    "id": "s20",
+    "text": "想试试的，GitHub 搜 PowerFocus。不想装也行，看看热闹。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120_human\\tts\\s20.mp3",
+    "dur": 5.76
+  }
+]

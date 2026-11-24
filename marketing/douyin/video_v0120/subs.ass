@@ -1,0 +1,52 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Def,Microsoft YaHei,54,&H00FFFFFF,&H00FFFFFF,&H00000000,&H78000000,-1,0,0,0,100,100,1,0,1,5,3,2,70,70,378,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:03.09,Def,,0,0,0,,我的开源软件 PowerFocus，
+Dialogue: 0,0:00:03.09,0:00:05.67,Def,,0,0,0,,今天发新版了，v0.12.0。
+Dialogue: 0,0:00:05.67,0:00:07.05,Def,,0,0,0,,这条视频讲清楚，
+Dialogue: 0,0:00:07.05,0:00:08.59,Def,,0,0,0,,这次到底改了什么。
+Dialogue: 0,0:00:08.84,0:00:10.50,Def,,0,0,0,,先说一句，它不是演示。
+Dialogue: 0,0:00:10.50,0:00:12.92,Def,,0,0,0,,桌面 exe 和 MCP 插件，
+Dialogue: 0,0:00:12.92,0:00:16.38,Def,,0,0,0,,都已经挂在 GitHub Release 上，
+Dialogue: 0,0:00:16.38,0:00:17.29,Def,,0,0,0,,直接就能下。
+Dialogue: 0,0:00:17.54,0:00:20.56,Def,,0,0,0,,最实用的一条：温度真的落盘了。
+Dialogue: 0,0:00:20.56,0:00:21.37,Def,,0,0,0,,CPU、
+Dialogue: 0,0:00:21.37,0:00:23.99,Def,,0,0,0,,GPU 温度按天记成日志，
+Dialogue: 0,0:00:23.99,0:00:25.20,Def,,0,0,0,,峰值也留着。
+Dialogue: 0,0:00:25.45,0:00:27.33,Def,,0,0,0,,测不到，就老实说测不到。
+Dialogue: 0,0:00:27.33,0:00:30.79,Def,,0,0,0,,GPU 拿不到就退回 nvidia-smi，
+Dialogue: 0,0:00:30.79,0:00:33.00,Def,,0,0,0,,CPU 实在拿不到，就留空，
+Dialogue: 0,0:00:33.00,0:00:34.25,Def,,0,0,0,,不给你编一个数。
+Dialogue: 0,0:00:34.50,0:00:37.71,Def,,0,0,0,,第二条，病毒扫描做成了真接口。
+Dialogue: 0,0:00:37.71,0:00:39.64,Def,,0,0,0,,点一下，后台真扫，
+Dialogue: 0,0:00:39.64,0:00:41.56,Def,,0,0,0,,进度和结果都能查。
+Dialogue: 0,0:00:41.81,0:00:44.87,Def,,0,0,0,,但要处置威胁，必须你显式确认。
+Dialogue: 0,0:00:44.87,0:00:46.71,Def,,0,0,0,,不确认，它只报告，
+Dialogue: 0,0:00:46.71,0:00:48.34,Def,,0,0,0,,绝不动你的文件。
+Dialogue: 0,0:00:48.59,0:00:51.39,Def,,0,0,0,,第三条，清场再也不杀进程了。
+Dialogue: 0,0:00:51.39,0:00:54.38,Def,,0,0,0,,只降优先级、开 EcoQoS、
+Dialogue: 0,0:00:54.38,0:00:55.98,Def,,0,0,0,,把工作集换出去，
+Dialogue: 0,0:00:55.98,0:00:57.78,Def,,0,0,0,,松开手就完整还原。
+Dialogue: 0,0:00:58.03,0:01:01.05,Def,,0,0,0,,你声明一句，这个软件我正在用，
+Dialogue: 0,0:01:01.05,0:01:03.86,Def,,0,0,0,,它和它的子进程，整组都不动。
+Dialogue: 0,0:01:04.11,0:01:07.58,Def,,0,0,0,,还修了一个我自己都没察觉的 bug。
+Dialogue: 0,0:01:07.58,0:01:08.54,Def,,0,0,0,,以前打包，
+Dialogue: 0,0:01:08.54,0:01:10.85,Def,,0,0,0,,exe 里塞的是旧组件。
+Dialogue: 0,0:01:10.85,0:01:12.77,Def,,0,0,0,,现在跟着版本指针走，
+Dialogue: 0,0:01:12.77,0:01:14.12,Def,,0,0,0,,指到哪就装哪。
+Dialogue: 0,0:01:14.37,0:01:15.94,Def,,0,0,0,,113 个测试全过，
+Dialogue: 0,0:01:15.94,0:01:17.36,Def,,0,0,0,,ruff 零错误。
+Dialogue: 0,0:01:17.36,0:01:20.51,Def,,0,0,0,,GitHub 搜 PowerFocus，
+Dialogue: 0,0:01:20.51,0:01:21.93,Def,,0,0,0,,开源免费，直接下。
+Dialogue: 0,0:01:22.18,0:01:23.94,Def,,0,0,0,,PowerFocus，
+Dialogue: 0,0:01:23.94,0:01:25.37,Def,,0,0,0,,电脑算力调度中心。

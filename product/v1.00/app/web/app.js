@@ -19,6 +19,10 @@
   let sceneLoaded = false;
   let settingsLoaded = false;
   let securityLoaded = false;
+  let scanLoaded = false;
+  let scanEngineReady = false;
+  let scanRunning = false;
+  let scanTimer = null;
   let dialogResolve = null;
   let pollTimer = null;
   let pollErrors = 0;
@@ -90,9 +94,14 @@
     }
   }
 
+  /* 数值格式化（唯一入口）：只接受 number 与数字字符串；
+     null/空串/'N/A'/对象/Infinity 一律 '--'，绝不把 NaN 印到界面上 */
   function fmt(n, digits) {
-    if (n === null || n === undefined || Number.isNaN(n)) return '--';
-    return Number(n).toFixed(digits === undefined ? 1 : digits);
+    if (typeof n !== 'number' && typeof n !== 'string') return '--';
+    if (n === '') return '--';
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '--';
+    return v.toFixed(digits === undefined ? 1 : digits);
   }
 
   function toast(msg, kind) {
@@ -188,7 +197,7 @@
     }
     if (name === 'scenes' && !sceneLoaded) loadScenes();
     if (name === 'models') refreshModels();
-    if (name === 'security') refreshSecurity();
+    if (name === 'security') { refreshSecurity(); if (!scanLoaded) refreshScan(); }
     if (name === 'bootstrap' && !bootstrapLoaded) loadBootstrap();
     if (name === 'settings' && !settingsLoaded) loadSettings();
     if (name === 'logs') { setLogBadge(0); renderLogs(); }
@@ -215,8 +224,8 @@
     $('kpi-cpu-x').textContent = '采样 ' + (d.time || '--');
     $('kpi-mem').textContent = fmt(mem);
     $('kpi-mem').appendChild(el('small', { text: '%' }));
-    $('kpi-mem-x').textContent = Math.round(d.mem_used_mb / 1024) + ' / ' +
-      Math.round(d.mem_total_mb / 1024) + ' GB';
+    const gbOf = (mb) => fmt(Math.round(Number(mb || 0) / 1024), 0);
+    $('kpi-mem-x').textContent = gbOf(d.mem_used_mb) + ' / ' + gbOf(d.mem_total_mb) + ' GB';
     $('kpi-procs').textContent = String(d.process_count || 0);
     $('kpi-procs-x').textContent = (d.model_loaded ? d.model_loaded.length : 0) + ' 个本地模型已载入';
 
@@ -271,7 +280,7 @@
       box.appendChild(el('div', {
         class: 'topitem',
         title: '点击查看 ' + p.name,
-        onclick: () => { selected = { pid: p.pid, name: p.name }; switchView('processes'); renderProcessTable(snapshot); }
+        onclick: () => { switchView('processes'); selectProcess(p.pid, p.name); }
       },
         el('div', { class: 'nm' }, el('div', { text: p.name }), el('div', { class: 'bar' }, bar)),
         el('div', { class: 'tag' + (p.cpu > 20 ? ' hi' : ''), text: fmt(p.cpu) + '%' }),
@@ -533,49 +542,239 @@
   /* ---------------- 安全态势 ---------------- */
   async function refreshSecurity() {
     if (!securityLoaded) skeleton($('sec-audit'), 5);
-    try {
-      const [sec, audit] = await Promise.all([api('/api/security'), api('/api/audit?limit=40')]);
-      renderSecurity(sec);
-      renderAudit(audit.items || []);
+    const [secRes, auditRes] = await Promise.allSettled([api('/api/security'), api('/api/audit?limit=40')]);
+    if (secRes.status === 'fulfilled') {
+      renderSecurity(secRes.value);
       securityLoaded = true;
-    } catch (e) {
-      toast('读取安全态势失败：' + e.message, 'err');
+    } else {
+      const e = secRes.reason || {};
+      toast('读取安全态势失败：' + (e.message || String(secRes.reason || '未知错误')), 'err');
+    }
+    if (auditRes.status === 'fulfilled') {
+      renderAudit((auditRes.value && auditRes.value.items) || []);
+    } else {
+      const e = auditRes.reason || {};
+      renderAudit([], '审计日志读取失败：' + (e.message || String(auditRes.reason || '未知错误')));
     }
   }
 
+  /* 接口字段可能随版本漂移（少一段、类型不对）：逐段归一，缺哪格说“未知”，
+     其余照常渲染——不能让一个字段把整页打空（51 号） */
   function renderSecurity(s) {
     const kv = $('sec-kv');
     kv.textContent = '';
+    const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+    const arr = (v) => Array.isArray(v) ? v : [];
+    const txt = (v) => {
+      if (typeof v === 'string') return v || '--';
+      if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+      if (typeof v === 'boolean') return String(v);
+      return '--';
+    };
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v)) ? String(v) : '--';
+    const list = (v) => arr(v).map(txt).filter((x) => x !== '--');
+    s = obj(s);
+    const bind = obj(s.bind);
+    const guard = obj(s.host_guard);
+    const tok = obj(s.token);
+    const docs = obj(s.docs);
+    const lim = obj(s.limits);
+    const ck = obj(s.cloud_key);
+    const allowed = list(guard.allowed);
+    const headers = list(s.headers);
+    const host = txt(bind.host);
+    const port = num(bind.port);
+    const loop = bind.loopback_only === true ? '（仅回环）'
+      : (bind.loopback_only === false ? '（对外暴露！）' : '（回环未知）');
+    const fingerprint = txt(tok.fingerprint);
+    const rpm = num(lim.requests_per_min);
+    const aft = num(lim.auth_fail_threshold);
+    const body = num(lim.body_bytes);
     const rows = [
-      ['监听', s.bind.host + ':' + s.bind.port + (s.bind.loopback_only ? '（仅回环）' : '（对外暴露！）')],
-      ['Host 白名单', (s.host_guard.allowed || []).join(', ')],
-      ['令牌指纹', s.token.fingerprint || '未就绪'],
-      ['令牌文件', s.token.path],
-      ['接口地图', s.docs.disabled ? '已关闭（/docs /openapi.json 均 404）' : '未关闭（风险）'],
-      ['请求限流', s.limits.requests_per_min + ' 次/分钟 · 认证失败 ' + s.limits.auth_fail_threshold + ' 次熔断'],
-      ['请求体上限', String(s.limits.body_bytes) + ' 字节'],
-      ['安全响应头', (s.headers || []).join(', ')],
-      ['云端密钥', s.cloud_key.encrypted ? 'DPAPI 加密存储' : (s.cloud_key.source === 'env' ? '环境变量明文' : '未配置')],
-      ['审计日志', s.audit_log]
+      ['监听', host === '--' && port === '--' ? '未知（未回报）' : host + ':' + port + loop],
+      ['Host 白名单', allowed.length ? allowed.join(', ') : '--'],
+      ['令牌指纹', fingerprint !== '--' ? fingerprint : (tok.ready === false ? '未就绪' : '--')],
+      ['令牌文件', txt(tok.path)],
+      ['接口地图', docs.disabled === true ? '已关闭（/docs /openapi.json 均 404）'
+        : (docs.disabled === false ? '未关闭（风险）' : '未知（未回报）')],
+      ['请求限流', rpm === '--' && aft === '--' ? '未知（未回报）' : rpm + ' 次/分钟 · 认证失败 ' + aft + ' 次熔断'],
+      ['请求体上限', body === '--' ? '--' : body + ' 字节'],
+      ['安全响应头', headers.length ? headers.join(', ') : '--'],
+      ['云端密钥', ck.encrypted === true ? 'DPAPI 加密存储'
+        : (ck.encrypted === false ? (ck.source === 'env' ? '环境变量明文' : '未配置') : '未知（未回报）')],
+      ['审计日志', txt(s.audit_log)]
     ];
     for (const row of rows) {
       kv.appendChild(el('div', { class: 'k', text: row[0] }));
       kv.appendChild(el('div', { class: 'v', text: row[1] }));
     }
-    setText('sec-fp', '令牌 ' + (s.token.fingerprint || '--'));
+    setText('sec-fp', '令牌 ' + fingerprint);
   }
 
-  function renderAudit(items) {
+  function renderAudit(items, error) {
     const box = $('sec-audit');
     box.textContent = '';
-    if (!items.length) { box.appendChild(el('div', { class: 'empty', text: '最近没有安全事件' })); return; }
-    for (const it of items) {
+    if (error) { box.appendChild(el('div', { class: 'empty', text: error })); return; }
+    const rows = Array.isArray(items) ? items.filter((it) => it && typeof it === 'object' && !Array.isArray(it)) : [];
+    if (!rows.length) { box.appendChild(el('div', { class: 'empty', text: '最近没有安全事件' })); return; }
+    for (const it of rows) {
       const meta = Object.keys(it).filter((k) => k !== 'ts' && k !== 'event')
         .map((k) => k + '=' + it[k]).join('  ');
       box.appendChild(el('div', { class: 'item' },
         el('span', { class: 'dt', text: it.ts || '' }),
         el('span', { class: 'ev', text: it.event || '' }),
         el('span', { class: 'meta', text: meta })));
+    }
+  }
+
+  function updateScanButton() {
+    const btn = $('scan-start');
+    const consent = $('scan-eula');
+    if (!btn) return;
+    btn.disabled = !(scanEngineReady && !scanRunning && consent && consent.checked === true);
+  }
+
+  function renderScan(d) {
+    d = (d && typeof d === 'object') ? d : {};
+    const eng = (d.engine && typeof d.engine === 'object') ? d.engine : {};
+    const sig = (eng.signature && typeof eng.signature === 'object') ? eng.signature : {};
+    const ready = eng.ready === true;
+    const present = eng.present === true;
+    scanEngineReady = ready;
+    scanRunning = d.running === true;
+
+    let engineText;
+    if (eng.available === false) engineText = '模块不可用：' + String(eng.error || '未知错误');
+    else if (ready) engineText = '引擎就绪 · ' + String(sig.signer || sig.signer_hint || '已完成验签');
+    else if (present) engineText = '已下载，尚未验签';
+    else engineText = '未下载（先到「启动依赖自检」补齐 KVRT）';
+    setText('scan-engine', engineText);
+
+    const cb = $('scan-eula');
+    if (cb) {
+      cb.disabled = !ready;
+      if (!ready) cb.checked = false;
+    }
+    updateScanButton();
+
+    let state;
+    if (d.running === true) {
+      state = '扫描进行中：' + String(d.scope || '--') + ' · 开始于 ' + String(d.started || '--');
+    } else if (d.error) {
+      state = '上次扫描失败：' + String(d.error);
+    } else if (d.finished) {
+      const result = (d.result && typeof d.result === 'object') ? d.result : {};
+      const verdict = (result.verdict && typeof result.verdict === 'object') ? result.verdict : {};
+      state = '上次扫描结束：' + String(d.finished) +
+        (verdict.verdict ? ' · 判定 ' + String(verdict.verdict) : '') +
+        (verdict.reason ? ' · ' + String(verdict.reason) : '');
+    } else {
+      state = ready ? '等待你勾选 EULA 后开始' : '引擎尚未就绪，不能开始扫描';
+    }
+    setText('scan-state', state);
+
+    const out = $('scan-out');
+    if (out) {
+      const result = (d.result && typeof d.result === 'object') ? d.result : null;
+      if (result) {
+        const parsed = (result.parsed && typeof result.parsed === 'object') ? result.parsed : {};
+        const verdict = (result.verdict && typeof result.verdict === 'object') ? result.verdict : {};
+        const scan = (result.scan && typeof result.scan === 'object') ? result.scan : {};
+        let text;
+        try {
+          text = JSON.stringify({
+            verdict: verdict.verdict || '--',
+            reason: verdict.reason || '--',
+            files_scanned: parsed.files_scanned,
+            threat_count: parsed.threat_count,
+            exit_code: scan.exit_code,
+            duration_sec: scan.duration_sec
+          }, null, 2);
+        } catch (_) { text = String(result); }
+        out.hidden = false;
+        out.textContent = text;
+      } else if (d.error) {
+        out.hidden = false;
+        out.textContent = String(d.error);
+      } else {
+        out.hidden = true;
+        out.textContent = '';
+      }
+    }
+    if (d.running === true) scheduleScanPoll();
+  }
+
+  function scheduleScanPoll() {
+    if (scanTimer) return;
+    scanTimer = setTimeout(() => {
+      scanTimer = null;
+      refreshScan();
+    }, 2500);
+  }
+
+  async function refreshScan() {
+    try {
+      const d = await api('/api/security/scan/status', { timeout: 10000 });
+      scanLoaded = true;
+      renderScan(d);
+    } catch (e) {
+      setText('scan-engine', '状态读取失败');
+      setText('scan-state', '无法读取 KVRT 状态：' + (e.message || String(e)));
+      scanEngineReady = false;
+      updateScanButton();
+    }
+  }
+
+  function syncScanScope() {
+    const custom = $('scan-scope').value === 'custom';
+    const label = $('scan-path-label');
+    const input = $('scan-path');
+    if (label) label.hidden = !custom;
+    if (input) input.hidden = !custom;
+  }
+
+  async function startScan() {
+    const consent = $('scan-eula');
+    if (!scanEngineReady) { toast('KVRT 引擎未就绪，请先在组件自检里补齐并验签', 'err'); return; }
+    if (!consent || consent.checked !== true) {
+      toast('请先勾选并同意 KVRT EULA；应用不代你接受协议', 'err');
+      return;
+    }
+    const scope = $('scan-scope').value;
+    const target = scope === 'custom' ? $('scan-path').value.trim() : '';
+    if (scope === 'custom' && !target) { toast('自定义范围必须填写绝对路径', 'err'); return; }
+    let level = 0;
+    try { level = parseInt($('scan-level').value, 10) || 0; } catch (_) { level = 0; }
+    if (level > 0) {
+      const ok = await confirmDialog('启用威胁处置',
+        '处置是删除/清除动作，不可撤销。\n\n本次等级 ' + level +
+        '，目标：' + (target || '系统核心区域') + '。\n\n只建议在你明确知道风险时使用；默认应保持「只报告」。',
+        '我确认处置', true);
+      if (!ok) return;
+    }
+    let timeout = 3600;
+    try { timeout = parseInt($('scan-timeout').value, 10) || 3600; } catch (_) { timeout = 3600; }
+    timeout = Math.max(30, Math.min(timeout, 14400));
+
+    const body = {
+      scope, path: target, process_level: level, timeout_sec: timeout,
+      accept_eula: true
+    };
+    if (level > 0) body.disinfect_confirm = 'yes';
+
+    const btn = $('scan-start');
+    btn.disabled = true;
+    btn.textContent = '启动中…';
+    try {
+      const out = await api('/api/security/scan', { method: 'POST', body, timeout: 30000 });
+      toast(out && out.started ? '扫描已启动，正在后台执行' : '扫描未启动', out && out.started ? 'ok' : 'err');
+      await refreshScan();
+    } catch (e) {
+      toast('启动扫描失败：' + e.message, 'err');
+      setText('scan-state', '启动失败：' + e.message);
+    } finally {
+      btn.textContent = '开始扫描';
+      updateScanButton();
     }
   }
 
@@ -791,11 +990,23 @@
         kv.appendChild(el('div', { class: 'v', text: row[1] }));
       }
     } catch (e) {
+      settingsLoaded = false;
+      const out = $('set-out');
+      out.hidden = false;
+      out.textContent = '设置读取失败，暂不允许保存（避免用空值覆盖现有配置）：' + e.message;
       toast('读取设置失败：' + e.message, 'err');
     }
   }
 
   async function saveSettings() {
+    /* 49 号：没成功读过设置就保存，等于用空串覆盖磁盘上的真实配置 */
+    if (!settingsLoaded) {
+      const out = $('set-out');
+      out.hidden = false;
+      out.textContent = '设置尚未读取成功，已取消保存（避免用空值覆盖现有配置）';
+      toast('设置尚未读取成功，已取消保存', 'err');
+      return;
+    }
     const body = {
       base_url: $('set-base').value.trim(),
       model: $('set-model').value.trim(),
@@ -824,7 +1035,8 @@
     out.textContent = '正在测试云端连接…';
     try {
       const r = await api('/api/cloud/test', { method: 'POST', body: {}, timeout: 40000 });
-      out.textContent = (r.ok ? '连接成功' : '连接失败') + ' · HTTP ' + r.status +
+      out.textContent = (r.ok ? '连接成功' : '连接失败') +
+        ' · ' + (typeof r.status === 'number' ? 'HTTP ' + r.status : '未收到上游响应') +
         ' · ' + r.latency_ms + ' ms' + (r.model_count ? ' · ' + r.model_count + ' 个模型' : '') +
         (r.detail ? '\n' + r.detail : '');
     } catch (e) {
@@ -989,6 +1201,10 @@
 
     $('sec-selfcheck').addEventListener('click', runSelfcheck);
     $('sec-refresh').addEventListener('click', refreshSecurity);
+    $('scan-refresh').addEventListener('click', refreshScan);
+    $('scan-start').addEventListener('click', startScan);
+    $('scan-eula').addEventListener('change', updateScanButton);
+    $('scan-scope').addEventListener('change', syncScanScope);
 
     const sh = $('scene-help');
     if (sh) sh.addEventListener('click', () => confirmDialog('什么是调度场景',

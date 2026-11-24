@@ -1,0 +1,53 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Def,Microsoft YaHei,54,&H00FFFFFF,&H00FFFFFF,&H00000000,&H78000000,-1,0,0,0,100,100,1,0,1,5,3,2,70,70,378,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:01.69,Def,,0,0,0,,11 月 17 号，
+Dialogue: 0,0:00:01.69,0:00:03.90,Def,,0,0,0,,E 盘剩 0.00 GB。
+Dialogue: 0,0:00:03.90,0:00:05.76,Def,,0,0,0,,两百个 G，两天见底。
+Dialogue: 0,0:00:06.01,0:00:07.20,Def,,0,0,0,,先查是谁在写。
+Dialogue: 0,0:00:07.20,0:00:09.23,Def,,0,0,0,,E 盘的 tts 目录，
+Dialogue: 0,0:00:09.23,0:00:13.47,Def,,0,0,0,,一个训练脚本每 1 到 3 分钟掉一个 .pth，
+Dialogue: 0,0:00:13.47,0:00:14.48,Def,,0,0,0,,585 兆。
+Dialogue: 0,0:00:14.73,0:00:17.76,Def,,0,0,0,,我开始删。删了 1956 项，
+Dialogue: 0,0:00:17.76,0:00:20.78,Def,,0,0,0,,31.55 GB。盘还是满的。
+Dialogue: 0,0:00:21.03,0:00:24.08,Def,,0,0,0,,因为删不是删。它进了回收站。
+Dialogue: 0,0:00:24.08,0:00:26.26,Def,,0,0,0,,回收站也在你的盘上。
+Dialogue: 0,0:00:26.51,0:00:27.98,Def,,0,0,0,,清回收站。第一招，
+Dialogue: 0,0:00:27.98,0:00:30.75,Def,,0,0,0,,Clear-RecycleBin。
+Dialogue: 0,0:00:30.75,0:00:32.06,Def,,0,0,0,,没报错，零删除。
+Dialogue: 0,0:00:32.31,0:00:33.62,Def,,0,0,0,,第二招，直接删目录。
+Dialogue: 0,0:00:33.62,0:00:36.37,Def,,0,0,0,,每个文件回我 Access denied。
+Dialogue: 0,0:00:36.37,0:00:38.34,Def,,0,0,0,,三条 FullControl，
+Dialogue: 0,0:00:38.34,0:00:39.91,Def,,0,0,0,,一条 Deny 都没有。
+Dialogue: 0,0:00:40.16,0:00:42.98,Def,,0,0,0,,第三招，rd /s /q，
+Dialogue: 0,0:00:42.98,0:00:45.59,Def,,0,0,0,,一样。第四招调 API，
+Dialogue: 0,0:00:45.59,0:00:47.32,Def,,0,0,0,,返回 S_OK。
+Dialogue: 0,0:00:47.32,0:00:49.49,Def,,0,0,0,,S_OK 就是成功。
+Dialogue: 0,0:00:49.49,0:00:51.01,Def,,0,0,0,,一个字节没动。
+Dialogue: 0,0:00:51.26,0:00:53.73,Def,,0,0,0,,我先怀疑腾讯电脑管家。
+Dialogue: 0,0:00:53.73,0:00:56.64,Def,,0,0,0,,冤枉它了，它连进程都没跑。
+Dialogue: 0,0:00:56.89,0:00:59.09,Def,,0,0,0,,真凶是执行环境的保护层，
+Dialogue: 0,0:00:59.09,0:01:01.12,Def,,0,0,0,,专拦我这个工具进程树。
+Dialogue: 0,0:01:01.12,0:01:03.32,Def,,0,0,0,,就是我伸出去的一整串手，
+Dialogue: 0,0:01:03.32,0:01:04.79,Def,,0,0,0,,它按这串手认人。
+Dialogue: 0,0:01:04.79,0:01:06.63,Def,,0,0,0,,别的机器我不敢保证。
+Dialogue: 0,0:01:06.88,0:01:07.74,Def,,0,0,0,,解法很土。
+Dialogue: 0,0:01:07.74,0:01:09.80,Def,,0,0,0,,SYSTEM 计划任务，
+Dialogue: 0,0:01:09.80,0:01:12.03,Def,,0,0,0,,跑同一条命令，脱离这串手。
+Dialogue: 0,0:01:12.03,0:01:12.88,Def,,0,0,0,,一次成功，
+Dialogue: 0,0:01:12.88,0:01:15.11,Def,,0,0,0,,31.95 GB 回来了。
+Dialogue: 0,0:01:15.36,0:01:18.68,Def,,0,0,0,,三件事。删进回收站不等于释放。
+Dialogue: 0,0:01:18.68,0:01:22.00,Def,,0,0,0,,API 说成功不等于事情发生。
+Dialogue: 0,0:01:22.00,0:01:25.32,Def,,0,0,0,,动手前先留清单，3732 项。
+Dialogue: 0,0:01:25.57,0:01:28.78,Def,,0,0,0,,你回收站现在多大？右键看属性。
+Dialogue: 0,0:01:28.78,0:01:31.98,Def,,0,0,0,,先看里面有什么，再决定清不清。

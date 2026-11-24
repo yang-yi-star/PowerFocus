@@ -219,7 +219,7 @@ function Write-Lifecycle {
     } catch {}
 }
 
-# 心跳：每 5 个 tick 写 PID/运行时长/tick/规则状态（移植自 v2）
+# 心跳：每 2 个 tick（约 4s）写 PID/运行时长/tick/规则状态（移植自 v2；29 号：原 5 tick=10s，距服务端 15s 判活窗口只剩 5s 余量，丢一拍即误判）
 function Write-Heartbeat {
     try {
         $now = Get-Date
@@ -727,8 +727,12 @@ function Restore-PowerSupply {
 function Invoke-Native {
     # 修复#3: 统一执行 native 命令并检查 $LASTEXITCODE，失败返回 $false
     # v0.13-fix: 捕获 stderr/stdout 到 $script:LastNativeOutput，失败时能说清原因
-    param([string]$Exe, [string[]]$Args, [string]$What)
-    $script:LastNativeOutput = (& $Exe @Args 2>&1 | Out-String).Trim()
+    # 35 号修：参数名不能叫 $Args——它被自动变量 $args（未绑定参数数组）遮蔽，
+    #   实测 & $Exe @Args 恒展开为空数组，所有经此函数的 native 命令都在无参执行
+    #   （powercfg /setactive 永久 exit=1「参数无效」→ 电源切换 / 恢复全废）。
+    #   改用 $ArgList + [Alias('Args')]，既有 -Args 调用点一字不改。
+    param([string]$Exe, [Alias('Args')][string[]]$ArgList, [string]$What)
+    $script:LastNativeOutput = (& $Exe @ArgList 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) {
         Write-Log "WARN" "native 命令失败 (exit=$LASTEXITCODE): $What | $($script:LastNativeOutput)"
         return $false
@@ -1234,15 +1238,20 @@ function Show-ProcPicker {
 function Set-PowerPlanHigh {
     try {
         $cur = powercfg /getactivescheme 2>$null | Out-String
+        # 36 号修（04 遗留 fail-open）：查不到当前方案就不能切——否则切走高性能后
+        #   OriginalPlan 为空，Restore 永远还原不回去。失败即短路返回（fail-closed）。
         if ($LASTEXITCODE -ne 0) {
-            Write-Log "WARN" "powercfg /getactivescheme 失败 (exit=$LASTEXITCODE)"
+            Write-Log "WARN" "powercfg /getactivescheme 失败 (exit=$LASTEXITCODE)，跳过电源优化（保留当前方案）"
             $script:OriginalPlan = $null
+            return
         } elseif ($cur -match '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})') {
             $script:OriginalPlan = $Matches[1]
             Write-Log "INFO" "原电源计划 GUID: $script:OriginalPlan"
         } else {
+            # 36 号修：同 fail-closed，解析不出原方案就不切
             $script:OriginalPlan = $null
-            Write-Log "WARN" "未能解析当前电源计划 GUID"
+            Write-Log "WARN" "未能解析当前电源计划 GUID，跳过电源优化（保留当前方案）"
+            return
         }
         # 04 守卫①：当前已是高性能，无需切换；清空原计划，避免还原时做无意义的反向切换
         if ($cur -match [regex]::Escape($script:HighPerfGuid)) {
@@ -1269,9 +1278,14 @@ function Set-PowerPlanHigh {
 
 function Restore-PowerPlan {
     if ($script:OriginalPlan) {
-        Invoke-Native -Exe "powercfg" -Args @('/setactive', $script:OriginalPlan) -What "恢复电源计划" | Out-Null
-        Write-Log "INFO" "电源计划已恢复: $script:OriginalPlan"
-        $script:OriginalPlan = $null
+        # 37 号修（36 号问题）：必须按返回值分成功/失败——原先无条件打 INFO 并清空，
+        #   失败也记成成功，且丢掉唯一的重试依据（OriginalPlan）。
+        if (Invoke-Native -Exe "powercfg" -Args @('/setactive', $script:OriginalPlan) -What "恢复电源计划") {
+            Write-Log "INFO" "电源计划已恢复: $script:OriginalPlan"
+            $script:OriginalPlan = $null
+        } else {
+            Write-Log "WARN" "恢复电源计划失败（仍保留原计划 $script:OriginalPlan，等待下次重试）"
+        }
     }
 }
 
@@ -2338,7 +2352,7 @@ function Invoke-CommandBusTick {
     if ($script:BusyProcessing) { return }
     $script:BusyProcessing = $true
     $script:TickCount++
-    if (($script:TickCount % 5) -eq 0) { Write-Heartbeat }
+    if (($script:TickCount % 2) -eq 0) { Write-Heartbeat }
     try {
         # 自保：调度中心自身优先级不得低于 Normal（每 tick 检查，防被外部压低）
         try {

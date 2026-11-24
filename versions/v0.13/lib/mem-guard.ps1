@@ -353,6 +353,22 @@ function Set-MgState($s) {
     try { $s | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:StateFile -Encoding utf8 } catch {}
 }
 
+function Write-MgCycleLog($r, [datetime]$Now = (Get-Date)) {
+    # 逐周期日志（09 号）：trimmed>0 立即落 INFO；纯提权按 RaiseLogThrottleSec 窗口汇总。
+    # -Now 可注入：离线回归可精确推进窗口；常驻循环走默认值，行为与原先一致。
+    if ($r.trimmed -gt 0) {
+        Write-MgLog 'INFO' ("model={0} mem={1}% commit={2}%({3}GB/{4}GB) level={5} trimmed={6} freed={7}MB raised={8}" -f $r.modelRunning, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB, $r.level, $r.trimmed, $r.freedMB, $r.priorityRaised)
+    } elseif ($r.priorityRaised -gt 0) {
+        # 纯提权（trimmed=0）：按窗口汇总，避免某进程被系统反复降权时每周期刷一条 INFO（09 号）
+        $script:RaisePending += $r.priorityRaised
+        if (($Now - $script:RaiseLogSlot).TotalSeconds -ge $RaiseLogThrottleSec) {
+            $script:RaiseLogSlot = $Now
+            Write-MgLog 'INFO' ("提权汇总 {0}s窗口 raised={1} level={2} mem={3}% commit={4}%({5}GB/{6}GB) trimmed=0" -f $RaiseLogThrottleSec, $script:RaisePending, $r.level, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB)
+            $script:RaisePending = 0
+        }
+    }
+}
+
 # ---------------- 入口 ----------------
 if ($Once) {
     $r = Invoke-GuardCycle -Simulate:$SimulatePressure
@@ -368,17 +384,7 @@ $n = 0
 while ($true) {
     $r = Invoke-GuardCycle -Simulate:$SimulatePressure
     if ((Get-Date) -ge $lastTrim.AddMilliseconds($TrimIntervalMs)) { $lastTrim = Get-Date; Set-MgState $r }
-    if ($r.trimmed -gt 0) {
-        Write-MgLog 'INFO' ("model={0} mem={1}% commit={2}%({3}GB/{4}GB) level={5} trimmed={6} freed={7}MB raised={8}" -f $r.modelRunning, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB, $r.level, $r.trimmed, $r.freedMB, $r.priorityRaised)
-    } elseif ($r.priorityRaised -gt 0) {
-        # 纯提权（trimmed=0）：按窗口汇总，避免某进程被系统反复降权时每周期刷一条 INFO（09 号）
-        $script:RaisePending += $r.priorityRaised
-        if (((Get-Date) - $script:RaiseLogSlot).TotalSeconds -ge $RaiseLogThrottleSec) {
-            $script:RaiseLogSlot = Get-Date
-            Write-MgLog 'INFO' ("提权汇总 {0}s窗口 raised={1} level={2} mem={3}% commit={4}%({5}GB/{6}GB) trimmed=0" -f $RaiseLogThrottleSec, $script:RaisePending, $r.level, $r.memPercent, $r.commitPercent, $r.commitUsedGB, $r.commitLimitGB)
-            $script:RaisePending = 0
-        }
-    }
+    Write-MgCycleLog $r
     $n++
     if ($Loops -gt 0 -and $n -ge $Loops) { break }
     Start-Sleep -Milliseconds $IntervalMs

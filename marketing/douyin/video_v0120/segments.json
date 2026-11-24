@@ -1,0 +1,68 @@
+[
+  {
+    "id": "s01",
+    "text": "我的开源软件 PowerFocus，今天发新版了，v0.12.0。这条视频讲清楚，这次到底改了什么。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s01.mp3",
+    "dur": 8.592
+  },
+  {
+    "id": "s02",
+    "text": "先说一句，它不是演示。桌面 exe 和 MCP 插件，都已经挂在 GitHub Release 上，直接就能下。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s02.mp3",
+    "dur": 8.448
+  },
+  {
+    "id": "s03",
+    "text": "最实用的一条：温度真的落盘了。CPU、GPU 温度按天记成日志，峰值也留着。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s03.mp3",
+    "dur": 7.656
+  },
+  {
+    "id": "s04",
+    "text": "测不到，就老实说测不到。GPU 拿不到就退回 nvidia-smi，CPU 实在拿不到，就留空，不给你编一个数。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s04.mp3",
+    "dur": 8.808
+  },
+  {
+    "id": "s05",
+    "text": "第二条，病毒扫描做成了真接口。点一下，后台真扫，进度和结果都能查。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s05.mp3",
+    "dur": 7.056
+  },
+  {
+    "id": "s06",
+    "text": "但要处置威胁，必须你显式确认。不确认，它只报告，绝不动你的文件。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s06.mp3",
+    "dur": 6.528
+  },
+  {
+    "id": "s07",
+    "text": "第三条，清场再也不杀进程了。只降优先级、开 EcoQoS、把工作集换出去，松开手就完整还原。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s07.mp3",
+    "dur": 9.192
+  },
+  {
+    "id": "s08",
+    "text": "你声明一句，这个软件我正在用，它和它的子进程，整组都不动。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s08.mp3",
+    "dur": 5.832
+  },
+  {
+    "id": "s09",
+    "text": "还修了一个我自己都没察觉的 bug。以前打包，exe 里塞的是旧组件。现在跟着版本指针走，指到哪就装哪。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s09.mp3",
+    "dur": 10.008
+  },
+  {
+    "id": "s10",
+    "text": "113 个测试全过，ruff 零错误。GitHub 搜 PowerFocus，开源免费，直接下。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s10.mp3",
+    "dur": 7.56
+  },
+  {
+    "id": "s11",
+    "text": "PowerFocus，电脑算力调度中心。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_v0120\\tts\\s11.mp3",
+    "dur": 3.192
+  }
+]

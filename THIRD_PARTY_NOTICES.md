@@ -3,19 +3,21 @@
 本仓库的源代码（Python / PowerShell / HTML / Markdown）为 PowerFocus 项目原创，
 以 Apache License 2.0 发布（见 [LICENSE](LICENSE)）。
 
-**本仓库不包含任何第三方二进制文件。**但「源码仓库」与「单文件 exe」是两种不同的分发形态，
+**源码仓库不包含任何第三方二进制文件。**但「源码仓库」与「单文件 exe」是两种不同的分发形态，
 必须分开说明：
 
 - **源码仓库**：只含本项目原创代码与其许可证，不含任何第三方二进制。
 - **Release 的单文件 exe**：由 PyInstaller 打包，内部**确实包含** CPython 运行时与
-  `requirements.lock.txt` 所列的第三方 Python 包。它们各自保留原许可与版权声明，
-  完整清单见下文第二节；`LICENSE` 与本文件作为独立附件随每个 Release 一同提供。
+  `requirements.lock.txt` 所列、以及打包脚本实际收集的第三方 Python 包（含 `pywebview`）。
+  它们各自保留原许可与版权声明，完整清单见下文第二节；`LICENSE`、本文件、`LICENSES/`
+  逐包全文与 `SBOM.cdx.json` 作为独立附件随每个 Release 一同提供。
 - 下文第一节的组件（KVRT / 卡巴斯基在线安装器 / Node.js）**既不入仓库、也不进 exe**，
   由应用在用户明确同意后从官方源下载到用户本机。
 
 > 更正记录（2026-11-14，开源合规审查）：本文件此前称「任何第三方程序都不随本项目打包产物分发」，
 > 与打包 spec 中 `collect_all('uvicorn' / 'webview' / 'pythonnet' / 'clr_loader')` 的事实不符，
-> 也导致原第二节只列 7 个组件、遗漏 lock 中的 37 个包。现按 Apache-2.0 §4(a)(c)
+> 也导致原第二节只列 7 个组件、遗漏 lock 中的 37 个包。2026-11-24 又补入 lock 未列、
+> 但打包实际收集的 `pywebview`，总数为 38。现按 Apache-2.0 §4(a)(c)
 > 及各依赖许可「分发时保留版权与许可声明」的要求如实更正。
 
 ---
@@ -74,10 +76,15 @@
 | psutil | BSD 3-Clause License | 进程 / 系统信息读取 |
 | pywebview | BSD 3-Clause License | 桌面窗口容器（承载 WebView2） |
 
-### 2.2 Python 包全量清单（`requirements.lock.txt`，37 项）
+### 2.2 Python 包全量清单（38 项）
 
-下表为本机 `.venv` 中 `importlib.metadata` 的实测结果，覆盖 lock 文件全部条目。
-元数据未声明许可证的，以该分发包内随附的 LICENSE 文件为准。
+下表为本机 `.venv` 中 `importlib.metadata` 的实测结果，覆盖 `requirements.lock.txt` 的 37 项，
+并补入 lock 未列、但打包脚本实际收集的 `pywebview`。逐包许可证全文、来源与 SHA256
+见 [`LICENSES/`](LICENSES/README.md)，机器可读清单见 [`SBOM.cdx.json`](SBOM.cdx.json)。
+
+> 版本口径：本表按**本机实际打包环境**记录。当前 `.venv` 与 `requirements.lock.txt` 有 5 处
+> 版本漂移（annotated-doc / click / fastapi / pyinstaller-hooks-contrib / ruff），
+> 已在 `LICENSES/README.md` 如实列出；重新打包前应先对齐环境，不能用 lock 的理想版本冒充产物版本。
 
 | 包 | 版本 | 许可证 |
 |---|---|---|
@@ -89,8 +96,8 @@
 | certifi | 2026.10.23 | MPL-2.0 |
 | cffi | 2.1.1 | MIT-0 |
 | click | 8.5.0 | BSD-3-Clause |
-| clr_loader | 0.3.1 | 元数据未声明，见分发包内 LICENSE |
-| colorama | 0.4.6 | BSD License |
+| clr_loader | 0.3.1 | MIT |
+| colorama | 0.4.6 | BSD-3-Clause |
 | fastapi | 0.162.0 | MIT |
 | h11 | 0.16.0 | MIT |
 | httpcore | 1.0.9 | BSD-3-Clause |
@@ -101,16 +108,17 @@
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
 | pefile | 2024.8.26 | MIT |
 | pluggy | 1.7.0 | MIT |
-| proxy_tools | 0.1.0 | MIT |
+| proxy_tools | 0.1.0 | BSD-2-Clause（PyPI 元数据误写 MIT，以上游 LICENSE 正文为准） |
 | psutil | 7.2.2 | BSD-3-Clause |
 | pycparser | 3.12 | BSD-3-Clause |
 | pydantic | 2.14.2 | MIT |
 | pydantic_core | 2.50.2 | MIT |
 | Pygments | 2.21.0 | BSD-2-Clause |
 | pyinstaller | 6.22.3 | GPL-2.0-or-later WITH Bootloader-exception（见第三节） |
-| pyinstaller-hooks-contrib | 2026.9 | Apache Software License |
+| pyinstaller-hooks-contrib | 2026.9 | Apache-2.0 |
 | pytest | 9.2.0 | MIT |
 | pythonnet | 3.2.1 | MIT |
+| pywebview | 6.2.1 | BSD-3-Clause |
 | pywin32-ctypes | 0.2.3 | BSD-3-Clause |
 | ruff | 0.17.3 | MIT |
 | setuptools | 84.2.1 | MIT |

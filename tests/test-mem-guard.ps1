@@ -4,10 +4,23 @@
     B) 本地模型运行中 + 后台大内存进程 —— 必须压制后台、绝不碰模型
     C) 内存 97% 极端边界 —— 必须保护前台、模型优先级只升不降
 #>
+[CmdletBinding()]
+param([switch]$Preflight)
 $ErrorActionPreference = 'Continue'
-$pwsh     = 'C:\Tools\PowerShell7\pwsh.exe'
-$guard    = 'E:\PowerFocus\lib\mem-guard.ps1'
-$router   = 'E:\PowerFocus\tools\model-router.ps1'
+# 路径不写死：仓库根 + versions\current.json 解析，换机/改目录不再假红（28 号修）
+$Root     = Split-Path -Parent $PSScriptRoot
+$verName  = 'v0.13'
+$curFile  = Join-Path $Root 'versions\current.json'
+if (Test-Path -LiteralPath $curFile) {
+    $v = (Get-Content $curFile -Raw -Encoding utf8 | ConvertFrom-Json).version
+    if ($v) { $verName = $v }
+}
+$pwsh     = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+if (-not $pwsh) { $pwsh = 'C:\Tools\PowerShell7\pwsh.exe' }
+$guard    = Join-Path $Root "versions\$verName\lib\mem-guard.ps1"
+$router   = Join-Path $Root 'tools\model-router.ps1'
+if (-not (Test-Path -LiteralPath $pwsh))  { throw "pwsh 不存在：$pwsh" }
+if (-not (Test-Path -LiteralPath $guard)) { throw "mem-guard.ps1 不存在：$guard（先核对 versions\current.json 与目录结构）" }
 $pass = 0; $fail = 0
 function Check([string]$Name, [bool]$Cond, [string]$Detail) {
     if ($Cond) { $script:pass++; "  [PASS] $Name  $Detail" } else { $script:fail++; "  [FAIL] $Name  $Detail" }
@@ -18,6 +31,18 @@ function Run-Guard([string[]]$Extra) {
     try { return ($o -join "`n" | ConvertFrom-Json) } catch { Write-Host ($o -join "`n"); return $null }
 }
 function Model-Alive { return [bool](Get-CimInstance Win32_Process -Filter "Name='llama-server.exe'" -ErrorAction SilentlyContinue) }
+
+# ---------- 预检：只验路径与 mem-guard 可执行，不启模型、不造压力进程（28 号新增） ----------
+if ($Preflight) {
+    "预检 pwsh  ：$pwsh"
+    "预检 guard ：$guard"
+    "预检 router：$router"
+    $once = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$guard,'-Once','-Json','-MinWorkingSetMB','300')
+    $o = (& $pwsh @once 2>&1) -join "`n"
+    try { $j = $o | ConvertFrom-Json } catch { "  [FAIL] 预检：mem-guard -Once -Json 输出不可解析：$o"; exit 1 }
+    "  [PASS] 预检：mem-guard 可执行 level=$($j.level) modelRunning=$($j.modelRunning) trimmed=$($j.trimmed) freed=$($j.freedMB)MB"
+    exit 0
+}
 
 "=== 场景 A：本地模型未运行 ==="
 if (Model-Alive) {

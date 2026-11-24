@@ -156,13 +156,12 @@ def wait_ready(port: int, timeout: float = 12.0, require_kernel: bool = False) -
 
 
 def kernel_alive() -> bool:
-    hb = server.KERNEL_DIR / "v3_heartbeat.json"
-    try:
-        d = json.loads(hb.read_text(encoding="utf-8-sig"))
-        ts = time.mktime(time.strptime(d.get("time", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S"))
-        return (time.time() - ts) < 15
-    except Exception:
-        return False
+    """唯一实现见 server.kernel_alive_sync()，此处只转发。
+
+    13 号修复（2026-11-20）：原来这里与 server.py 各写一份逐字重复的判活，
+    改一处漏一处就会出现「启动器判死拉起了、HTTP 侧还报 ready」的分裂状态。
+    """
+    return server.kernel_alive_sync()
 
 
 def ensure_kernel():

@@ -9,7 +9,7 @@
   "installer": "install.ps1",
   "builder": "build\\build.ps1",
   "kernel_version": "v0.13",
-  "kernel_dir": "E:\\PowerFocus\\versions\\v0.09",
+  "kernel_dir": "E:\\PowerFocus\\versions\\v0.13",
   "kernel_required": ">= v0.13",
   "service": {
     "host": "127.0.0.1",

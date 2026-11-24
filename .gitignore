@@ -126,3 +126,13 @@ tools/hardcode-report.json
 docs/*-backup.json
 marketing/**/*.mp4
 tools/ps1-encoding-report.json
+
+# 2026-11-24: 营销视频大文件暂不入库（防仓库膨胀，PF-011）
+/marketing\douyin\video_erecycle_20261118/
+/marketing\douyin\video_erecycle_20261118/
+/marketing\douyin\video_hy4/
+/marketing\douyin\video_hy4/
+/marketing\douyin\video_hy4/
+/marketing\douyin\video_v0120/
+/marketing\douyin\video_v0120/
+*.bak-*

@@ -82,6 +82,8 @@ from typing import Any, Dict, List, Optional
 KVRT_URL = "https://devbuilds.s.kaspersky-labs.com/devbuilds/KVRT/latest/full/KVRT.exe"
 OFFICIAL_PAGE = "https://www.kaspersky.com/downloads/free-virus-removal-tool"
 OFFICIAL_DOCS = "https://support.kaspersky.com/kvrt-for-windows/2026/269475"
+EULA_URL = "https://support.kaspersky.com/8530"
+DOWNLOAD_CHANNEL = "Kaspersky official devbuild · KVRT latest（非消费级下载页）"
 SIGNER_MUST_CONTAIN = "Kaspersky"
 PRODUCT_MUST_CONTAIN = "Virus Removal Tool"
 
@@ -341,12 +343,15 @@ def status() -> Dict[str, Any]:
     exe = engine_exe_path()
     if not exe.is_file():
         return {"present": False, "ready": False, "path": str(ENGINE_EXE),
-                "official_url": KVRT_URL, "official_page": OFFICIAL_PAGE}
+                "official_url": KVRT_URL, "official_page": OFFICIAL_PAGE,
+                "official_docs": OFFICIAL_DOCS, "eula_url": EULA_URL,
+                "download_channel": DOWNLOAD_CHANNEL}
     st = exe.stat()
     out = {"present": True, "path": str(exe), "size": st.st_size,
            "mtime": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
            "official_url": KVRT_URL, "official_page": OFFICIAL_PAGE,
-           "official_docs": OFFICIAL_DOCS}
+           "official_docs": OFFICIAL_DOCS, "eula_url": EULA_URL,
+           "download_channel": DOWNLOAD_CHANNEL}
     sf = state_file_path()
     if sf.is_file():
         try:
@@ -376,7 +381,7 @@ class ScanRequest:
     data_dir: str = str(DATA_DIR)
     process_level: int = 0                # 0=只报告不处置；1/2/3=启用清除
     timeout_sec: int = 3600
-    accept_eula: bool = True              # -silent 必须 -accepteula
+    accept_eula: bool = False             # 必须由用户显式同意；默认拒绝
     extra: List[str] = None               # 应用内附加开关
 
     def __post_init__(self):
@@ -419,6 +424,11 @@ def run_scan(req: ScanRequest) -> Dict[str, Any]:
     F7：status() 只读 engine.json 缓存，同尺寸替换可绕过；执行前必须在
     同一个路径对象上重跑 WinVerifyTrust、重算 SHA256，并与已验签记录比对。
     """
+    # EULA 边界：不代替用户接受协议。-accepteula 只能由上层在用户明确勾选后传入。
+    if not req.accept_eula:
+        raise RuntimeError(
+            "未确认 KVRT EULA，拒绝运行。请在界面勾选《卡巴斯基最终用户许可协议》"
+            "（%s）后再开始扫描。" % EULA_URL)
     info = status()
     if not info.get("ready"):
         raise RuntimeError("引擎未通过验签，拒绝运行。请先执行 --download + --verify")
@@ -793,6 +803,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--process-level", type=int, default=0, choices=[0, 1, 2, 3],
                     help="0=只报告不处置（默认）；1/2/3=按威胁等级清除")
     ap.add_argument("--timeout", type=int, default=3600, help="扫描超时秒数")
+    ap.add_argument("--accept-eula", action="store_true",
+                    help="明确确认已阅读并同意 KVRT EULA；不传则拒绝扫描")
     ap.add_argument("--url", default=KVRT_URL, help="覆盖官方下载地址（仅调试）")
     ap.add_argument("--reports", action="store_true", help="列出应用内真实报告")
     ap.add_argument("--settings", action="store_true", help="查看自动扫描设置与下次执行时间")
@@ -818,9 +830,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.scan:
+        if not args.accept_eula:
+            print("拒绝扫描：KVRT EULA 必须由用户显式同意，请加 --accept-eula。", file=sys.stderr)
+            print("EULA:", EULA_URL, file=sys.stderr)
+            return 2
         scope = "allvolumes" if args.allvolumes else ("custom" if args.path else "core")
         req = ScanRequest(scope=scope, custom_path=args.path,
-                          process_level=args.process_level, timeout_sec=args.timeout)
+                          process_level=args.process_level, timeout_sec=args.timeout,
+                          accept_eula=True)
         print("应用内真实执行:", " ".join([str(ENGINE_EXE)] + build_scan_args(req)))
         scan = run_scan(req)
         parsed = parse_kvrt_output(req.data_dir, scan.get("stdout", ""))

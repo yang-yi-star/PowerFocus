@@ -1,0 +1,32 @@
+PowerFocus 第三方许可证全文
+==============================================================================
+Package: bottle
+Version: 0.13.4
+SPDX-License-Identifier: MIT
+Declared metadata: MIT
+
+License source(s):
+  - .venv\Lib\site-packages\bottle-0.13.4.dist-info\licenses\LICENSE  sha256=af150257b1f7cce92b6207854f2e8f90ea9ae52d7cac758d13a47bd12e2a2443  bytes=1066
+
+License text:
+
+----- .venv\Lib\site-packages\bottle-0.13.4.dist-info\licenses\LICENSE -----
+Copyright (c) 2009-2024, Marcel Hellkamp.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

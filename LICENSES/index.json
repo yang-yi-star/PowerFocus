@@ -1,0 +1,623 @@
+{
+  "generated_at": "2026-11-24T00:23:18+08:00",
+  "root": ".",
+  "generator": "tools/generate_license_bundle.py",
+  "package_count": 38,
+  "packages": [
+    {
+      "name": "altgraph",
+      "normalized": "altgraph",
+      "version": "0.17.5",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\altgraph-0.17.5.dist-info\\LICENSE",
+          "sha256": "6c194d6db0c64d45535d10c95142b9b0cda7b7dcc7f1ddee302b3d536f3dbe46",
+          "bytes": 1002
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "annotated-doc",
+      "normalized": "annotated-doc",
+      "version": "0.0.5",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\annotated_doc-0.0.5.dist-info\\licenses\\LICENSE",
+          "sha256": "fff170779a6acbf65abdb405c087f1cee1786691e4a96a4034517e4a504a0cdf",
+          "bytes": 1086
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "annotated-types",
+      "normalized": "annotated-types",
+      "version": "0.8.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\annotated_types-0.8.0.dist-info\\licenses\\LICENSE",
+          "sha256": "fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d",
+          "bytes": 1083
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "anyio",
+      "normalized": "anyio",
+      "version": "4.16.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\anyio-4.16.0.dist-info\\licenses\\LICENSE",
+          "sha256": "5361ac9dc58f2ef5fd2e9b09c68297c17f04950909bbc8023bdb82eacf22c2b0",
+          "bytes": 1081
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "bottle",
+      "normalized": "bottle",
+      "version": "0.13.4",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\bottle-0.13.4.dist-info\\licenses\\LICENSE",
+          "sha256": "af150257b1f7cce92b6207854f2e8f90ea9ae52d7cac758d13a47bd12e2a2443",
+          "bytes": 1066
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "certifi",
+      "normalized": "certifi",
+      "version": "2026.10.23",
+      "spdx": "MPL-2.0",
+      "declared": "MPL-2.0",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\certifi-2026.10.23.dist-info\\licenses\\LICENSE",
+          "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7",
+          "bytes": 989
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "cffi",
+      "normalized": "cffi",
+      "version": "2.1.1",
+      "spdx": "MIT-0",
+      "declared": "MIT-0",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\cffi-2.1.1.dist-info\\licenses\\LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+          "bytes": 1123
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "click",
+      "normalized": "click",
+      "version": "8.5.0",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\click-8.5.0.dist-info\\licenses\\LICENSE.txt",
+          "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d",
+          "bytes": 1475
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "clr_loader",
+      "normalized": "clr-loader",
+      "version": "0.3.1",
+      "spdx": "MIT",
+      "declared": "",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\clr_loader-0.3.1.dist-info\\licenses\\LICENSE",
+          "sha256": "dd6bdca10cdc3b24c6b0b6cef5fd611b7feb6917f127833283ddcdb310d3b453",
+          "bytes": 1079
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "colorama",
+      "normalized": "colorama",
+      "version": "0.4.6",
+      "spdx": "BSD-3-Clause",
+      "declared": "License :: OSI Approved :: BSD License",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\colorama-0.4.6.dist-info\\licenses\\LICENSE.txt",
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318",
+          "bytes": 1491
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "fastapi",
+      "normalized": "fastapi",
+      "version": "0.162.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\fastapi-0.162.0.dist-info\\licenses\\LICENSE",
+          "sha256": "4ec89ffc81485b97fec584b2d4a961032eeffe834453894fd9c1274906cc744e",
+          "bytes": 1086
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "h11",
+      "normalized": "h11",
+      "version": "0.16.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\h11-0.16.0.dist-info\\licenses\\LICENSE.txt",
+          "sha256": "37db5bb85926db28a427a25867f10b1232003aea1be69ccb851138adb8e6f361",
+          "bytes": 1124
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "httpcore",
+      "normalized": "httpcore",
+      "version": "1.0.9",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\httpcore-1.0.9.dist-info\\licenses\\LICENSE.md",
+          "sha256": "fdcb59154c74cbaba16a11242f7740bea9f23d6feb5547917d8c5f94a80392a5",
+          "bytes": 1518
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "httpx",
+      "normalized": "httpx",
+      "version": "0.28.1",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\httpx-0.28.1.dist-info\\licenses\\LICENSE.md",
+          "sha256": "4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d",
+          "bytes": 1508
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "idna",
+      "normalized": "idna",
+      "version": "3.20",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\idna-3.20.dist-info\\licenses\\LICENSE.md",
+          "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04",
+          "bytes": 1541
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "iniconfig",
+      "normalized": "iniconfig",
+      "version": "2.3.1",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\iniconfig-2.3.1.dist-info\\licenses\\LICENSE",
+          "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4",
+          "bytes": 1098
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "opentelemetry-api",
+      "normalized": "opentelemetry-api",
+      "version": "1.45.2",
+      "spdx": "Apache-2.0",
+      "declared": "Apache-2.0",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\opentelemetry_api-1.45.2.dist-info\\licenses\\LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "bytes": 11357
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "packaging",
+      "normalized": "packaging",
+      "version": "26.3",
+      "spdx": "Apache-2.0 OR BSD-2-Clause",
+      "declared": "Apache-2.0 OR BSD-2-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\packaging-26.3.dist-info\\licenses\\LICENSE",
+          "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+          "bytes": 197
+        },
+        {
+          "path": ".venv\\Lib\\site-packages\\packaging-26.3.dist-info\\licenses\\LICENSE.APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "bytes": 10174
+        },
+        {
+          "path": ".venv\\Lib\\site-packages\\packaging-26.3.dist-info\\licenses\\LICENSE.BSD",
+          "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+          "bytes": 1344
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pefile",
+      "normalized": "pefile",
+      "version": "2024.8.26",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pefile-2024.8.26.dist-info\\LICENSE",
+          "sha256": "b44409c067c6da52bfb54bb6624fb11a7b52157c3a13ae1400232f8196e86ad3",
+          "bytes": 1083
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pluggy",
+      "normalized": "pluggy",
+      "version": "1.7.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pluggy-1.7.0.dist-info\\licenses\\LICENSE",
+          "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
+          "bytes": 1110
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "proxy_tools",
+      "normalized": "proxy-tools",
+      "version": "0.1.0",
+      "spdx": "BSD-2-Clause",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": "https://raw.githubusercontent.com/jtushman/proxy_tools/master/LICENSE.txt",
+          "sha256": "2b5b3c35d52f5db35132c71e90d40e12d78a2eeb8671d676d2b3820e1468927a",
+          "bytes": 1324,
+          "upstream": true
+        }
+      ],
+      "fallback_note": "PyPI 元数据写的是 MIT，但上游仓库 LICENSE.txt 正文是 BSD 二条款，版权行为 Armin Ronacher (2013) / Jonathan Tushman (2014)。以许可证正文为准，按 BSD-2-Clause 分发。"
+    },
+    {
+      "name": "psutil",
+      "normalized": "psutil",
+      "version": "7.2.2",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\psutil-7.2.2.dist-info\\LICENSE",
+          "sha256": "c7adc4d5d1337a548b967421f1fbe258b93033a0417708fd6f4e38f8ecbceb80",
+          "bytes": 1577
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pycparser",
+      "normalized": "pycparser",
+      "version": "3.12",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pycparser-3.12.dist-info\\licenses\\LICENSE",
+          "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90",
+          "bytes": 1543
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pydantic",
+      "normalized": "pydantic",
+      "version": "2.14.2",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pydantic-2.14.2.dist-info\\licenses\\LICENSE",
+          "sha256": "a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3",
+          "bytes": 1129
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pydantic_core",
+      "normalized": "pydantic-core",
+      "version": "2.50.2",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pydantic_core-2.50.2.dist-info\\licenses\\LICENSE",
+          "sha256": "fbe7f615f18d135c07000e5a86325db27f42c7729699ef166ac1f7a3f4586bf4",
+          "bytes": 1101
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "Pygments",
+      "normalized": "pygments",
+      "version": "2.21.0",
+      "spdx": "BSD-2-Clause",
+      "declared": "BSD-2-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pygments-2.21.0.dist-info\\licenses\\LICENSE",
+          "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17",
+          "bytes": 1331
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pyinstaller",
+      "normalized": "pyinstaller",
+      "version": "6.22.3",
+      "spdx": "GPL-2.0-or-later WITH Bootloader-exception",
+      "declared": "GPLv2-or-later with a special exception which allows to use PyInstaller to build and distribute non-free programs (including commercial ones)",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pyinstaller-6.22.3.dist-info\\licenses\\COPYING.txt",
+          "sha256": "0598064c7d2718e38d7914a7d08343b2fa008e3bea9ebba2aa7a6ffa5900dd64",
+          "bytes": 32604
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pyinstaller-hooks-contrib",
+      "normalized": "pyinstaller-hooks-contrib",
+      "version": "2026.9",
+      "spdx": "Apache-2.0",
+      "declared": "License :: OSI Approved :: Apache Software License; License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pyinstaller_hooks_contrib-2026.9.dist-info\\licenses\\LICENSE",
+          "sha256": "91d0baaff00773038e72c0a1fc9d5d2d38706b7a2b9c04f34296608f931b9cd0",
+          "bytes": 27666
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pytest",
+      "normalized": "pytest",
+      "version": "9.2.0",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pytest-9.2.0.dist-info\\licenses\\LICENSE",
+          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b",
+          "bytes": 1091
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pythonnet",
+      "normalized": "pythonnet",
+      "version": "3.2.1",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pythonnet-3.2.1.dist-info\\licenses\\LICENSE",
+          "sha256": "e1dc3a6ff017a6800dc27a7220500f512b95fbcd996d38ebbbff85c693245369",
+          "bytes": 1104
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pywebview",
+      "normalized": "pywebview",
+      "version": "6.2.1",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD 3-Clause License  Copyright (c) 2014-2017, Roman Sirokov All rights reserved.  Redistribution and use in source and binary forms, with or without modificati…",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pywebview-6.2.1.dist-info\\licenses\\LICENSE",
+          "sha256": "4a988dd3598832cd3653de20dc33cb677d0fb53ab5551c879ca31280ae653675",
+          "bytes": 1518
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "pywin32-ctypes",
+      "normalized": "pywin32-ctypes",
+      "version": "0.2.3",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\pywin32_ctypes-0.2.3.dist-info\\LICENSE.txt",
+          "sha256": "dfa83b3e2709adfcdb838d9ad55823ca674abb780e60563d9dd9544ccbf785e9",
+          "bytes": 1644
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "ruff",
+      "normalized": "ruff",
+      "version": "0.17.3",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\ruff-0.17.3.dist-info\\licenses\\LICENSE",
+          "sha256": "2597d854122b77ddc71971564ca2350a37608575ce324adc5650a2b2051c8f18",
+          "bytes": 20731
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "setuptools",
+      "normalized": "setuptools",
+      "version": "84.2.1",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\setuptools-84.2.1.dist-info\\licenses\\LICENSE",
+          "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+          "bytes": 1023
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "starlette",
+      "normalized": "starlette",
+      "version": "1.10.0",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\starlette-1.10.0.dist-info\\licenses\\LICENSE.md",
+          "sha256": "dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf",
+          "bytes": 1518
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "typing_extensions",
+      "normalized": "typing-extensions",
+      "version": "4.16.0",
+      "spdx": "PSF-2.0",
+      "declared": "PSF-2.0",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\typing_extensions-4.16.0.dist-info\\licenses\\LICENSE",
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+          "bytes": 13936
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "typing-inspection",
+      "normalized": "typing-inspection",
+      "version": "0.4.5",
+      "spdx": "MIT",
+      "declared": "MIT",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\typing_inspection-0.4.5.dist-info\\licenses\\LICENSE",
+          "sha256": "804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3",
+          "bytes": 1090
+        }
+      ],
+      "fallback_note": ""
+    },
+    {
+      "name": "uvicorn",
+      "normalized": "uvicorn",
+      "version": "0.54.0",
+      "spdx": "BSD-3-Clause",
+      "declared": "BSD-3-Clause",
+      "license_files": [
+        {
+          "path": ".venv\\Lib\\site-packages\\uvicorn-0.54.0.dist-info\\licenses\\LICENSE.md",
+          "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371",
+          "bytes": 1526
+        }
+      ],
+      "fallback_note": ""
+    }
+  ],
+  "lock_drift": [
+    {
+      "name": "annotated-doc",
+      "locked": "0.0.6",
+      "installed": "0.0.5"
+    },
+    {
+      "name": "click",
+      "locked": "8.5.1",
+      "installed": "8.5.0"
+    },
+    {
+      "name": "fastapi",
+      "locked": "0.162.4",
+      "installed": "0.162.0"
+    },
+    {
+      "name": "pyinstaller-hooks-contrib",
+      "locked": "2026.10",
+      "installed": "2026.9"
+    },
+    {
+      "name": "ruff",
+      "locked": "0.17.4",
+      "installed": "0.17.3"
+    }
+  ],
+  "missing_in_lock": [],
+  "extra_in_lock": [],
+  "notes": [
+    "清单按本机 .venv 实际打包环境生成，不是 requirements.lock.txt 的理想版本。",
+    "lock_drift 列出的版本差异在重新安装依赖前会继续存在；重新打包前应先对齐。",
+    "proxy_tools 的 PyPI 元数据写 MIT，上游 LICENSE.txt 正文为 BSD-2-Clause，本包以正文为准。"
+  ]
+}

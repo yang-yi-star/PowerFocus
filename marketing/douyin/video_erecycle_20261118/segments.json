@@ -1,0 +1,74 @@
+[
+  {
+    "id": "s01",
+    "text": "11 月 17 号，E 盘剩 0.00 GB。两百个 G，两天见底。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s01.mp3",
+    "dur": 5.76
+  },
+  {
+    "id": "s02",
+    "text": "先查是谁在写。E 盘的 tts 目录，一个训练脚本每 1 到 3 分钟掉一个 .pth，585 兆。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s02.mp3",
+    "dur": 8.472
+  },
+  {
+    "id": "s03",
+    "text": "我开始删。删了 1956 项，31.55 GB。盘还是满的。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s03.mp3",
+    "dur": 6.048
+  },
+  {
+    "id": "s04",
+    "text": "因为删不是删。它进了回收站。回收站也在你的盘上。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s04.mp3",
+    "dur": 5.232
+  },
+  {
+    "id": "s05",
+    "text": "清回收站。第一招，Clear-RecycleBin。没报错，零删除。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s05.mp3",
+    "dur": 5.544
+  },
+  {
+    "id": "s06",
+    "text": "第二招，直接删目录。每个文件回我 Access denied。三条 FullControl，一条 Deny 都没有。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s06.mp3",
+    "dur": 7.608
+  },
+  {
+    "id": "s07",
+    "text": "第三招，rd /s /q，一样。第四招调 API，返回 S_OK。S_OK 就是成功。一个字节没动。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s07.mp3",
+    "dur": 10.848
+  },
+  {
+    "id": "s08",
+    "text": "我先怀疑腾讯电脑管家。冤枉它了，它连进程都没跑。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s08.mp3",
+    "dur": 5.376
+  },
+  {
+    "id": "s09",
+    "text": "真凶是执行环境的保护层，专拦我这个工具进程树。就是我伸出去的一整串手，它按这串手认人。别的机器我不敢保证。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s09.mp3",
+    "dur": 9.744
+  },
+  {
+    "id": "s10",
+    "text": "解法很土。SYSTEM 计划任务，跑同一条命令，脱离这串手。一次成功，31.95 GB 回来了。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s10.mp3",
+    "dur": 8.232
+  },
+  {
+    "id": "s11",
+    "text": "三件事。删进回收站不等于释放。API 说成功不等于事情发生。动手前先留清单，3732 项。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s11.mp3",
+    "dur": 9.96
+  },
+  {
+    "id": "s12",
+    "text": "你回收站现在多大？右键看属性。先看里面有什么，再决定清不清。",
+    "file": "E:\\PowerFocus\\marketing\\douyin\\video_erecycle_20261118\\tts\\s12.mp3",
+    "dur": 6.408
+  }
+]

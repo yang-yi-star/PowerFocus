@@ -205,6 +205,47 @@
       <div class="body"><div class="kv" id="sec-kv"><div class="k">加载中</div><div class="v">--</div></div></div>
     </div>
     <div class="panel">
+      <div class="head">KVRT 一次性扫描<span class="sp"></span><span class="hint" id="scan-engine">读取中…</span></div>
+      <div class="body">
+        <div class="hint scan-note">
+          KVRT 是卡巴斯基的专有免费工具，不是开源软件，不随本应用仓库或 exe 分发。
+          下载走卡巴斯基官方 devbuild latest 通道，不是普通消费者下载页；本应用只下载、验签、调用，
+          不拆引擎、不做实时防护。
+        </div>
+        <div class="scan-form">
+          <label for="scan-scope">扫描范围</label>
+          <select id="scan-scope">
+            <option value="core">核心区域（内存 / 启动对象 / 引导扇区）</option>
+            <option value="custom">自定义目录</option>
+            <option value="allvolumes">全部本地磁盘</option>
+          </select>
+          <label for="scan-path" id="scan-path-label" hidden>自定义路径</label>
+          <input id="scan-path" placeholder="绝对路径，例如 D:\\Downloads" hidden>
+          <label for="scan-level">处置级别</label>
+          <select id="scan-level">
+            <option value="0">0 · 只报告，不处置（推荐）</option>
+            <option value="1">1 · 清除低风险威胁</option>
+            <option value="2">2 · 清除中风险威胁</option>
+            <option value="3">3 · 清除所有威胁</option>
+          </select>
+          <label for="scan-timeout">超时（秒）</label>
+          <input id="scan-timeout" type="number" min="30" max="14400" value="3600">
+        </div>
+        <label class="scan-consent" for="scan-eula">
+          <input id="scan-eula" type="checkbox" disabled>
+          <span>我已阅读并同意
+            <a href="https://support.kaspersky.com/8530" target="_blank" rel="noopener noreferrer">《卡巴斯基最终用户许可协议》</a>。
+            我确认由我本人接受该协议，应用不代我同意。</span>
+        </label>
+        <div class="bs-actions">
+          <button class="btn primary" id="scan-start" disabled>开始扫描</button>
+          <button class="btn" id="scan-refresh">刷新状态</button>
+        </div>
+        <div class="hint mt8" id="scan-state">正在读取引擎状态…</div>
+        <div class="out" id="scan-out" hidden></div>
+      </div>
+    </div>
+    <div class="panel">
       <div class="head">主动攻击自检<span class="sp"></span>
         <button class="btn primary sm" id="sec-selfcheck">立即自检</button>
       </div>

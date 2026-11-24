@@ -749,13 +749,43 @@ async def _json_body(req: Request) -> dict:
     return body
 
 
-async def kernel_alive() -> bool:
+def kernel_alive_sync() -> bool:
+    """判活的唯一实现：心跳新鲜度 + 内核进程存在性（13 号修复 2026-11-20）。
+
+    旧实现只做 `age < 15`，三处硬伤：
+      1) 判文件新鲜度而非进程存在性 —— 内核崩了文件还热着，最长 15 秒假活；
+      2) 与 main.py 各写一份逐字重复的实现，改一处漏一处就会分叉；
+      3) 对系统时间后调没有下界 —— 时钟被 NTP 往回校时 age 变负，
+         负数当然小于 15，于是永久判活、内核再也拉不起来。
+
+    pid 取自内核 Write-Heartbeat 写入的字段（本机 pwsh 进程 pid）。
+    缺 pid 时退回纯新鲜度判定：宁可少判死，也绝不重复拉起第二个内核实例。
+    47 号：pid 字段写坏（非空且不可解析，如 "abc"）同样退回新鲜度——
+    字段坏了只是「没有佐证」，不等于「进程已死」；此处若判死，启动器会再拉一个内核。
+    时间字段不享受这个宽容：没有可信时间就没有新鲜度，判活会变成永久假活。
+    已知残留：Windows pid 会被复用，本函数无法区分「同号新进程」，
+    彻底修需要再比对进程创建时间与心跳里的 start。
+    """
     try:
         hb = json.loads((KERNEL_DIR / "v3_heartbeat.json").read_text(encoding="utf-8-sig"))
         ts = time.mktime(time.strptime(hb.get("time", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S"))
-        return (time.time() - ts) < 15
+        age = time.time() - ts
+        if not (0 <= age < 15):
+            return False
+        try:
+            pid = int(hb.get("pid") or 0)
+        except (TypeError, ValueError):
+            pid = 0
+        if pid <= 0:
+            return True
+        return psutil.pid_exists(pid)
     except Exception:
         return False
+
+
+async def kernel_alive() -> bool:
+    """HTTP 侧判活：读心跳是同步磁盘 IO，挪进线程池，别堵事件循环。"""
+    return await asyncio.to_thread(kernel_alive_sync)
 
 
 # ---------- 自然语言规则解析（无模型依赖的快速路径） ----------
@@ -1498,11 +1528,12 @@ def _judge_scan(scan: dict, parsed: dict) -> dict:
             "reason": "扫描 %d 个对象，未发现威胁" % processed}
 
 
-def _scan_worker(scope: str, path: str, level: int, timeout: int) -> None:
+def _scan_worker(scope: str, path: str, level: int, timeout: int,
+                 accept_eula: bool = False) -> None:
     try:
         k = _kvrt()
         req = k.ScanRequest(scope=scope, custom_path=path, process_level=level,
-                            timeout_sec=timeout)
+                            timeout_sec=timeout, accept_eula=bool(accept_eula))
         out = k.run_scan(req)
         try:
             parsed = k.parse_kvrt_output(str(req.data_dir), out.get("stdout", "") or "")
@@ -1527,7 +1558,10 @@ async def security_scan_status():
     return {"ok": True, "engine": info, "running": _SCAN_STATE["running"],
             "started": _SCAN_STATE["started"], "finished": _SCAN_STATE["finished"],
             "scope": _SCAN_STATE["scope"], "path": _SCAN_STATE["path"],
-            "error": _SCAN_STATE["error"], "result": _SCAN_STATE["result"]}
+            "error": _SCAN_STATE["error"], "result": _SCAN_STATE["result"],
+            "eula_url": info.get("eula_url") or "https://support.kaspersky.com/8530",
+            "download_channel": info.get("download_channel") or
+            "Kaspersky official devbuild · KVRT latest（非消费级下载页）"}
 
 
 @app.post("/api/security/scan")
@@ -1535,11 +1569,18 @@ async def security_scan_start(req: Request):
     """
     发起真实扫描。默认只报告不处置。
     body: {scope: custom|core|allvolumes, path, process_level: 0-3,
-           timeout_sec, disinfect_confirm: "yes"}
+           timeout_sec, disinfect_confirm: "yes", accept_eula: true}
+    accept_eula 必须是 JSON 布尔 true；缺省或 false 一律 400，不代替用户接受 KVRT EULA。
     """
     body = await _json_body(req)
     if not isinstance(body, dict):
         raise HTTPException(400, "请求体必须是 JSON 对象")
+    # KVRT EULA 必须由用户本人显式确认；不接受字符串、1、"yes" 之类的模糊值。
+    if body.get("accept_eula") is not True:
+        raise HTTPException(
+            400,
+            "必须先由用户本人勾选并同意 KVRT EULA（accept_eula=true）；"
+            "本应用不代替用户接受协议。EULA: https://support.kaspersky.com/8530")
     with _SCAN_LOCK:
         if _SCAN_STATE["running"]:
             raise HTTPException(409, "已有扫描任务在进行中，请等待完成或查看状态")
@@ -1572,12 +1613,13 @@ async def security_scan_start(req: Request):
                             "scope": scope, "path": target,
                             "started": time.strftime("%Y-%m-%d %H:%M:%S"),
                             "finished": ""})
-    threading.Thread(target=_scan_worker, args=(scope, target, level, timeout),
+    threading.Thread(target=_scan_worker, args=(scope, target, level, timeout, True),
                      daemon=True, name="pf-scan").start()
     security.audit("security_scan_start", scope=scope, path=target,
-                   process_level=str(level))
+                   process_level=str(level), eula="accepted_by_user")
     return {"ok": True, "started": True, "scope": scope, "path": target,
             "process_level": level, "timeout_sec": timeout,
+            "accept_eula": True,
             "note": "扫描在后台执行，用 GET /api/security/scan/status 查进度"}
 
 

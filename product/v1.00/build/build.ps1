@@ -51,6 +51,16 @@ if (-not (Test-Path $Icon)) { throw "未找到图标：$Icon（由根目录 电�
 if (-not (Test-Path $Manifest)) { throw "未找到 manifest：$Manifest（应为 build\app.manifest）" }
 
 $webPath = Join-Path $Root 'app\web'
+# 2026-11-24（P1-1）：打包前按本机 .venv 重新生成第三方许可证包与 SBOM。
+# 许可证是分发物的一部分，生成失败即拒绝打包，不允许“exe 有、附件没有”。
+$VenvPy = Join-Path $Repo '.venv\Scripts\python.exe'
+$LicenseGen = Join-Path $Repo 'tools\generate_license_bundle.py'
+if (-not (Test-Path -LiteralPath $VenvPy)) { throw "未找到打包环境 Python：$VenvPy" }
+if (-not (Test-Path -LiteralPath $LicenseGen)) { throw "未找到许可证生成器：$LicenseGen" }
+Write-Host "生成第三方许可证包与 SBOM..."
+& $VenvPy $LicenseGen
+if ($LASTEXITCODE -ne 0) { throw "许可证包生成失败，退出码 $LASTEXITCODE；拒绝打包" }
+
 $pyArgs = @(
     '--noconfirm',
     $(if ($Clean) { '--clean' } else { '--log-level=WARN' }),
@@ -85,5 +95,22 @@ $packLog = Join-Path $Here 'pack-log.txt'
 & $Py @pyArgs *> $packLog
 $code = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
-if ($code -ne 0) { throw "打包失败，退出码 $code（详见 $packLog）" }$out = Join-Path $Root 'dist\电脑算力调度中心.exe'
+if ($code -ne 0) { throw "打包失败，退出码 $code（详见 $packLog）" }
+
+$out = Join-Path $Root 'dist\电脑算力调度中心.exe'
+$Dist = Split-Path $out -Parent
+# 2026-11-24（P1-1）：把许可证附件复制到 dist，和 exe 一起分发。
+$Attachments = @('LICENSE', 'THIRD_PARTY_NOTICES.md', 'SBOM.cdx.json')
+foreach ($name in $Attachments) {
+    $src = Join-Path $Repo $name
+    if (-not (Test-Path -LiteralPath $src)) { throw "缺少许可证附件：$src" }
+    Copy-Item -LiteralPath $src -Destination (Join-Path $Dist $name) -Force
+}
+$LicSrc = Join-Path $Repo 'LICENSES'
+$LicDst = Join-Path $Dist 'LICENSES'
+if (-not (Test-Path -LiteralPath $LicSrc)) { throw "缺少许可证目录：$LicSrc" }
+New-Item -ItemType Directory -Path $LicDst -Force | Out-Null
+Get-ChildItem -LiteralPath $LicSrc -File | Copy-Item -Destination $LicDst -Force
+$licCount = (Get-ChildItem -LiteralPath $LicDst -File | Measure-Object).Count
+"许可证附件已复制：LICENSE / THIRD_PARTY_NOTICES.md / SBOM.cdx.json / LICENSES（$licCount 个文件）"
 "打包完成：$out ($([math]::Round((Get-Item $out).Length/1MB,1)) MB)"

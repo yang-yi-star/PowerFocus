@@ -441,3 +441,102 @@ test('F9 三个按钮都真的绑上了（不是摆设）', async () => {
   await tick();
   assert.ok(calls.includes('/api/security/shield/revert'), '还原按钮没绑上');
 });
+
+/* ---------------- G. 应用化补齐：模型卡 / 偏好 / 关于 / 引导 ---------------- */
+
+const jsonBody = (body) => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, text: async () => '', json: async () => body });
+
+test('G1 renderModelCard：有模型 / 未载入 / 内核离线三态', () => {
+  const { pf, env } = loadApp(REPO);
+  pf.renderModelCard({ kernel_alive: true, model_loaded: [{ id: 'hy4-32b' }, { id: 'mlx-3x' }],
+    gpu: { available: true, gpus: [{ mem_used_mb: 4096, mem_total_mb: 8192 }] } });
+  const d = env.document;
+  assert.equal(d.getElementById('mc-count').textContent, '2');
+  assert.ok(d.getElementById('mc-names').textContent.includes('hy4-32b'));
+  assert.equal(d.getElementById('mc-gpu').textContent, '4096 / 8192 MB');
+  assert.equal(d.getElementById('mc-kernel').textContent, '在线');
+  assert.equal(d.getElementById('mc-dot').className, 'dot on');
+
+  pf.renderModelCard({ kernel_alive: true, model_loaded: [], gpu: { available: false, gpus: [] } });
+  assert.equal(d.getElementById('mc-dot').className, 'dot warn');
+  assert.equal(d.getElementById('mc-gpu').textContent, '无 NVIDIA GPU');
+
+  pf.renderModelCard({ kernel_alive: false, model_loaded: [] });
+  assert.equal(d.getElementById('mc-dot').className, 'dot off');
+  assert.equal(d.getElementById('mc-kernel').textContent, '离线');
+});
+
+test('G2 loadPreferences：回填控件与轮询间隔', async () => {
+  const { pf, env } = loadApp(REPO, { fetch: async () => jsonBody(
+    { autostart: true, autostart_active: true, close_action: 'exit', poll_interval_ms: 2000, onboarded: true }) });
+  await pf.loadPreferences();
+  const d = env.document;
+  assert.equal(d.getElementById('pf-autostart').checked, true);
+  assert.equal(d.getElementById('pf-close').value, 'exit');
+  assert.equal(d.getElementById('pf-poll').value, '2000');
+});
+
+test('G3 savePreferences：未先读不保存；保存发正确 body', async () => {
+  const calls = [];
+  const { pf, env } = loadApp(REPO, { fetch: async (url, init) => {
+    calls.push({ url, init });
+    return jsonBody({ preferences: { autostart: true, close_action: 'exit', poll_interval_ms: 2000, autostart_active: true } });
+  } });
+  await pf.savePreferences();
+  assert.equal(calls.filter((c) => c.url === '/api/preferences').length, 0, '未读先存必须取消');
+  await pf.loadPreferences();
+  env.document.getElementById('pf-autostart').checked = true;
+  env.document.getElementById('pf-close').value = 'exit';
+  env.document.getElementById('pf-poll').value = '2000';
+  await pf.savePreferences();
+  const post = calls.find((c) => c.url === '/api/preferences' && c.init.method === 'POST');
+  assert.ok(post, '没有发出偏好保存请求');
+  assert.deepEqual(JSON.parse(post.init.body), { autostart: true, close_action: 'exit', poll_interval_ms: 2000 });
+});
+
+test('G4 loadAbout：版本行与三个链接渲染', async () => {
+  const about = { name: '电脑算力调度中心', release: 'v0.13.0', slot: 'v1.00', kernel_version: 'v0.13',
+    python: '3.13.0', frozen: false,
+    source_url: 'https://github.com/yang-yi-star/PowerFocus',
+    issues_url: 'https://github.com/yang-yi-star/PowerFocus/issues',
+    releases_url: 'https://github.com/yang-yi-star/PowerFocus/releases' };
+  const { pf, env } = loadApp(REPO, { fetch: async () => jsonBody(about) });
+  await pf.loadAbout();
+  const kv = env.document.getElementById('about-kv').textContent;
+  assert.ok(kv.includes('v0.13.0') && kv.includes('v1.00'), kv);
+  assert.equal(env.document.getElementById('about-links').querySelectorAll('a').length, 3);
+});
+
+test('G5 checkUpdate：有新版 / 无 Release / 网络失败三态', async () => {
+  let { pf, env } = loadApp(REPO, { fetch: async () => jsonBody(
+    { checked: true, update_available: true, current: 'v0.12.0', latest: 'v0.13.0', published_at: '2026-11-26', url: 'https://github.com/x/y/releases' }) });
+  await pf.checkUpdate();
+  assert.ok(env.document.getElementById('about-update-out').textContent.includes('v0.13.0'));
+
+  ({ pf, env } = loadApp(REPO, { fetch: async () => jsonBody(
+    { checked: true, update_available: false, current: 'dev', note: '仓库暂无正式 Release' }) }));
+  await pf.checkUpdate();
+  assert.ok(env.document.getElementById('about-update-out').textContent.includes('暂无正式 Release'));
+
+  ({ pf, env } = loadApp(REPO, { fetch: async () => jsonBody({ checked: false, reason: 'RuntimeError' }) }));
+  await pf.checkUpdate();
+  assert.ok(env.document.getElementById('about-update-out').textContent.includes('RuntimeError'));
+});
+
+test('G6 首次引导：未完成弹出，下一步推进，完成后落 onboarded', async () => {
+  const calls = [];
+  const { pf, env } = loadApp(REPO, { fetch: async (url, init) => {
+    calls.push({ url, init });
+    return jsonBody({ onboarded: false });
+  } });
+  pf.maybeOnboard(null);
+  assert.equal(env.document.getElementById('onboard').hidden, false);
+  assert.ok(env.document.getElementById('ob-title').textContent.length > 0);
+  pf.nextOnboard();
+  assert.equal(env.document.getElementById('ob-step').textContent, '2 / 4');
+  await pf.finishOnboard();
+  assert.equal(env.document.getElementById('onboard').hidden, true);
+  const post = calls.find((c) => c.url === '/api/preferences');
+  assert.ok(post, '完成引导必须落 onboarded 标记');
+  assert.deepEqual(JSON.parse(post.init.body), { onboarded: true });
+});

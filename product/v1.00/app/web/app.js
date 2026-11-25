@@ -18,6 +18,8 @@
   let clientLog = [];
   let sceneLoaded = false;
   let settingsLoaded = false;
+  let prefsLoaded = false;
+  let aboutLoaded = false;
   let securityLoaded = false;
   let scanLoaded = false;
   let scanEngineReady = false;
@@ -26,6 +28,7 @@
   let dialogResolve = null;
   let pollTimer = null;
   let pollErrors = 0;
+  let pollIntervalMs = 1000;
   let errBadgeCount = 0;        /* 日志视图错误事件未读数（事件驱动徽章） */
 
   /* ---------------- 基础工具 ---------------- */
@@ -82,7 +85,7 @@
 
   /* 键盘：1-8 切换视图、[ 折叠侧栏；输入控件聚焦或弹窗打开时不劫持 */
   const VIEW_ORDER = ['overview', 'processes', 'scenes', 'models',
-    'security', 'bootstrap', 'settings', 'logs'];
+    'security', 'bootstrap', 'settings', 'logs', 'about'];
   function onKeydown(e) {
     const t = e.target;
     if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
@@ -200,6 +203,8 @@
     if (name === 'security') { refreshSecurity(); if (!scanLoaded) refreshScan(); }
     if (name === 'bootstrap' && !bootstrapLoaded) loadBootstrap();
     if (name === 'settings' && !settingsLoaded) loadSettings();
+    if (name === 'settings' && !prefsLoaded) loadPreferences();
+    if (name === 'about' && !aboutLoaded) loadAbout();
     if (name === 'logs') { setLogBadge(0); renderLogs(); }
   }
 
@@ -244,6 +249,35 @@
     renderFocus(d);
     renderProcessTable(d);
     renderVerdict(d);
+    renderModelCard(d);
+  }
+
+  /* 总览·本地模型卡：主线是「更好地在本地跑本地模型」，第一屏先回答模型状态 */
+  function renderModelCard(d) {
+    const loaded = d.model_loaded || [];
+    const names = loaded.map((m) => (m && (m.id || m.key)) || String(m || '')).filter(Boolean);
+    $('mc-count').textContent = String(names.length);
+    $('mc-names').textContent = names.length ? names.slice(0, 3).join('、') + (names.length > 3 ? ' 等 ' + names.length + ' 个' : '') : '未载入';
+    const g = (d.gpu && d.gpu.gpus && d.gpu.gpus[0]) || null;
+    if (g && Number.isFinite(Number(g.mem_used_mb)) && Number.isFinite(Number(g.mem_total_mb))) {
+      $('mc-gpu').textContent = Math.round(g.mem_used_mb) + ' / ' + Math.round(g.mem_total_mb) + ' MB';
+    } else {
+      $('mc-gpu').textContent = d.gpu && d.gpu.available ? '--' : '无 NVIDIA GPU';
+    }
+    $('mc-kernel').textContent = d.kernel_alive ? '在线' : '离线';
+
+    const dot = $('mc-dot');
+    const status = $('mc-status');
+    if (!d.kernel_alive) {
+      dot.className = 'dot off';
+      status.textContent = '调度内核离线，模型调度不可用';
+    } else if (names.length) {
+      dot.className = 'dot on';
+      status.textContent = '本地模型已载入';
+    } else {
+      dot.className = 'dot warn';
+      status.textContent = '本地模型未载入，可在「模型与对话」页启动';
+    }
   }
 
   /* 状态判定条：总览第一眼回答「现在需要我做什么吗」（calm tech 中心化） */
@@ -1267,6 +1301,181 @@
     }
   }
 
+  /* ---------------- 应用偏好 ---------------- */
+  async function loadPreferences() {
+    try {
+      const p = await api('/api/preferences');
+      prefsLoaded = true;
+      pollIntervalMs = Number(p.poll_interval_ms) || 1000;
+      $('pf-autostart').checked = !!p.autostart_active;
+      $('pf-close').value = p.close_action === 'tray' ? 'tray' : 'exit';
+      $('pf-poll').value = String(p.poll_interval_ms || 1000);
+    } catch (e) {
+      prefsLoaded = false;
+      const out = $('pf-out');
+      out.hidden = false;
+      out.textContent = '偏好读取失败：' + e.message;
+    }
+  }
+
+  async function savePreferences() {
+    if (!prefsLoaded) { toast('偏好尚未读取成功，已取消保存', 'err'); return; }
+    const body = {
+      autostart: $('pf-autostart').checked,
+      close_action: $('pf-close').value,
+      poll_interval_ms: Number($('pf-poll').value) || 1000
+    };
+    const out = $('pf-out');
+    try {
+      const r = await api('/api/preferences', { method: 'POST', body });
+      pollIntervalMs = Number(r.preferences.poll_interval_ms) || pollIntervalMs;
+      schedulePoll();
+      out.hidden = false;
+      out.textContent = '偏好已保存。' + (r.preferences.autostart_active ? '开机自启已开启。' : '开机自启已关闭。');
+      toast('偏好已保存', 'ok');
+    } catch (e) {
+      out.hidden = false;
+      out.textContent = '保存失败：' + e.message;
+      toast('保存失败：' + e.message, 'err');
+    }
+  }
+
+  /* ---------------- 日志 / 配置导出（带令牌拉取 blob） ---------------- */
+  async function downloadBlob(path, fallbackName) {
+    const res = await fetch(path, { headers: { 'X-PF-Token': TOKEN }, cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportLogs() {
+    const out = $('pf-exp-out');
+    try {
+      await downloadBlob('/api/export/logs', 'powerfocus-logs.txt');
+      out.hidden = false;
+      out.textContent = '运行日志已导出（本会话与落盘日志汇总，不含密钥）。';
+    } catch (e) {
+      out.hidden = false;
+      out.textContent = '导出失败：' + e.message;
+    }
+  }
+
+  async function exportConfig() {
+    const out = $('pf-exp-out');
+    try {
+      await downloadBlob('/api/export/config', 'powerfocus-config.json');
+      out.hidden = false;
+      out.textContent = '非敏感配置已备份；API Key 在本机加密库内，不在此备份。';
+    } catch (e) {
+      out.hidden = false;
+      out.textContent = '导出失败：' + e.message;
+    }
+  }
+
+  /* ---------------- 关于 / 更新检查 ---------------- */
+  async function loadAbout() {
+    try {
+      const a = await api('/api/about');
+      aboutLoaded = true;
+      const kv = $('about-kv');
+      kv.textContent = '';
+      const rows = [
+        ['应用', a.name],
+        ['对外版本', a.release],
+        ['代码槽位', a.slot],
+        ['内核版本', a.kernel_version],
+        ['Python', a.python],
+        ['运行形态', a.frozen ? '打包 exe' : '源码运行']
+      ];
+      for (const row of rows) {
+        kv.appendChild(el('div', { class: 'k', text: row[0] }));
+        kv.appendChild(el('div', { class: 'v', text: String(row[1] || '--') }));
+      }
+      const links = $('about-links');
+      links.textContent = '';
+      const linkRows = [['源码仓库', a.source_url], ['问题反馈', a.issues_url], ['发布列表', a.releases_url]];
+      for (const row of linkRows) {
+        links.appendChild(el('div', { class: 'k', text: row[0] }));
+        const v = el('div', { class: 'v' });
+        v.appendChild(el('a', { href: row[1], target: '_blank', rel: 'noopener noreferrer', text: row[1] }));
+        links.appendChild(v);
+      }
+    } catch (e) {
+      aboutLoaded = false;
+      toast('关于信息读取失败：' + e.message, 'err');
+    }
+  }
+
+  async function checkUpdate() {
+    const out = $('about-update-out');
+    const detail = $('about-update-detail');
+    out.textContent = '正在查询公开 Release…';
+    detail.hidden = true;
+    detail.textContent = '';
+    try {
+      const r = await api('/api/update-check', { timeout: 8000 });
+      if (!r.checked) {
+        out.textContent = '未能完成检查：' + (r.reason || '网络不可用');
+        return;
+      }
+      if (r.update_available) {
+        out.textContent = '发现新版本：' + r.latest + '（当前 ' + r.current + '）';
+        detail.hidden = false;
+        detail.textContent = '发布时间：' + (r.published_at || '--') + '。本应用不会自动下载升级，请前往发布页手动获取。';
+        detail.appendChild(document.createTextNode(' '));
+        detail.appendChild(el('a', { href: r.url, target: '_blank', rel: 'noopener noreferrer', text: '打开发布页' }));
+      } else if (r.latest) {
+        out.textContent = '已是最新版本（' + r.current + '）';
+      } else {
+        out.textContent = r.note || '仓库暂无正式 Release';
+      }
+    } catch (e) {
+      out.textContent = '检查失败：' + e.message;
+    }
+  }
+
+  /* ---------------- 首次引导 ---------------- */
+  const ONBOARD_STEPS = [
+    { title: '欢迎使用 PowerFocus', body: '这是一台跑在你本机的算力调度台：把有限的 CPU、内存和显存优先让给正在用的应用和本地模型。所有数据只走本机回环，不向外发送。' },
+    { title: '选一个要保障的目标', body: '在「进程」页选中一个应用后，可以聚焦提速、回收内存或冻结后台；关键操作都会先二次确认。' },
+    { title: '接上你的本地模型', body: '在「模型与对话」页启动本地模型路由，显存与内存状态会摆到总览第一屏；没有本地模型时，它也能作为通用调度台使用。' },
+    { title: '安全与隐私基线', body: '「安全态势」页可以只读体检本机暴露面，按需一键收紧；每项改动都先记原值、可还原，并写入审计日志。' }
+  ];
+  let obIndex = 0;
+
+  function renderOnboard() {
+    const s = ONBOARD_STEPS[obIndex];
+    $('ob-step').textContent = (obIndex + 1) + ' / ' + ONBOARD_STEPS.length;
+    $('ob-title').textContent = s.title;
+    $('ob-body').textContent = s.body;
+    $('ob-next').textContent = obIndex === ONBOARD_STEPS.length - 1 ? '完成' : '下一步';
+  }
+
+  async function finishOnboard() {
+    $('onboard').hidden = true;
+    try { await api('/api/preferences', { method: 'POST', body: { onboarded: true } }); }
+    catch (_) { /* 标记失败不阻断使用，下次启动再问 */ }
+  }
+
+  function nextOnboard() {
+    if (obIndex < ONBOARD_STEPS.length - 1) { obIndex += 1; renderOnboard(); }
+    else finishOnboard();
+  }
+
+  function maybeOnboard(prefs) {
+    if (prefs && prefs.onboarded) return;
+    obIndex = 0;
+    renderOnboard();
+    $('onboard').hidden = false;
+  }
+
   /* ---------------- 日志 ---------------- */
   function renderLogs() {
     const box = $('log-list');
@@ -1288,7 +1497,7 @@
         pollErrors += 1;
         if (pollErrors === 1) toast('快照读取失败：' + e.message + '（已暂停自动刷新）', 'err');
       }
-    }, 1000);
+    }, pollIntervalMs);
   }
 
   /* ---------------- 绑定 ---------------- */
@@ -1442,6 +1651,13 @@
     $('set-test').addEventListener('click', testCloud);
     $('set-clear').addEventListener('click', clearKey);
 
+    $('pf-save').addEventListener('click', savePreferences);
+    $('pf-exp-logs').addEventListener('click', exportLogs);
+    $('pf-exp-config').addEventListener('click', exportConfig);
+    $('about-check').addEventListener('click', checkUpdate);
+    $('ob-skip').addEventListener('click', finishOnboard);
+    $('ob-next').addEventListener('click', nextOnboard);
+
     $('log-refresh').addEventListener('click', renderLogs);
     $('log-clear').addEventListener('click', () => { clientLog = []; renderLogs(); });
 
@@ -1460,6 +1676,11 @@
     api('/api/bootstrap/check', { timeout: 20000 })
       .then((d) => setBootstrapBadge((d.summary || {}).missing || 0))
       .catch(() => { /* 自检模块不可用时保持安静，不吵用户 */ });
+    let prefs = null;
+    try {
+      prefs = await api('/api/preferences', { timeout: 5000 });
+      pollIntervalMs = Number(prefs.poll_interval_ms) || 1000;
+    } catch (_) { /* 偏好不可用就用默认值，不阻断启动 */ }
     try {
       const d = await api('/api/snapshot', { timeout: 8000 });
       renderSnapshot(d);
@@ -1467,6 +1688,7 @@
       toast('启动失败：' + e.message, 'err');
     }
     schedulePoll();
+    maybeOnboard(prefs);
     logLine('控制台就绪');
   }
 

@@ -36,6 +36,8 @@ import uvicorn
 import security
 import bus
 import temp_log
+import version
+import preferences
 
 # pythonnet 预加载（2026-11-15 修复）：CLR 首次导入要花时间，若后台温度采集线程
 # 与 pywebview 的 winforms 后端在同一时刻各自首次 import clr，后到的一方会拿到
@@ -72,7 +74,14 @@ def _config_path() -> Path:
     return app_paths.data_root() / "config.json"
 
 
-APP_VERSION = "1.00"
+# winreg 仅 Windows 可用；非 Windows（测试/CI 占位）自启相关能力降级为不可用。
+try:
+    import winreg
+except ImportError:  # pragma: no cover - 非 Windows 路径
+    winreg = None
+
+# 对外版本号走 version.py 单一真源（GitHub Release tag 优先）；APP_VERSION 名字保留以兼容既有引用。
+APP_VERSION = version.release_version()
 PRODUCT_NAME = "电脑算力调度中心"
 
 # ---------- 路径解析（源码运行 / PyInstaller 打包均可用） ----------
@@ -914,7 +923,8 @@ async def health():
     """
     alive = await kernel_alive()
     return {
-        "app": "ok", "name": PRODUCT_NAME, "version": APP_VERSION,
+        "app": "ok", "name": PRODUCT_NAME,
+        "version": version.release_version(), "slot": version.SLOT,
         "kernel_version": KERNEL_DIR.name,
         "kernel_alive": alive,
         "ready": alive,
@@ -1400,6 +1410,147 @@ async def set_settings(req: Request):
         changed.append("system_prompt")
     security.audit("settings_changed", fields=", ".join(changed) or "-")
     return {"ok": True, "changed": changed, "cloud_ready": cloud_ready()}
+
+
+# ---------- 关于 / 更新检查 ----------
+
+@app.get("/api/about")
+async def about():
+    """关于信息：版本、内核、源码与许可链接；不含路径之外的敏感字段。"""
+    return {
+        "name": PRODUCT_NAME,
+        "release": version.release_version(),
+        "slot": version.SLOT,
+        "kernel_version": KERNEL_DIR.name,
+        "source_url": version.repo_url(),
+        "issues_url": version.issues_url(),
+        "releases_url": version.releases_url(),
+        "license": "Apache-2.0",
+        "third_party_notice": "THIRD_PARTY_NOTICES.md",
+        "python": sys.version.split()[0],
+        "frozen": _frozen(),
+    }
+
+
+@app.get("/api/update-check")
+async def update_check():
+    """只对比 GitHub Release tag，不自动下载、不自动升级；网络失败如实回报。"""
+    current = version.release_version()
+    api = "https://api.github.com/repos/%s/%s/releases/latest" % (version.REPO_OWNER, version.REPO_NAME)
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as c:
+            r = await c.get(api, headers={"Accept": "application/vnd.github+json",
+                                          "User-Agent": "PowerFocus"})
+        if r.status_code == 404:
+            security.audit("update_check", checked="true", available="false", note="no-release")
+            return {"checked": True, "update_available": False, "current": current,
+                    "note": "仓库暂无正式 Release"}
+        if r.status_code != 200:
+            security.audit("update_check", checked="false", reason="http-%d" % r.status_code)
+            return {"checked": False, "current": current, "reason": "HTTP %d" % r.status_code}
+        data = r.json() or {}
+        latest = str(data.get("tag_name") or "").strip()
+        available = bool(latest) and latest != current and current != "dev"
+        security.audit("update_check", checked="true", available=str(available).lower())
+        return {"checked": True, "update_available": available, "current": current,
+                "latest": latest, "published_at": data.get("published_at") or "",
+                "url": data.get("html_url") or version.releases_url()}
+    except Exception as e:
+        security.audit("update_check", checked="false", reason=type(e).__name__)
+        return {"checked": False, "current": current, "reason": type(e).__name__}
+
+
+# ---------- 应用偏好 / 开机自启 ----------
+
+_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+_RUN_VALUE = "PowerFocus"
+
+
+def _autostart_command() -> str:
+    if _frozen():
+        return '"%s"' % Path(sys.executable).resolve()
+    return '"%s" "%s"' % (sys.executable, str(Path(__file__).resolve().parent / "main.py"))
+
+
+def _autostart_enabled() -> bool:
+    if winreg is None:
+        return False
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY, 0, winreg.KEY_READ) as k:
+            v, _ = winreg.QueryValueEx(k, _RUN_VALUE)
+            return bool(v)
+    except OSError:
+        return False
+
+
+def _set_autostart(enabled: bool) -> None:
+    if winreg is None:
+        raise HTTPException(500, "当前环境不支持开机自启（非 Windows）")
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
+        if enabled:
+            winreg.SetValueEx(k, _RUN_VALUE, 0, winreg.REG_SZ, _autostart_command())
+        else:
+            try:
+                winreg.DeleteValue(k, _RUN_VALUE)
+            except OSError:
+                pass
+
+
+@app.get("/api/preferences")
+async def get_preferences():
+    p = preferences.load()
+    p["autostart_active"] = _autostart_enabled()
+    return p
+
+
+@app.post("/api/preferences")
+async def set_preferences(req: Request):
+    body = await _json_body(req)
+    allowed = {k: body[k] for k in preferences.DEFAULTS if k in body}
+    if "autostart" in allowed:
+        _set_autostart(bool(allowed["autostart"]))
+    saved = preferences.save(allowed)
+    security.audit("preferences_changed", fields=", ".join(allowed.keys()) or "-")
+    saved["autostart_active"] = _autostart_enabled()
+    return {"ok": True, "preferences": saved}
+
+
+# ---------- 日志 / 配置导出（只读本机，不导出凭据） ----------
+
+@app.get("/api/export/logs")
+async def export_logs():
+    """汇总桌面日志（含轮转）为纯文本下载；只读本机日志文件。"""
+    log_dir = app_paths.log_dir()
+    parts = [log_dir / "desktop.log"] + sorted(log_dir.glob("desktop.log.*"))
+    chunks = []
+    for p in parts:
+        if p.exists():
+            try:
+                chunks.append(p.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                pass
+    security.audit("export_logs", files=str(len(parts)))
+    return StreamingResponse(iter(["\n".join(chunks)]),
+                             media_type="text/plain; charset=utf-8",
+                             headers={"Content-Disposition": 'attachment; filename="powerfocus-logs.txt"'})
+
+
+@app.get("/api/export/config")
+async def export_config():
+    """备份非敏感配置；API Key 存于 DPAPI 加密库，绝不导出。"""
+    cfg = {}
+    try:
+        if _config_path().exists():
+            cfg = json.loads(_config_path().read_text(encoding="utf-8-sig")) or {}
+    except Exception:
+        cfg = {}
+    cfg.pop("api_key", None)
+    security.audit("export_config")
+    data = {"app": PRODUCT_NAME, "release": version.release_version(),
+            "exported": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "config": cfg,
+            "note": "API Key 存于本机 DPAPI 加密库，不在此备份内"}
+    return JSONResponse(data, headers={"Content-Disposition": 'attachment; filename="powerfocus-config.json"'})
 
 
 @app.post("/api/cloud/test")

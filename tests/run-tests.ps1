@@ -91,7 +91,8 @@ if ($jsonBad.Count -eq 0) {
 $py = Get-DevPython
 $pyTargets = @('v2-archive\mcp-server-legacy.py', 'app\server.py',
                'product\v1.00\app\server.py', 'product\v1.00\app\security.py',
-               'product\v1.00\app\main.py')
+               'product\v1.00\app\main.py', 'product\v1.00\app\version.py',
+               'product\v1.00\app\preferences.py')
 if (-not $py) {
     Add-Result 'Python 编译' 'FAIL' '未找到可用 Python 解释器'
 } else {

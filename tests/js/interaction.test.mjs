@@ -33,7 +33,7 @@ const SNAP = {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-/** 造一个“已经 bind 过”的界面：8 个 navbtn + 8 个 view 全挂到 body 上 */
+/** 造一个“已经 bind 过”的界面：navbtn + view 全挂到 body 上（数量跟随 VIEW_ORDER_EXPECTED） */
 function world(opts) {
   const { pf, env } = loadApp(REPO, Object.assign({ seedTags: { 'proc-search': 'INPUT' } }, opts || {}));
   const doc = env.document;
@@ -70,17 +70,18 @@ test('A1 每个 navbtn 点击都切到自己的视图，且 active 集合唯一'
   }
 });
 
-test('A2 数字键 1-8 切视图，越界键不动', () => {
+test('A2 数字键 1-9 切视图，越界键不动', () => {
   const { pf, doc, navs, views } = world();
   for (let i = 1; i <= VIEW_ORDER_EXPECTED.length; i++) {
     fire(doc, 'keydown', { key: String(i) });
     assert.equal(pf.__state().activeView, VIEW_ORDER_EXPECTED[i - 1]);
   }
-  fire(doc, 'keydown', { key: '9' });
   fire(doc, 'keydown', { key: '0' });
-  assert.equal(pf.__state().activeView, 'logs', '越界数字不该切走当前视图');
-  assert.deepEqual(activeOf(views), ['logs']);
-  assert.deepEqual(activeOf(navs), ['logs']);
+  fire(doc, 'keydown', { key: 'x' });
+  const last = VIEW_ORDER_EXPECTED[VIEW_ORDER_EXPECTED.length - 1];
+  assert.equal(pf.__state().activeView, last, '越界数字不该切走当前视图');
+  assert.deepEqual(activeOf(views), [last]);
+  assert.deepEqual(activeOf(navs), [last]);
 });
 
 test('A3 [_ 折叠侧栏：class 与 localStorage 一起变', () => {

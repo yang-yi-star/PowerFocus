@@ -87,6 +87,7 @@ header {
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pf-text-ghost); flex: none; }
 .dot.on { background: var(--pf-status-success-graphic); }
 .dot.off { background: var(--pf-status-danger-graphic); }
+.dot.warn { background: var(--pf-status-warning-graphic); }
 
 /* 主题切换 */
 #theme-toggle {
@@ -447,3 +448,44 @@ body.sb-min .navbadge { position: absolute; top: 2px; right: 4px; margin: 0; min
   transition: color .15s ease, border-color .15s ease;
 }
 .help-btn:hover { color: var(--pf-accent); border-color: var(--pf-accent); }
+
+/* ---------------- 总览·本地模型卡（模型优先主线） ---------------- */
+.modelcard {
+  border: 0.5px solid var(--pf-border-default); border-radius: var(--pf-radius-md);
+  background: var(--pf-bg-panel); padding: 12px 14px;
+  box-shadow: var(--pf-shadow-card);
+}
+.mc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mc-head .sp { flex: 1; }
+.mc-title { font: 500 13px var(--pf-font); color: var(--pf-text-primary); }
+.mc-body { display: grid; grid-template-columns: 90px minmax(0, 1.6fr) 130px 110px; gap: 12px; }
+.mc-stat .k { font-size: 12px; color: var(--pf-text-secondary); }
+.mc-stat .v { font: 13px var(--pf-font-mono); font-variant-numeric: tabular-nums; margin-top: 2px; word-break: break-all; }
+.mc-stat.grow { min-width: 0; }
+@media (max-width: 900px) { .mc-body { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------------- 偏好表单 ---------------- */
+.check-row { display: flex; align-items: center; gap: 8px; font: 13px var(--pf-font); color: var(--pf-text-primary); }
+.prefs-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ---------------- 关于页链接 ---------------- */
+.kv a { color: var(--pf-accent); text-decoration: none; }
+.kv a:hover { text-decoration: underline; }
+
+/* ---------------- 首次引导浮层 ---------------- */
+.onboard {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; background: var(--pf-backdrop);
+}
+.onboard[hidden] { display: none; }
+.onboard-card {
+  width: min(480px, calc(100vw - 48px));
+  background: var(--pf-bg-elevated); border: 0.5px solid var(--pf-border-strong);
+  border-radius: var(--pf-radius-md); box-shadow: var(--pf-shadow-modal);
+  padding: 22px 22px 18px;
+}
+.ob-step { font: 500 12px var(--pf-font-mono); color: var(--pf-text-tertiary); letter-spacing: 1px; }
+.ob-title { font: 500 16px var(--pf-font); color: var(--pf-text-primary); margin: 8px 0 10px; }
+.ob-body { font: 13px/1.7 var(--pf-font); color: var(--pf-text-secondary); min-height: 66px; }
+.ob-actions { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.ob-actions .sp { flex: 1; }

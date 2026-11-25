@@ -59,10 +59,11 @@
   <button class="navbtn" data-view="bootstrap"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8.5h3l1.5-4 2.5 7 1.5-3h4.5"/></svg></span><span class="lbl">组件自检</span><i class="navbadge amber" id="navbadge-bs" hidden></i></button>
   <button class="navbtn" data-view="settings"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4"/></svg></span><span class="lbl">设置</span></button>
   <button class="navbtn" data-view="logs"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h6"/></svg></span><span class="lbl">日志</span><i class="navbadge" id="navbadge-logs" hidden></i></button>
+  <button class="navbtn" data-view="about"><span class="ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.2v3.3M8 5v.1"/></svg></span><span class="lbl">关于</span></button>
   <div class="foot">
     <b>本机服务</b><br>
     仅监听回环地址 · 令牌鉴权<br>
-    快捷键：1-8 切换视图 · [ 折叠
+    快捷键：1-9 切换视图 · [ 折叠
   </div>
 </nav>
 
@@ -70,6 +71,20 @@
   <!-- ================= 总览 ================= -->
   <section class="view active" data-view="overview">
     <div class="verdict ok" id="ov-verdict"><span class="vdot"></span><span id="verdict-text">正在读取快照…</span></div>
+    <div class="modelcard" id="ov-modelcard">
+      <div class="mc-head">
+        <span class="dot" id="mc-dot"></span>
+        <span class="mc-title">本地模型</span>
+        <span class="sp"></span>
+        <span class="hint" id="mc-status">正在读取…</span>
+      </div>
+      <div class="mc-body">
+        <div class="mc-stat"><div class="k">已载入</div><div class="v" id="mc-count">--</div></div>
+        <div class="mc-stat grow"><div class="k">模型</div><div class="v" id="mc-names">--</div></div>
+        <div class="mc-stat"><div class="k">GPU 显存</div><div class="v" id="mc-gpu">--</div></div>
+        <div class="mc-stat"><div class="k">调度内核</div><div class="v" id="mc-kernel">--</div></div>
+      </div>
+    </div>
     <div class="kpis">
       <div class="kpi"><div class="k">CPU 占用</div><div class="v" id="kpi-cpu">--<small>%</small></div><div class="extra" id="kpi-cpu-x">--</div></div>
       <div class="kpi alt"><div class="k">内存占用</div><div class="v" id="kpi-mem">--<small>%</small></div><div class="extra" id="kpi-mem-x">--</div></div>
@@ -335,6 +350,40 @@
       </div>
     </div>
     <div class="panel">
+      <div class="head">应用偏好<span class="sp"></span><span class="hint">行为与界面选项，不保存任何密钥</span></div>
+      <div class="body">
+        <div class="form">
+          <label class="check-row"><input type="checkbox" id="pf-autostart"> 开机时自动启动本应用</label>
+          <label for="pf-close">关闭窗口时</label>
+          <select id="pf-close">
+            <option value="exit">直接退出程序</option>
+            <option value="tray" disabled>收到系统托盘（下一版接入）</option>
+          </select>
+          <label for="pf-poll">状态刷新间隔</label>
+          <select id="pf-poll">
+            <option value="1000">1 秒</option>
+            <option value="2000">2 秒</option>
+            <option value="3000">3 秒</option>
+            <option value="5000">5 秒</option>
+          </select>
+          <div class="prefs-actions">
+            <button class="btn primary" id="pf-save">保存偏好</button>
+          </div>
+        </div>
+        <div class="out" id="pf-out" hidden></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="head">日志与配置导出<span class="sp"></span><span class="hint">只读本机；API Key 存于加密库，不在备份内</span></div>
+      <div class="body">
+        <div class="cmdbar">
+          <button class="btn" id="pf-exp-logs">导出运行日志</button>
+          <button class="btn" id="pf-exp-config">备份非敏感配置</button>
+        </div>
+        <div class="out" id="pf-exp-out" hidden></div>
+      </div>
+    </div>
+    <div class="panel">
       <div class="head">运行信息</div>
       <div class="body"><div class="kv" id="set-info"><div class="k">加载中</div><div class="v">--</div></div></div>
     </div>
@@ -348,6 +397,30 @@
         <button class="btn sm" id="log-clear">清空</button>
       </div>
       <div class="body"><div class="out fill" id="log-list"></div></div>
+    </div>
+  </section>
+  <!-- ================= 关于 ================= -->
+  <section class="view" data-view="about">
+    <div class="panel">
+      <div class="head">关于本应用</div>
+      <div class="body"><div class="kv" id="about-kv"><div class="k">加载中</div><div class="v">--</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="head">更新检查<span class="sp"></span><span class="hint">只对比 GitHub Release，不自动下载、不自动升级</span></div>
+      <div class="body">
+        <div class="cmdbar">
+          <button class="btn primary" id="about-check">检查更新</button>
+          <span class="hint" id="about-update-out">点击按钮向公开仓库查询一次最新 Release</span>
+        </div>
+        <div class="out mt8" id="about-update-detail" hidden></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="head">项目与许可</div>
+      <div class="body">
+        <div class="kv" id="about-links"></div>
+        <div class="hint mt8">本项目以 Apache-2.0 开源发布；第三方组件声明见仓库内 THIRD_PARTY_NOTICES.md。</div>
+      </div>
     </div>
   </section>
 </main>
@@ -368,6 +441,19 @@
     <button class="btn primary" id="dlg-ok">确认</button>
   </div>
 </dialog>
+
+<div class="onboard" id="onboard" hidden>
+  <div class="onboard-card">
+    <div class="ob-step" id="ob-step">1 / 4</div>
+    <div class="ob-title" id="ob-title"></div>
+    <div class="ob-body" id="ob-body"></div>
+    <div class="ob-actions">
+      <button class="btn" id="ob-skip">跳过引导</button>
+      <span class="sp"></span>
+      <button class="btn primary" id="ob-next">下一步</button>
+    </div>
+  </div>
+</div>
 
 <div class="toasts" id="toasts"></div>
 

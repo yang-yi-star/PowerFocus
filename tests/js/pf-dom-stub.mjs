@@ -68,6 +68,7 @@ class DomNode {
     this.hidden = false;
     this.open = false;
     this.value = '';
+    this.checked = false;
     this.id = '';
     this._text = '';
     this._listeners = {};
@@ -288,6 +289,8 @@ export function loadApp(repoRoot, opts = {}) {
     'renderSecurity', 'renderAudit', 'renderBootstrap', 'bsBadgeFor', 'bsOut',
     'renderScan', 'updateScanButton', 'syncScanScope', 'startScan', 'refreshScan',
     'renderPosture', 'renderShield', 'shieldRun', 'shieldApplyRecommended', 'shieldRevertAll', 'dnsCheck',
+    'renderModelCard', 'loadPreferences', 'savePreferences', 'loadAbout', 'checkUpdate',
+    'exportLogs', 'exportConfig', 'finishOnboard', 'nextOnboard', 'maybeOnboard',
   ];
   const injection = '\n  globalThis.__PF = { ' + EXPORTS.join(', ') + ', __state: () => ({ snapshot, selected, activeView, clientLog, errBadgeCount }) };\n';
   const tail = /\n\s*\}\s*\)\s*\(\s*\)\s*;?\s*$/;
@@ -313,6 +316,11 @@ export function loadApp(repoRoot, opts = {}) {
     if (h && typeof h.unref === 'function') h.unref();
     return h;
   };
+  const interval = (fn, ms) => {
+    const h = setInterval(fn, ms);
+    if (h && typeof h.unref === 'function') h.unref();
+    return h;
+  };
 
   const sandbox = {
     document,
@@ -321,7 +329,7 @@ export function loadApp(repoRoot, opts = {}) {
     fetch: fetchImpl,
     setTimeout: timer,
     clearTimeout: (h) => clearTimeout(h),
-    setInterval: (fn, ms) => setInterval(fn, ms),
+    setInterval: interval,
     clearInterval: (h) => clearInterval(h),
     AbortController,
     console,
@@ -337,5 +345,5 @@ export function loadApp(repoRoot, opts = {}) {
   return { pf, env: { document, localStorage, fetchCalls, sandbox }, source };
 }
 
-export const VIEW_ORDER_EXPECTED = ['overview', 'processes', 'scenes', 'models', 'security', 'bootstrap', 'settings', 'logs'];
+export const VIEW_ORDER_EXPECTED = ['overview', 'processes', 'scenes', 'models', 'security', 'bootstrap', 'settings', 'logs', 'about'];
 export const WEB_REL = path.join('product', 'v1.00', 'app', 'web');

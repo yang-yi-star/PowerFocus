@@ -17,6 +17,16 @@
 
 ## [Unreleased]
 
+### 本轮已落地（2026-11-26，应用化补齐，带回归）
+
+- **版本真源统一**：新增 `product/v1.00/app/version.py` 单一真源（环境变量 → 旁侧 VERSION.json → git describe → `dev`）；`/api/health` 与窗口标题改接真源，同时回报 release 版本、内部槽与内核版本，不再三处分裂。
+- **关于页 + 更新检查**：`/api/about` 展示版本/槽/内核/Python/许可与外链；`/api/update-check` 只对比 GitHub Release tag、不自动下载，网络失败或无 Release 如实返回，不抛 500。
+- **应用偏好**：`app/preferences.py` 落盘 `preferences.json`，覆盖开机自启（HKCU 运行键）、关闭行为、刷新间隔（500–10000ms 钳制）、引导标记；损坏回退默认、未知键忽略、原子写。
+- **首次引导**：未完成引导的新用户进入时弹 4 步浮层（认识面板 → 选目标 → 接本地模型 → 安全基线），可跳过；完成/跳过后落 `onboarded`，标记失败不阻断使用。
+- **日志与配置导出**：`/api/export/logs` 汇总运行日志为纯文本下载；`/api/export/config` 备份非敏感配置并显式剥离 `api_key`（密钥在 DPAPI 库内，不参与备份）。
+- **总览本地模型优先**：总览 verdict 下新增模型卡（已载入数量、模型名、显存、内核在线三态），通用 CPU/内存 KPI 下移为辅助行。
+- **系统托盘（本轮降级）**：pywebview 6.2.1 无原生托盘 API，pythonnet 双消息循环长稳未验证；`close_action` 枚举保留 `tray`，前端该项禁用并标注下一版接入，本轮关闭行为只落地 `exit`。详见 `docs/roadmap.md`。
+
 ### 已知待办（如实列出，避免误判完成度）
 
 - 应用内每日自动扫描调度器（`run_scheduled_loop()`）已实现，但尚未随主进程常驻启动。
@@ -26,8 +36,6 @@
 - `server.py` 剩余模块拆分（`processes.py` / `nlp.py` / `llm_proxy.py`，目标 900 行内）、
   结构化回执 `{ok, ts, payload}`、模型路径改相对解析、端口集中注入、exe 冒烟测试与覆盖率门槛
   （见 `docs/engineering-audit.md` 路线图；第二批只完成总线分层、幂等 id、端口与就绪判定）。
-- `/api/health` 仍回报内部版本槽 `version: 1.00 / kernel_version: v0.13`，与发布 tag 0.12.0 语义不同；
-  是否对外统一由产品决策，本轮未擅自改动运行行为。
 
 ### 双专家审查后明确未修的安全项（本轮不假装完成）
 

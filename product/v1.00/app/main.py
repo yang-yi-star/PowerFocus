@@ -240,6 +240,7 @@ def main():
         return
     import webview
     import app_paths  # 30-C：固定 WebView2 数据目录，避开 %TEMP% 卷
+    import version
 
     server.start_background()
     threading.Thread(target=log_bootstrap, daemon=True).start()
@@ -254,7 +255,7 @@ def main():
     log("服务已就绪: http://127.0.0.1:%d" % port)
 
     webview.create_window(
-        "电脑算力调度中心 v1.00",
+        "电脑算力调度中心 " + version.release_version(),
         "http://127.0.0.1:%d/" % port,
         width=1300, height=840, min_size=(1040, 680),
         background_color="#070b10",

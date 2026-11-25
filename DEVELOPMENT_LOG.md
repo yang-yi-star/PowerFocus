@@ -1285,3 +1285,35 @@
 - `.gitattributes` 要求 `*.ps1` CRLF 而工作区为 LF：只是 add 时噪声警告，索引规范化无副作用，未强改。
 
 **验证**：`tests/run-tests.ps1`（pwsh 7.6.9）8/8 PASS——PS 语法 177 个、JSON 契约 4 个、Python 编译 5 个、pytest 113 passed、MCP 冒烟 245 工具（走归档路径）、路由契约、仓库卫生、工具对齐；ruff `All checks passed`。
+
+---
+
+## 2026-11-26 03:11 · 应用化补齐轮（版本真源/关于/偏好/引导/导出/模型卡 + 演示页）
+
+**背景**：用户授权助手自行决策并持续迭代，目标是把界面与应用补齐成完整应用必备件，并产出一份 HTML 企业 PPT 风演示页用于抖音发布。
+
+**后端（已落地，带回归）**：
+1. 版本真源：新增 `app/version.py`，`release_version()` 优先级 = 环境变量 PF_RELEASE_TAG → 旁侧 VERSION.json → git describe --tags --always --dirty → `dev`；`/api/health` 与 `main.py` 窗口标题改接真源，同时回报 release / 内部槽 slot / kernel_version，消除此前三处版本分裂。
+2. 关于 + 更新检查：`GET /api/about`（release/slot/kernel_version/python/frozen/外链）；`GET /api/update-check` 只对比 GitHub Release tag、不自动下载；网络失败或无 Release 如实返回 checked=false / note，不抛 500。
+3. 应用偏好：新增 `app/preferences.py`，落盘 `preferences.json`（autostart / close_action / poll_interval_ms 500–10000 钳制 / onboarded）；未知键忽略、损坏回退默认、原子写；自启走 HKCU 运行键，GET 回 autostart_active 实测状态。
+4. 导出：`GET /api/export/logs` 汇总运行日志为 text/plain；`GET /api/export/config` 备份非敏感配置并显式剥离 api_key（密钥在 DPAPI 库内，不参与备份）。
+
+**前端（已落地）**：
+- 关于视图、设置页偏好面板、日志/配置导出按钮、4 步首次引导浮层（可跳过，标记失败不阻断）。
+- 总览 verdict 下新增模型卡：已载入数量/模型名/显存/内核在线三态圆点；通用 CPU/内存 KPI 下移为辅助行。
+- 视图顺序扩为 9 项；轮询间隔接偏好；测试桩与契约测试同步补全。
+
+**托盘（本轮降级，如实记录）**：pywebview 6.2.1 无原生托盘 API；pythonnet 双 WinForms 消息循环无人值守长稳未验证。本轮不引入未验证线程模型；`close_action` 枚举保留 tray，前端该项 disabled 并标注下一版接入，关闭行为本轮只落地 exit。前置验证见 `docs/roadmap.md` Next。
+
+**文档与物料**：
+- 新增 `docs/roadmap.md`：定位（本地模型优先的本机算力调度台）、Now/Next/Later 分层、指标边界、不做清单。
+- 新增 `marketing/pitch/index.html`：16:9 企业 PPT 风 9 页（封面/痛点/方案/架构/功能矩阵/界面实拍/安全隐私/路线图/署名），键盘左右翻页，实机截图 base64 内嵌单文件；对外口径仅引用 README 已核实表述，不含未实测性能数字。
+
+**验证**：`tests/run-tests.ps1` 19/19 PASS——PS 语法 186、JSON 契约 4、Python 编译 7、pytest 236 passed（新增 `tests/py/test_app_chrome.py` 9 例）、MCP 冒烟 245 工具、总线鉴权/分级/心跳/防御/EcoQoS/传参/电源/内存/I/O 全绿、前端回归 33、前端交互 46、仓库卫生 541 跟踪。Edge headless 实测封面与实拍页渲染正常、图片解码无裂图、页码与圆点正确。
+
+**提交与推送**：分三笔提交 main（b2ca652 应用化补齐、3e8af5e 许可/SBOM 时间戳、75c6bcb 演示页）；连同此前未推的隐私 P0 三笔（56cf044、1c57510、67d5eb2）一并推送，远端 main = 75c6bcb，与本地一致。
+
+**遗留（如实挂账）**：
+- 本机 exe 未按新基线重打包；Release 物料（exe 字节数/SHA256/许可附件）属发布流程，本轮未擅自发版（#12 剩余项）。
+- F4 总线认证、F7 验签 TOCTOU 重验、F8 同意令牌硬编码、F3 health 限流、KVRT 版本锁定等开放项不变，见 engineering-audit 与 CHANGELOG。
+- 每日扫描调度器常驻、server.py 模块拆分、覆盖率门槛与 exe 冒烟列入 Next。
